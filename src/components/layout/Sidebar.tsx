@@ -49,7 +49,7 @@ export function Sidebar() {
           </div>
           <div>
             <p className="text-sm font-bold text-white leading-none">GoMoto</p>
-            <p className="text-xs text-[#666666] mt-0.5">Gestão de Locadora</p>
+            <p className="text-xs text-[#A0A0A0] mt-0.5">Gestão de Locadora</p>
           </div>
         </div>
       </div>
@@ -81,7 +81,7 @@ export function Sidebar() {
         <form action="/auth/logout" method="post">
           <button
             type="submit"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#666666] hover:text-red-400 hover:bg-red-500/5 transition-all duration-150 w-full"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-all duration-150 w-full"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             Sair

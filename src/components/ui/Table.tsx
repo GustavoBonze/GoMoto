@@ -41,7 +41,7 @@ export function Table<T>({
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-[#666666] text-sm">{emptyMessage}</p>
+        <p className="text-[#A0A0A0] text-sm">{emptyMessage}</p>
       </div>
     )
   }
@@ -55,7 +55,7 @@ export function Table<T>({
               <th
                 key={col.key}
                 className={cn(
-                  'px-4 py-3 text-left text-xs font-medium text-[#666666] uppercase tracking-wider',
+                  'px-4 py-3 text-left text-xs font-medium text-[#A0A0A0] uppercase tracking-wider',
                   col.className
                 )}
               >

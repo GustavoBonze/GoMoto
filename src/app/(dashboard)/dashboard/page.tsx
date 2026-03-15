@@ -112,11 +112,11 @@ export default function DashboardPage() {
                 <div key={c.id} className="px-5 py-3.5 flex items-center justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{c.cliente}</p>
-                    <p className="text-xs text-[#666666] truncate mt-0.5">{c.moto}</p>
+                    <p className="text-xs text-[#A0A0A0] truncate mt-0.5">{c.moto}</p>
                   </div>
                   <div className="text-right flex-shrink-0 ml-4">
-                    <p className="text-sm font-semibold text-white">{formatCurrency(c.valor)}<span className="text-xs text-[#666666] font-normal">/mês</span></p>
-                    <p className="text-xs text-[#666666] mt-0.5">Vence {formatDate(c.vencimento)}</p>
+                    <p className="text-sm font-semibold text-white">{formatCurrency(c.valor)}<span className="text-xs text-[#A0A0A0] font-normal">/mês</span></p>
+                    <p className="text-xs text-[#A0A0A0] mt-0.5">Vence {formatDate(c.vencimento)}</p>
                   </div>
                 </div>
               ))}
@@ -131,7 +131,7 @@ export default function DashboardPage() {
             </div>
             {cobrancas_vencidas.length === 0 ? (
               <div className="px-5 py-8 text-center">
-                <p className="text-sm text-[#666666]">Nenhuma cobrança vencida</p>
+                <p className="text-sm text-[#A0A0A0]">Nenhuma cobrança vencida</p>
               </div>
             ) : (
               <div className="divide-y divide-[#2a2a2a]">
@@ -152,7 +152,7 @@ export default function DashboardPage() {
 
             {/* Resumo das motos */}
             <div className="px-5 py-4 border-t border-[#333333] mt-2">
-              <p className="text-xs font-medium text-[#666666] uppercase tracking-wider mb-3">Status das Motos</p>
+              <p className="text-xs font-medium text-[#A0A0A0] uppercase tracking-wider mb-3">Status das Motos</p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full" />

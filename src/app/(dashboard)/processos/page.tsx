@@ -207,7 +207,7 @@ export default function ProcessosPage() {
       <div className="p-6 space-y-4">
         {/* Filter */}
         <div className="flex items-center gap-3 flex-wrap">
-          <BookOpen className="w-4 h-4 text-[#666666]" />
+          <BookOpen className="w-4 h-4 text-[#A0A0A0]" />
           <div className="flex gap-2 flex-wrap">
             {[{ value: '', label: 'Todas' }, ...categorias.map((c) => ({ value: c, label: c }))].map(
               (opt) => (
@@ -232,7 +232,7 @@ export default function ProcessosPage() {
           <div key={categoria} className="space-y-2">
             <div className="flex items-center gap-2 py-1">
               <Badge variant={categoriaBadgeVariant[categoria] ?? 'muted'}>{categoria}</Badge>
-              <span className="text-xs text-[#666666]">{items.length} processo(s)</span>
+              <span className="text-xs text-[#A0A0A0]">{items.length} processo(s)</span>
             </div>
 
             <div className="space-y-1">
@@ -270,9 +270,9 @@ export default function ProcessosPage() {
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                       {expandedId === processo.id ? (
-                        <ChevronUp className="w-4 h-4 text-[#666666]" />
+                        <ChevronUp className="w-4 h-4 text-[#A0A0A0]" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-[#666666]" />
+                        <ChevronDown className="w-4 h-4 text-[#A0A0A0]" />
                       )}
                     </div>
                   </button>
@@ -291,8 +291,8 @@ export default function ProcessosPage() {
         {filtered.length === 0 && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <BookOpen className="w-12 h-12 text-[#333333] mx-auto mb-3" />
-              <p className="text-[#666666]">Nenhum processo encontrado</p>
+              <BookOpen className="w-12 h-12 text-[#888888] mx-auto mb-3" />
+              <p className="text-[#A0A0A0]">Nenhum processo encontrado</p>
             </div>
           </div>
         )}

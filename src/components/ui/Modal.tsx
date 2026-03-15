@@ -51,7 +51,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
             <h2 className="text-lg font-semibold text-white">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#666666] hover:text-white hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
