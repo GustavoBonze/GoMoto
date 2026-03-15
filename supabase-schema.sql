@@ -20,6 +20,7 @@ CREATE TABLE motos (
   chassi VARCHAR(20),
   status VARCHAR(20) NOT NULL DEFAULT 'disponivel' CHECK (status IN ('disponivel', 'alugada', 'manutencao', 'inativa')),
   foto_url TEXT,
+  km_atual INTEGER NOT NULL DEFAULT 0,
   observacoes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -86,12 +87,14 @@ CREATE TABLE cobrancas (
 -- ============================================================
 CREATE TABLE entradas (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  descricao VARCHAR(300) NOT NULL,
+  veiculo VARCHAR(10) NOT NULL,               -- placa da moto
+  data DATE NOT NULL,                          -- data do pagamento
+  locatario VARCHAR(200) NOT NULL,             -- nome do locatário
   valor DECIMAL(10,2) NOT NULL,
-  categoria VARCHAR(100) NOT NULL,
-  data DATE NOT NULL,
-  cliente_id UUID REFERENCES clientes(id),
-  moto_id UUID REFERENCES motos(id),
+  referencia VARCHAR(50) NOT NULL,             -- Semanal, Quinzenal, Mensal, Caução, Multa, Proporcional, Outros
+  forma_pagamento VARCHAR(50) NOT NULL,        -- PIX, Boleto, Cartão de crédito, etc.
+  periodo_de DATE,                             -- início do período referente
+  periodo_ate DATE,                            -- fim do período referente
   observacoes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -129,17 +132,52 @@ CREATE TABLE multas (
 );
 
 -- ============================================================
+-- TABELA: itens_manutencao_padrao
+-- ============================================================
+CREATE TABLE itens_manutencao_padrao (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  nome VARCHAR(200) NOT NULL,
+  intervalo_km INTEGER,            -- NULL para itens baseados em data
+  intervalo_dias INTEGER,          -- para vistoria mensal (30)
+  tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('preventiva', 'corretiva', 'vistoria')),
+  dica TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed dos 13 itens padrão
+INSERT INTO itens_manutencao_padrao (nome, intervalo_km, intervalo_dias, tipo, dica) VALUES
+  ('Troca de óleo', 1000, NULL, 'preventiva', 'Use óleo 20W50 ou 10W30; troque o filtro a cada 2 trocas.'),
+  ('Filtro de óleo', 4000, NULL, 'preventiva', 'Trocar a cada duas trocas de óleo.'),
+  ('Lubrificação da corrente', 500, NULL, 'preventiva', 'Use spray para corrente com o-ring; lubrificar após chuva.'),
+  ('Ajuste da corrente', 1000, NULL, 'preventiva', 'Peso extra afrouxa mais rápido em motos de locação.'),
+  ('Troca da relação (corrente/coroa/pinhão)', 12000, NULL, 'preventiva', 'Prefira relação original para maior durabilidade.'),
+  ('Lona de freio traseira', 12000, NULL, 'preventiva', 'Evite manter o pé no freio.'),
+  ('Pastilha de freio dianteira', 8000, NULL, 'preventiva', 'Use o freio dianteiro de forma equilibrada.'),
+  ('Pneu dianteiro', 12000, NULL, 'preventiva', 'Calibre semanalmente (32 psi dianteiro).'),
+  ('Pneu traseiro', 8000, NULL, 'preventiva', 'Calibre semanalmente (36 psi traseiro).'),
+  ('Filtro de ar', 7000, NULL, 'preventiva', 'Limpar ou trocar; poeira urbana reduz durabilidade.'),
+  ('Velas de ignição', 10000, NULL, 'preventiva', 'Verificar e ajustar folga antes de trocar.'),
+  ('Amortecedores', 25000, NULL, 'preventiva', 'Peso extra acelera desgaste do óleo interno.'),
+  ('Vistoria mensal', NULL, 30, 'vistoria', 'Vistoria obrigatória mensal de todas as motos.');
+
+-- ============================================================
 -- TABELA: manutencoes
 -- ============================================================
 CREATE TABLE manutencoes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   moto_id UUID NOT NULL REFERENCES motos(id),
+  item_padrao_id UUID REFERENCES itens_manutencao_padrao(id),
   tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('preventiva', 'corretiva', 'vistoria')),
   descricao VARCHAR(300) NOT NULL,
-  data_realizada DATE,
+  km_previsto INTEGER,
+  km_realizado INTEGER,
   data_agendada DATE,
+  data_realizada DATE,
   custo DECIMAL(10,2),
   realizada BOOLEAN NOT NULL DEFAULT FALSE,
+  oficina VARCHAR(200) DEFAULT 'Oficina do Careca',
+  foto_odometro_url TEXT,
+  foto_nota_fiscal_url TEXT,
   observacoes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

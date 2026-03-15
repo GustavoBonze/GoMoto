@@ -6,7 +6,8 @@ import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
-import { Input, Textarea } from '@/components/ui/Input'
+import { Input, Select, Textarea } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 
 interface Usuario {
@@ -62,12 +63,27 @@ const defaultPrefs = {
   notificacoes_manutencao: false,
 }
 
+const papelOptions = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'funcionario', label: 'Funcionário' },
+]
+
+const defaultUserForm = {
+  nome: '',
+  email: '',
+  papel: 'funcionario',
+}
+
 export default function ConfiguracoesPage() {
   const [empresa, setEmpresa] = useState(defaultEmpresa)
   const [empresaSalva, setEmpresaSalva] = useState(false)
   const [usuarios, setUsuarios] = useState<Usuario[]>(mockUsuarios)
   const [prefs, setPrefs] = useState(defaultPrefs)
   const [prefsSalvas, setPrefsSalvas] = useState(false)
+  const [modalUsuario, setModalUsuario] = useState(false)
+  const [editandoUsuarioId, setEditandoUsuarioId] = useState<string | null>(null)
+  const [userForm, setUserForm] = useState(defaultUserForm)
+  const [excluindoUsuario, setExcluindoUsuario] = useState<Usuario | null>(null)
 
   function handleSalvarEmpresa(e: React.FormEvent) {
     e.preventDefault()
@@ -86,6 +102,47 @@ export default function ConfiguracoesPage() {
     )
   }
 
+  function abrirNovoUsuario() {
+    setEditandoUsuarioId(null)
+    setUserForm(defaultUserForm)
+    setModalUsuario(true)
+  }
+
+  function abrirEdicaoUsuario(row: Usuario) {
+    setEditandoUsuarioId(row.id)
+    setUserForm({ nome: row.nome, email: row.email, papel: row.papel })
+    setModalUsuario(true)
+  }
+
+  function handleSubmitUsuario(e: React.FormEvent) {
+    e.preventDefault()
+    if (editandoUsuarioId) {
+      setUsuarios((prev) =>
+        prev.map((u) =>
+          u.id === editandoUsuarioId
+            ? { ...u, nome: userForm.nome, email: userForm.email, papel: userForm.papel as 'admin' | 'funcionario' }
+            : u
+        )
+      )
+    } else {
+      const novoUsuario: Usuario = {
+        id: String(Date.now()),
+        nome: userForm.nome,
+        email: userForm.email,
+        papel: userForm.papel as 'admin' | 'funcionario',
+        ativo: true,
+      }
+      setUsuarios((prev) => [...prev, novoUsuario])
+    }
+    setModalUsuario(false)
+  }
+
+  function confirmarExclusaoUsuario() {
+    if (!excluindoUsuario) return
+    setUsuarios((prev) => prev.filter((u) => u.id !== excluindoUsuario.id))
+    setExcluindoUsuario(null)
+  }
+
   const usuariosColumns = [
     {
       key: 'nome',
@@ -99,7 +156,7 @@ export default function ConfiguracoesPage() {
           </div>
           <div>
             <p className="font-medium text-white text-sm">{row.nome}</p>
-            <p className="text-xs text-[#666666]">{row.email}</p>
+            <p className="text-xs text-[#A0A0A0]">{row.email}</p>
           </div>
         </div>
       ),
@@ -137,10 +194,18 @@ export default function ConfiguracoesPage() {
           >
             {row.ativo ? 'Desativar' : 'Ativar'}
           </button>
-          <button className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors">
+          <button
+            onClick={() => abrirEdicaoUsuario(row)}
+            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
+            title="Editar"
+          >
             <Edit2 className="w-4 h-4" />
           </button>
-          <button className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors">
+          <button
+            onClick={() => setExcluindoUsuario(row)}
+            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
+            title="Excluir"
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -161,7 +226,7 @@ export default function ConfiguracoesPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white">Dados da Empresa</h2>
-              <p className="text-xs text-[#666666]">Informações básicas da empresa</p>
+              <p className="text-xs text-[#A0A0A0]">Informações básicas da empresa</p>
             </div>
           </div>
 
@@ -224,10 +289,10 @@ export default function ConfiguracoesPage() {
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-white">Usuários do Sistema</h2>
-                <p className="text-xs text-[#666666]">{usuarios.length} usuários cadastrados</p>
+                <p className="text-xs text-[#A0A0A0]">{usuarios.length} usuários cadastrados</p>
               </div>
             </div>
-            <Button size="sm" variant="secondary">
+            <Button size="sm" variant="secondary" onClick={abrirNovoUsuario}>
               <Plus className="w-3.5 h-3.5" />
               Novo Usuário
             </Button>
@@ -250,31 +315,26 @@ export default function ConfiguracoesPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white">Preferências</h2>
-              <p className="text-xs text-[#666666]">Notificações e comportamento do sistema</p>
+              <p className="text-xs text-[#A0A0A0]">Notificações e comportamento do sistema</p>
             </div>
           </div>
 
           <Card>
             <div className="space-y-4">
-              {/* Toggle: Notificações por e-mail */}
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   {prefs.notificacoes_email ? (
                     <Bell className="w-4 h-4 text-[#BAFF1A]" />
                   ) : (
-                    <BellOff className="w-4 h-4 text-[#666666]" />
+                    <BellOff className="w-4 h-4 text-[#A0A0A0]" />
                   )}
                   <div>
                     <p className="text-sm font-medium text-white">Notificações por e-mail</p>
-                    <p className="text-xs text-[#666666]">
-                      Receber alertas gerais por e-mail
-                    </p>
+                    <p className="text-xs text-[#A0A0A0]">Receber alertas gerais por e-mail</p>
                   </div>
                 </div>
                 <button
-                  onClick={() =>
-                    setPrefs({ ...prefs, notificacoes_email: !prefs.notificacoes_email })
-                  }
+                  onClick={() => setPrefs({ ...prefs, notificacoes_email: !prefs.notificacoes_email })}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                     prefs.notificacoes_email ? 'bg-[#BAFF1A]' : 'bg-[#333333]'
                   }`}
@@ -289,21 +349,16 @@ export default function ConfiguracoesPage() {
 
               <div className="border-t border-[#333333]" />
 
-              {/* Toggle: Alertas de vencimento */}
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
-                  <Bell className={`w-4 h-4 ${prefs.notificacoes_vencimento ? 'text-amber-400' : 'text-[#666666]'}`} />
+                  <Bell className={`w-4 h-4 ${prefs.notificacoes_vencimento ? 'text-amber-400' : 'text-[#A0A0A0]'}`} />
                   <div>
                     <p className="text-sm font-medium text-white">Alertas de vencimento</p>
-                    <p className="text-xs text-[#666666]">
-                      Avisar sobre cobranças e CNH próximas do vencimento
-                    </p>
+                    <p className="text-xs text-[#A0A0A0]">Avisar sobre cobranças e CNH próximas do vencimento</p>
                   </div>
                 </div>
                 <button
-                  onClick={() =>
-                    setPrefs({ ...prefs, notificacoes_vencimento: !prefs.notificacoes_vencimento })
-                  }
+                  onClick={() => setPrefs({ ...prefs, notificacoes_vencimento: !prefs.notificacoes_vencimento })}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                     prefs.notificacoes_vencimento ? 'bg-[#BAFF1A]' : 'bg-[#333333]'
                   }`}
@@ -318,21 +373,16 @@ export default function ConfiguracoesPage() {
 
               <div className="border-t border-[#333333]" />
 
-              {/* Toggle: Alertas de manutenção */}
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
-                  <Bell className={`w-4 h-4 ${prefs.notificacoes_manutencao ? 'text-blue-400' : 'text-[#666666]'}`} />
+                  <Bell className={`w-4 h-4 ${prefs.notificacoes_manutencao ? 'text-blue-400' : 'text-[#A0A0A0]'}`} />
                   <div>
                     <p className="text-sm font-medium text-white">Alertas de manutenção</p>
-                    <p className="text-xs text-[#666666]">
-                      Notificar quando uma manutenção estiver próxima
-                    </p>
+                    <p className="text-xs text-[#A0A0A0]">Notificar quando uma manutenção estiver próxima</p>
                   </div>
                 </div>
                 <button
-                  onClick={() =>
-                    setPrefs({ ...prefs, notificacoes_manutencao: !prefs.notificacoes_manutencao })
-                  }
+                  onClick={() => setPrefs({ ...prefs, notificacoes_manutencao: !prefs.notificacoes_manutencao })}
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                     prefs.notificacoes_manutencao ? 'bg-[#BAFF1A]' : 'bg-[#333333]'
                   }`}
@@ -363,6 +413,67 @@ export default function ConfiguracoesPage() {
           </Card>
         </section>
       </div>
+
+      {/* Modal Novo / Editar Usuário */}
+      <Modal
+        open={modalUsuario}
+        onClose={() => setModalUsuario(false)}
+        title={editandoUsuarioId ? 'Editar Usuário' : 'Novo Usuário'}
+        size="sm"
+      >
+        <form onSubmit={handleSubmitUsuario} className="space-y-4">
+          <Input
+            label="Nome"
+            placeholder="Nome completo"
+            value={userForm.nome}
+            onChange={(e) => setUserForm({ ...userForm, nome: e.target.value })}
+            required
+          />
+          <Input
+            label="E-mail"
+            type="email"
+            placeholder="email@gomoto.com.br"
+            value={userForm.email}
+            onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+            required
+          />
+          <Select
+            label="Papel"
+            options={papelOptions}
+            value={userForm.papel}
+            onChange={(e) => setUserForm({ ...userForm, papel: e.target.value })}
+          />
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="ghost" onClick={() => setModalUsuario(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              <Save className="w-4 h-4" />
+              {editandoUsuarioId ? 'Salvar Alterações' : 'Criar Usuário'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Confirmar Exclusão de Usuário */}
+      <Modal open={!!excluindoUsuario} onClose={() => setExcluindoUsuario(null)} title="Excluir Usuário" size="sm">
+        <div className="space-y-4">
+          <p className="text-[#A0A0A0] text-sm">
+            Tem certeza que deseja excluir o usuário{' '}
+            <span className="text-white font-medium">{excluindoUsuario?.nome}</span>?
+            Esta ação não poderá ser desfeita.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setExcluindoUsuario(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarExclusaoUsuario}>
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

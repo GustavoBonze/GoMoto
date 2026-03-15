@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'brand'
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'brand' | 'orange'
 
 interface BadgeProps {
   variant?: BadgeVariant
@@ -15,6 +15,7 @@ const variants: Record<BadgeVariant, string> = {
   info: 'bg-blue-500/12 text-blue-400 border border-blue-500/20',
   muted: 'bg-white/5 text-[#A0A0A0] border border-white/10',
   brand: 'bg-[#BAFF1A]/12 text-[#BAFF1A] border border-[#BAFF1A]/20',
+  orange: 'bg-orange-600/12 text-orange-400 border border-orange-600/20',
 }
 
 const statusLabels: Record<string, { label: string; variant: BadgeVariant }> = {
@@ -25,6 +26,7 @@ const statusLabels: Record<string, { label: string; variant: BadgeVariant }> = {
   pago: { label: 'Pago', variant: 'success' },
   pendente: { label: 'Pendente', variant: 'warning' },
   vencido: { label: 'Vencido', variant: 'danger' },
+  prejuizo: { label: 'Prejuízo', variant: 'orange' },
   ativo: { label: 'Ativo', variant: 'success' },
   encerrado: { label: 'Encerrado', variant: 'muted' },
   preventiva: { label: 'Preventiva', variant: 'info' },

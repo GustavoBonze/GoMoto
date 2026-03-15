@@ -22,7 +22,7 @@ export interface MovimentacaoFila {
   para: number
   motivo: string
 }
-export type CobrancaStatus = 'pendente' | 'pago' | 'vencido'
+export type CobrancaStatus = 'pendente' | 'pago' | 'vencido' | 'prejuizo'
 export type ContratoStatus = 'ativo' | 'encerrado' | 'cancelado' | 'quebrado'
 export type ContratoTipo = 1 | 2 | 3
 export type MultaStatus = 'pendente' | 'pago'
@@ -122,16 +122,16 @@ export interface Cobranca {
 
 export interface Entrada {
   id: string
-  descricao: string
+  veiculo: string           // placa da moto
+  data: string              // data do pagamento
+  locatario: string         // nome do cliente
   valor: number
-  categoria: string
-  data: string
-  cliente_id?: string
-  moto_id?: string
+  referencia: string        // Semanal, Quinzenal, Mensal, Caução, Multa, Proporcional, Outros
+  forma_pagamento: string   // PIX, Boleto, Cartão de crédito, etc.
+  periodo_de?: string       // início do período referente
+  periodo_ate?: string      // fim do período referente
   observacoes?: string
   created_at: string
-  cliente?: Cliente
-  moto?: Moto
 }
 
 export interface Despesa {
@@ -162,17 +162,35 @@ export interface Multa {
   moto?: Moto
 }
 
+export interface ItemManutencaoPadrao {
+  id: string
+  nome: string
+  intervalo_km: number | null   // null = baseado em data (vistoria)
+  intervalo_dias: number | null // para vistoria mensal
+  tipo: 'preventiva' | 'corretiva' | 'vistoria'
+  dica: string
+}
+
+export type ManutencaoStatus = 'vencida' | 'proxima' | 'agendada' | 'realizada'
+
 export interface Manutencao {
   id: string
   moto_id: string
+  item_padrao_id: string | null
   tipo: 'preventiva' | 'corretiva' | 'vistoria'
   descricao: string
-  data_realizada?: string
-  data_agendada?: string
-  custo?: number
+  km_previsto: number | null
+  km_realizado: number | null
+  data_agendada: string | null
+  data_realizada: string | null
+  custo: number | null
   realizada: boolean
-  observacoes?: string
+  oficina: string | null
+  foto_odometro_url: string | null
+  foto_nota_fiscal_url: string | null
+  observacoes: string | null
   created_at: string
+  updated_at: string
   moto?: Moto
 }
 

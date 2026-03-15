@@ -94,7 +94,7 @@ export default function RelatoriosPage() {
       <div className="p-6 space-y-6">
         {/* Current month summary */}
         <div>
-          <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">
             Resumo — {mesNome.charAt(0).toUpperCase() + mesNome.slice(1)}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -117,17 +117,17 @@ export default function RelatoriosPage() {
               color="brand"
             />
             <Card>
-              <p className="text-xs text-[#666666] truncate">Contratos Ativos</p>
+              <p className="text-xs text-[#A0A0A0] truncate">Contratos Ativos</p>
               <p className="text-2xl font-bold text-white mt-0.5">{statsDoMes.contratosAtivos}</p>
             </Card>
             <Card>
-              <p className="text-xs text-[#666666] truncate">Cobranças Pendentes</p>
+              <p className="text-xs text-[#A0A0A0] truncate">Cobranças Pendentes</p>
               <p className="text-2xl font-bold text-amber-400 mt-0.5">
                 {statsDoMes.cobrancasPendentes}
               </p>
             </Card>
             <Card>
-              <p className="text-xs text-[#666666] truncate">Multas</p>
+              <p className="text-xs text-[#A0A0A0] truncate">Multas</p>
               <p className="text-2xl font-bold text-red-400 mt-0.5">
                 {formatCurrency(statsDoMes.totalMultas)}
               </p>
@@ -137,7 +137,7 @@ export default function RelatoriosPage() {
 
         {/* Relatorio Cards Grid */}
         <div>
-          <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">
             Relatórios disponíveis
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -195,9 +195,9 @@ export default function RelatoriosPage() {
 
         {/* Coming Soon notice */}
         <Card className="text-center py-8">
-          <BarChart2 className="w-12 h-12 text-[#333333] mx-auto mb-3" />
+          <BarChart2 className="w-12 h-12 text-[#888888] mx-auto mb-3" />
           <p className="text-white font-medium mb-1">Relatórios em desenvolvimento</p>
-          <p className="text-sm text-[#666666] max-w-md mx-auto">
+          <p className="text-sm text-[#A0A0A0] max-w-md mx-auto">
             Os relatórios completos com exportação em PDF e Excel estão sendo desenvolvidos e estarão
             disponíveis em breve.
           </p>

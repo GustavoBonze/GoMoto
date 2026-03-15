@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Edit2, Trash2, Eye, Bike, X, CheckCircle, AlertCircle } from 'lucide-react'
+import { Plus, Edit2, Trash2, Eye, Bike, X, CheckCircle, AlertCircle, Search } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -117,6 +117,22 @@ const combustivelOptions = [
   { value: 'ELÉTRICO', label: 'Elétrico' },
 ]
 
+// ─── itens de bootstrap de manutenção ────────────────────────────────────────
+
+const BOOTSTRAP_ITENS = [
+  { id: 'ip1',  nome: 'Troca de óleo',                          tipo: 'km'   as const, intervalo: 1000,  hint: 'a cada 1.000 km'  },
+  { id: 'ip2',  nome: 'Filtro de óleo',                         tipo: 'km'   as const, intervalo: 4000,  hint: 'a cada 4.000 km'  },
+  { id: 'ip5',  nome: 'Troca da relação (corrente/coroa/pinhão)',tipo: 'km'   as const, intervalo: 12000, hint: 'a cada 12.000 km' },
+  { id: 'ip6',  nome: 'Lona de freio traseira',                 tipo: 'km'   as const, intervalo: 12000, hint: 'a cada 12.000 km' },
+  { id: 'ip7',  nome: 'Pastilha de freio dianteira',            tipo: 'km'   as const, intervalo: 8000,  hint: 'a cada 8.000 km'  },
+  { id: 'ip8',  nome: 'Pneu dianteiro',                         tipo: 'km'   as const, intervalo: 12000, hint: 'a cada 12.000 km' },
+  { id: 'ip9',  nome: 'Pneu traseiro',                          tipo: 'km'   as const, intervalo: 8000,  hint: 'a cada 8.000 km'  },
+  { id: 'ip10', nome: 'Filtro de ar',                           tipo: 'km'   as const, intervalo: 7000,  hint: 'a cada 7.000 km'  },
+  { id: 'ip11', nome: 'Velas de ignição',                       tipo: 'km'   as const, intervalo: 10000, hint: 'a cada 10.000 km' },
+  { id: 'ip12', nome: 'Amortecedores',                          tipo: 'km'   as const, intervalo: 25000, hint: 'a cada 25.000 km' },
+  { id: 'ip13', nome: 'Vistoria mensal',                        tipo: 'data' as const, intervalo: 30,    hint: 'todo mês'         },
+]
+
 const defaultForm = {
   placa: '',
   modelo: '',
@@ -131,6 +147,7 @@ const defaultForm = {
   cpf_dono_antigo: '',
   data_compra: '',
   valor_fipe: '',
+  km_atual: '',
   manutencao_em_dia: 'true',
   status: 'disponivel',
   observacoes: '',
@@ -158,6 +175,7 @@ function motoToForm(moto: Moto) {
     cpf_dono_antigo: moto.cpf_dono_antigo ?? '',
     data_compra: moto.data_compra ?? '',
     valor_fipe: moto.valor_fipe ? String(moto.valor_fipe) : '',
+    km_atual: '',
     manutencao_em_dia: moto.manutencao_em_dia !== false ? 'true' : 'false',
     status: moto.status,
     observacoes: moto.observacoes ?? '',
@@ -167,17 +185,38 @@ function motoToForm(moto: Moto) {
 export default function MotosPage() {
   const [motos, setMotos] = useState<Moto[]>(mockMotos)
   const [filter, setFilter] = useState('todas')
+  const [busca, setBusca] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(defaultForm)
   const [detailsMoto, setDetailsMoto] = useState<Moto | null>(null)
+  const [excluindo, setExcluindo] = useState<Moto | null>(null)
 
-  const filtered = filter === 'todas' ? motos : motos.filter((m) => m.status === filter)
+  // wizard de nova moto: passo 1 = dados básicos, passo 2 = bootstrap de manutenções
+  const [step, setStep] = useState<1 | 2>(1)
+  // { [itemId]: 'km em número' ou 'YYYY-MM-DD' }
+  const [bootstrap, setBootstrap] = useState<Record<string, string>>({})
+
+  const filtered = motos.filter((m) => {
+    const passaFilter = filter === 'todas' || m.status === filter
+    const passaBusca = !busca || [m.placa, m.modelo, m.marca, m.cor].some(
+      (v) => v?.toLowerCase().includes(busca.toLowerCase())
+    )
+    return passaFilter && passaBusca
+  })
 
   function openNovaMoto() {
     setEditingId(null)
     setForm(defaultForm)
+    setBootstrap({})
+    setStep(1)
     setModalOpen(true)
+  }
+
+  function fecharModal() {
+    setModalOpen(false)
+    setStep(1)
+    setBootstrap({})
   }
 
   function openEditMoto(moto: Moto) {
@@ -186,9 +225,16 @@ export default function MotosPage() {
     setModalOpen(true)
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleStep1(e: React.FormEvent) {
     e.preventDefault()
+    if (editingId) {
+      handleSubmitFinal()
+    } else {
+      setStep(2)
+    }
+  }
 
+  function handleSubmitFinal() {
     const motoData: Partial<Moto> = {
       placa: form.placa.toUpperCase(),
       modelo: form.modelo,
@@ -220,9 +266,17 @@ export default function MotosPage() {
         ...motoData,
       } as Moto
       setMotos((prev) => [newMoto, ...prev])
+      // bootstrap: quando integrado ao Supabase, os registros de manutenção
+      // serão criados aqui com base nos dados de `bootstrap`
     }
 
-    setModalOpen(false)
+    fecharModal()
+  }
+
+  function confirmarExclusao() {
+    if (!excluindo) return
+    setMotos((prev) => prev.filter((m) => m.id !== excluindo.id))
+    setExcluindo(null)
   }
 
   return (
@@ -239,34 +293,46 @@ export default function MotosPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Filter Tabs */}
-        <div className="flex gap-2 flex-wrap">
-          {filterOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setFilter(opt.value)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                filter === opt.value
-                  ? 'bg-[#BAFF1A] text-[#121212]'
-                  : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
-              }`}
-            >
-              {opt.label}
-              {opt.value !== 'todas' && (
-                <span className="ml-1.5 opacity-70">
-                  ({motos.filter((m) => m.status === opt.value).length})
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Filter Tabs + Busca */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {filterOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFilter(opt.value)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  filter === opt.value
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                }`}
+              >
+                {opt.label}
+                {opt.value !== 'todas' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({motos.filter((m) => m.status === opt.value).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <input
+              type="text"
+              placeholder="Buscar por placa, modelo ou marca..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-64"
+            />
+          </div>
         </div>
 
         {/* Moto Cards Grid */}
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <Bike className="w-12 h-12 text-[#333333] mx-auto mb-3" />
-              <p className="text-[#666666]">Nenhuma moto encontrada</p>
+              <Bike className="w-12 h-12 text-[#888888] mx-auto mb-3" />
+              <p className="text-[#A0A0A0]">Nenhuma moto encontrada</p>
             </div>
           </div>
         ) : (
@@ -280,7 +346,7 @@ export default function MotosPage() {
               >
                 {/* Photo placeholder */}
                 <div className="h-36 bg-[#2a2a2a] flex items-center justify-center border-b border-[#333333] relative">
-                  <div className="flex flex-col items-center gap-2 text-[#444444]">
+                  <div className="flex flex-col items-center gap-2 text-[#888888]">
                     <Bike className="w-12 h-12" />
                     <span className="text-xs">Sem foto</span>
                   </div>
@@ -311,24 +377,24 @@ export default function MotosPage() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-[#666666]">Placa</p>
+                      <p className="text-xs text-[#A0A0A0]">Placa</p>
                       <p className="text-sm font-mono font-semibold text-white">{moto.placa}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-[#666666]">Cor</p>
+                      <p className="text-xs text-[#A0A0A0]">Cor</p>
                       <p className="text-sm text-[#A0A0A0]">{moto.cor}</p>
                     </div>
                   </div>
 
                   {moto.valor_fipe && (
                     <div>
-                      <p className="text-xs text-[#666666]">Valor FIPE</p>
+                      <p className="text-xs text-[#A0A0A0]">Valor FIPE</p>
                       <p className="text-sm text-[#BAFF1A] font-medium">{formatCurrency(moto.valor_fipe)}</p>
                     </div>
                   )}
 
                   {moto.observacoes && (
-                    <p className="text-xs text-[#666666] line-clamp-2">{moto.observacoes}</p>
+                    <p className="text-xs text-[#A0A0A0] line-clamp-2">{moto.observacoes}</p>
                   )}
 
                   <div className="flex items-center gap-2 pt-1 border-t border-[#333333]">
@@ -347,6 +413,7 @@ export default function MotosPage() {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
+                      onClick={() => setExcluindo(moto)}
                       className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
                       title="Excluir"
                     >
@@ -363,11 +430,13 @@ export default function MotosPage() {
       {/* Modal Nova / Editar Moto */}
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editingId ? 'Editar Moto' : 'Nova Moto'}
+        onClose={fecharModal}
+        title={editingId ? 'Editar Moto' : step === 1 ? 'Nova Moto — Dados básicos (1/2)' : `Nova Moto — Manutenções (2/2)`}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ── Passo 1: dados básicos ─────────────────────────────────────── */}
+        {(editingId || step === 1) && (
+        <form onSubmit={handleStep1} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Placa"
@@ -440,7 +509,7 @@ export default function MotosPage() {
 
           {/* Separador dados de compra */}
           <div className="border-t border-[#333333] pt-2">
-            <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">Dados de Aquisição</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Dados de Aquisição</p>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Nome do Dono Anterior"
@@ -478,14 +547,12 @@ export default function MotosPage() {
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
             />
-            <Select
-              label="Manutenção"
-              options={[
-                { value: 'true', label: 'Em dia' },
-                { value: 'false', label: 'Revisão pendente' },
-              ]}
-              value={form.manutencao_em_dia}
-              onChange={(e) => setForm({ ...form, manutencao_em_dia: e.target.value })}
+            <Input
+              label="KM Atual"
+              type="number"
+              placeholder="Ex: 12500"
+              value={form.km_atual}
+              onChange={(e) => setForm({ ...form, km_atual: e.target.value })}
             />
           </div>
 
@@ -498,7 +565,7 @@ export default function MotosPage() {
           />
 
           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+            <Button type="button" variant="ghost" onClick={fecharModal}>
               Cancelar
             </Button>
             <Button type="submit">
@@ -509,13 +576,88 @@ export default function MotosPage() {
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
-                  Cadastrar Moto
+                  Próximo: Manutenções →
                 </>
               )}
             </Button>
           </div>
         </form>
+        )}
+
+        {/* ── Passo 2: bootstrap de manutenções (apenas nova moto) ──────── */}
+        {!editingId && step === 2 && (
+          <div className="space-y-4">
+            <p className="text-sm text-[#A0A0A0]">
+              Informe o <strong className="text-white">último km</strong> (ou data) de cada item.
+              Deixe em branco se nunca foi feito — o sistema marcará como pendente.
+            </p>
+
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {BOOTSTRAP_ITENS.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 bg-[#1A1A1A] rounded-lg px-3 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white">{item.nome}</p>
+                    <p className="text-xs text-[#555555]">{item.hint}</p>
+                  </div>
+                  {item.tipo === 'km' ? (
+                    <input
+                      type="number"
+                      placeholder="Último km"
+                      value={bootstrap[item.id] ?? ''}
+                      onChange={(e) => setBootstrap((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                      className="w-32 px-3 py-1.5 rounded-lg bg-[#2A2A2A] border border-[#333333] text-sm text-white placeholder-[#555555] focus:outline-none focus:border-[#555555] text-right"
+                    />
+                  ) : (
+                    <input
+                      type="date"
+                      value={bootstrap[item.id] ?? ''}
+                      onChange={(e) => setBootstrap((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                      className="w-36 px-3 py-1.5 rounded-lg bg-[#2A2A2A] border border-[#333333] text-sm text-white focus:outline-none focus:border-[#555555]"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* resumo do que será gerado */}
+            {Object.keys(bootstrap).filter((k) => bootstrap[k]).length > 0 && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-400">
+                {Object.keys(bootstrap).filter((k) => bootstrap[k]).length} item(s) configurados —
+                agendamentos automáticos serão gerados na tela de Manutenção.
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-between pt-1">
+              <Button variant="ghost" onClick={() => setStep(1)}>
+                ← Voltar
+              </Button>
+              <Button onClick={handleSubmitFinal}>
+                <Plus className="w-4 h-4" />
+                Cadastrar Moto
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Confirmar Exclusão */}
+      <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir Moto" size="sm">
+        <div className="space-y-4">
+          <p className="text-[#A0A0A0] text-sm">
+            Tem certeza que deseja excluir a moto{' '}
+            <span className="text-white font-medium">{excluindo?.marca}/{excluindo?.modelo} — {excluindo?.placa}</span>?
+            Esta ação não poderá ser desfeita.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setExcluindo(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarExclusao}>
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal Ver Detalhes */}
@@ -553,7 +695,7 @@ export default function MotosPage() {
 
             {/* Dados do veículo */}
             <div>
-              <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">Dados do Veículo</p>
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Dados do Veículo</p>
               <div className="grid grid-cols-2 gap-3">
                 <DetailRow label="Placa" value={detailsMoto.placa} mono />
                 <DetailRow label="RENAVAM" value={detailsMoto.renavam} mono />
@@ -567,7 +709,7 @@ export default function MotosPage() {
             {/* Dados de aquisição */}
             {(detailsMoto.dono_antigo || detailsMoto.data_compra || detailsMoto.valor_fipe) && (
               <div>
-                <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">Dados de Aquisição</p>
+                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Dados de Aquisição</p>
                 <div className="grid grid-cols-2 gap-3">
                   {detailsMoto.dono_antigo && (
                     <DetailRow label="Dono Anterior" value={detailsMoto.dono_antigo} fullWidth />
@@ -595,7 +737,7 @@ export default function MotosPage() {
             {/* Observações */}
             {detailsMoto.observacoes && (
               <div>
-                <p className="text-xs text-[#666666] uppercase tracking-wider mb-2">Observações</p>
+                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Observações</p>
                 <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3 leading-relaxed">
                   {detailsMoto.observacoes}
                 </p>
@@ -642,7 +784,7 @@ function DetailRow({
   if (!value) return null
   return (
     <div className={fullWidth ? 'col-span-2' : ''}>
-      <p className="text-xs text-[#666666] mb-0.5">{label}</p>
+      <p className="text-xs text-[#A0A0A0] mb-0.5">{label}</p>
       <p
         className={`text-sm ${mono ? 'font-mono' : ''} ${
           highlight ? 'text-[#BAFF1A] font-medium' : 'text-white'

@@ -117,9 +117,9 @@ function getDocIcon(tipo: DocumentoTipo) {
   const colors: Record<DocumentoTipo, string> = {
     cnh: 'text-blue-400', comprovante_residencia: 'text-green-400',
     contrato: 'text-purple-400', identificacao: 'text-yellow-400',
-    caucao: 'text-[#BAFF1A]', outro: 'text-[#666666]',
+    caucao: 'text-[#BAFF1A]', outro: 'text-[#A0A0A0]',
   }
-  return colors[tipo] ?? 'text-[#666666]'
+  return colors[tipo] ?? 'text-[#A0A0A0]'
 }
 
 // ——— Card de ex-cliente ———
@@ -147,9 +147,9 @@ function ExClienteCard({ cliente }: { cliente: Cliente }) {
             )}
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <p className="text-xs text-[#555555] font-mono">{cliente.cpf}</p>
+            <p className="text-xs text-[#A0A0A0] font-mono">{cliente.cpf}</p>
             {cliente.data_saida && (
-              <p className="text-xs text-[#555555]">
+              <p className="text-xs text-[#A0A0A0]">
                 Saiu em {new Date(cliente.data_saida + 'T12:00:00').toLocaleDateString('pt-BR')}
               </p>
             )}
@@ -161,7 +161,7 @@ function ExClienteCard({ cliente }: { cliente: Cliente }) {
         {(cliente.historico_locacao ?? []).length > 0 && (
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="p-1.5 rounded-lg text-[#555555] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors flex-shrink-0"
+            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors flex-shrink-0"
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -170,13 +170,13 @@ function ExClienteCard({ cliente }: { cliente: Cliente }) {
 
       {expanded && (
         <div className="border-t border-[#2a2a2a] px-4 pb-4 pt-3 space-y-3">
-          <p className="text-xs text-[#555555] uppercase tracking-wider">Histórico de locações</p>
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Histórico de locações</p>
           {(cliente.historico_locacao ?? []).map((h: HistoricoLocacaoCliente, i: number) => (
             <div key={i} className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a] space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 {h.moto_placa && <span className="font-mono text-xs text-white font-semibold">{h.moto_placa}</span>}
                 {h.moto_modelo && <span className="text-xs text-[#A0A0A0]">{h.moto_modelo}</span>}
-                <span className="text-xs text-[#555555]">
+                <span className="text-xs text-[#A0A0A0]">
                   {new Date(h.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
                   {h.data_fim && ` → ${new Date(h.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}`}
                 </span>
@@ -191,7 +191,7 @@ function ExClienteCard({ cliente }: { cliente: Cliente }) {
             </div>
           ))}
           {cliente.observacoes && (
-            <p className="text-xs text-[#555555] italic">{cliente.observacoes}</p>
+            <p className="text-xs text-[#A0A0A0] italic">{cliente.observacoes}</p>
           )}
         </div>
       )}
@@ -242,7 +242,7 @@ function DocumentosModal({
       <div className="space-y-5">
         {/* Cabeçalho cliente */}
         <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-          <p className="text-xs text-[#666666]">Cliente</p>
+          <p className="text-xs text-[#A0A0A0]">Cliente</p>
           <p className="font-semibold text-white">{cliente.nome}</p>
           <p className="text-xs text-[#A0A0A0] font-mono">{cliente.cpf}</p>
         </div>
@@ -267,8 +267,8 @@ function DocumentosModal({
         {/* Lista de documentos */}
         {docsOrdenados.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-[#333333] rounded-xl">
-            <FolderOpen className="w-8 h-8 text-[#333333] mx-auto mb-2" />
-            <p className="text-sm text-[#555555]">Nenhum documento enviado</p>
+            <FolderOpen className="w-8 h-8 text-[#888888] mx-auto mb-2" />
+            <p className="text-sm text-[#A0A0A0]">Nenhum documento enviado</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -277,7 +277,7 @@ function DocumentosModal({
                 <FileText className={`w-4 h-4 flex-shrink-0 ${getDocIcon(doc.tipo)}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{doc.nome}</p>
-                  <p className="text-xs text-[#555555]">
+                  <p className="text-xs text-[#A0A0A0]">
                     {DOC_LABELS[doc.tipo]} · {new Date(doc.uploaded_at).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
@@ -295,7 +295,7 @@ function DocumentosModal({
                   )}
                   <button
                     onClick={() => handleRemover(doc.id)}
-                    className="p-1.5 rounded-lg text-[#555555] hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                    className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
                     title="Remover"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -308,13 +308,13 @@ function DocumentosModal({
 
         {/* Checklist de documentos obrigatórios */}
         <div className="border-t border-[#333333] pt-4">
-          <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Documentos obrigatórios</p>
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Documentos obrigatórios</p>
           <div className="grid grid-cols-2 gap-2">
             {(['cnh', 'identificacao', 'comprovante_residencia', 'contrato', 'caucao'] as DocumentoTipo[]).map((tipo) => {
               const enviado = docs.some((d) => d.tipo === tipo)
               return (
                 <div key={tipo} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg ${
-                  enviado ? 'text-green-400 bg-green-500/5' : 'text-[#555555] bg-white/[0.02]'
+                  enviado ? 'text-green-400 bg-green-500/5' : 'text-[#A0A0A0] bg-white/[0.02]'
                 }`}>
                   {enviado
                     ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
@@ -350,12 +350,25 @@ export default function ClientesPage() {
   const ativos = clientes.filter((c) => c.ativo !== false)
   const exClientes = clientes.filter((c) => c.ativo === false)
 
-  const filtered = ativos.filter(
-    (c) =>
+  const tabsStatus = [
+    { label: 'Todos', value: 'todos' },
+    { label: 'Ativos', value: 'ativo' },
+    { label: 'Na Fila', value: 'fila' },
+  ]
+
+  const [filtroStatus, setFiltroStatus] = useState('todos')
+
+  const filtered = ativos.filter((c) => {
+    const passaBusca =
       c.nome.toLowerCase().includes(search.toLowerCase()) ||
       c.cpf.includes(search) ||
       c.telefone.includes(search)
-  )
+    const passFiltro =
+      filtroStatus === 'fila' ? c.na_fila === true :
+      filtroStatus === 'ativo' ? !c.na_fila :
+      true
+    return passaBusca && passFiltro
+  })
 
   function openNovoCliente() { setEditingId(null); setForm(defaultForm); setModalOpen(true) }
   function openEditCliente(c: Cliente) { setEditingId(c.id); setForm(clienteToForm(c)); setModalOpen(true) }
@@ -398,7 +411,7 @@ export default function ClientesPage() {
       render: (row: Cliente) => (
         <div>
           <p className="font-medium text-white text-sm">{row.nome}</p>
-          <p className="text-xs text-[#666666] font-mono mt-0.5">{row.cpf}</p>
+          <p className="text-xs text-[#A0A0A0] font-mono mt-0.5">{row.cpf}</p>
         </div>
       ),
     },
@@ -422,7 +435,7 @@ export default function ClientesPage() {
         <div>
           <p className="font-mono text-sm text-white">{row.cnh}</p>
           {row.cnh_validade
-            ? <p className="text-xs text-[#666666] mt-0.5">Válida até {new Date(row.cnh_validade + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+            ? <p className="text-xs text-[#A0A0A0] mt-0.5">Válida até {new Date(row.cnh_validade + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
             : <p className="text-xs text-amber-400/70 mt-0.5">Validade pendente</p>
           }
         </div>
@@ -435,7 +448,7 @@ export default function ClientesPage() {
         const obrigatorios: DocumentoTipo[] = ['cnh', 'identificacao', 'comprovante_residencia', 'contrato', 'caucao']
         const ok = obrigatorios.filter((t) => row.documentos?.some((d) => d.tipo === t)).length
         return (
-          <span className={`text-xs font-medium ${ok === obrigatorios.length ? 'text-green-400' : ok > 0 ? 'text-amber-400' : 'text-[#555555]'}`}>
+          <span className={`text-xs font-medium ${ok === obrigatorios.length ? 'text-green-400' : ok > 0 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>
             {total === 0 ? '—' : `${ok}/${obrigatorios.length}`}
           </span>
         )
@@ -448,7 +461,7 @@ export default function ClientesPage() {
           <span className="flex items-center gap-1 text-xs text-green-400">
             <CheckCircle className="w-3.5 h-3.5" /> Pago
           </span>
-        ) : <span className="text-xs text-[#666666]">—</span>,
+        ) : <span className="text-xs text-[#A0A0A0]">—</span>,
     },
     {
       key: 'na_fila', header: 'Status',
@@ -490,13 +503,37 @@ export default function ClientesPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666666]" />
-          <input
-            type="text" placeholder="Buscar por nome, CPF ou telefone..."
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm text-white bg-[#202020] border border-[#333333] placeholder:text-[#666666] focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30 transition-colors"
-          />
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {tabsStatus.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFiltroStatus(tab.value)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  filtroStatus === tab.value
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                }`}
+              >
+                {tab.label}
+                {tab.value !== 'todos' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({tab.value === 'fila'
+                      ? ativos.filter((c) => c.na_fila).length
+                      : ativos.filter((c) => !c.na_fila).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <input
+              type="text" placeholder="Buscar por nome, CPF ou telefone..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
+            />
+          </div>
         </div>
         <Card padding="none">
           <Table columns={columns} data={filtered} keyExtractor={(row) => row.id} emptyMessage="Nenhum cliente encontrado" />
@@ -507,7 +544,7 @@ export default function ClientesPage() {
           <div>
             <button
               onClick={() => setShowExClientes((v) => !v)}
-              className="flex items-center gap-2 text-xs text-[#555555] hover:text-[#A0A0A0] transition-colors py-2"
+              className="flex items-center gap-2 text-xs text-[#A0A0A0] hover:text-[#A0A0A0] transition-colors py-2"
             >
               <History className="w-3.5 h-3.5" />
               {showExClientes ? 'Ocultar ex-clientes' : `Ver ex-clientes (${exClientes.length})`}
@@ -543,7 +580,7 @@ export default function ClientesPage() {
           </div>
           <Textarea label="Contato de Emergência" placeholder="Nome (parentesco): (21) 99999-0000" rows={2} value={form.contato_emergencia} onChange={(e) => setForm({ ...form, contato_emergencia: e.target.value })} />
           <div className="border-t border-[#333333] pt-2">
-            <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">CNH</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">CNH</p>
             <div className="grid grid-cols-3 gap-4">
               <Input label="Número da CNH" placeholder="00000000000" value={form.cnh} onChange={(e) => setForm({ ...form, cnh: e.target.value })} required />
               <Input label="Validade CNH" type="date" value={form.cnh_validade} onChange={(e) => setForm({ ...form, cnh_validade: e.target.value })} />
@@ -583,29 +620,29 @@ export default function ClientesPage() {
               </div>
             </div>
             <div>
-              <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">Dados Pessoais</p>
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Dados Pessoais</p>
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-[#666666]">RG</p><p className="text-sm text-white font-mono">{detailsCliente.rg || '—'}</p></div>
-                <div><p className="text-xs text-[#666666]">UF</p><p className="text-sm text-white">{detailsCliente.uf || '—'}</p></div>
-                <div><p className="text-xs text-[#666666]">Telefone</p><p className="text-sm text-white">{detailsCliente.telefone}</p></div>
-                <div><p className="text-xs text-[#666666]">E-mail</p><p className="text-sm text-white">{detailsCliente.email || '—'}</p></div>
-                <div className="col-span-2"><p className="text-xs text-[#666666]">Endereço</p><p className="text-sm text-[#A0A0A0]">{detailsCliente.endereco || '—'}</p></div>
-                <div><p className="text-xs text-[#666666]">CEP</p><p className="text-sm text-white font-mono">{detailsCliente.cep || '—'}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">RG</p><p className="text-sm text-white font-mono">{detailsCliente.rg || '—'}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">UF</p><p className="text-sm text-white">{detailsCliente.uf || '—'}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">Telefone</p><p className="text-sm text-white">{detailsCliente.telefone}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">E-mail</p><p className="text-sm text-white">{detailsCliente.email || '—'}</p></div>
+                <div className="col-span-2"><p className="text-xs text-[#A0A0A0]">Endereço</p><p className="text-sm text-[#A0A0A0]">{detailsCliente.endereco || '—'}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">CEP</p><p className="text-sm text-white font-mono">{detailsCliente.cep || '—'}</p></div>
               </div>
             </div>
             {detailsCliente.contato_emergencia && (
               <div>
-                <p className="text-xs text-[#666666] uppercase tracking-wider mb-2">Contato de Emergência</p>
+                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Contato de Emergência</p>
                 <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3">{detailsCliente.contato_emergencia}</p>
               </div>
             )}
             <div>
-              <p className="text-xs text-[#666666] uppercase tracking-wider mb-3">CNH</p>
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">CNH</p>
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-[#666666]">Número</p><p className="text-sm text-white font-mono">{detailsCliente.cnh}</p></div>
-                <div><p className="text-xs text-[#666666]">Categoria</p><p className="text-sm text-white">{detailsCliente.cnh_categoria || '—'}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">Número</p><p className="text-sm text-white font-mono">{detailsCliente.cnh}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">Categoria</p><p className="text-sm text-white">{detailsCliente.cnh_categoria || '—'}</p></div>
                 <div>
-                  <p className="text-xs text-[#666666]">Validade</p>
+                  <p className="text-xs text-[#A0A0A0]">Validade</p>
                   {detailsCliente.cnh_validade
                     ? <p className="text-sm text-white">{new Date(detailsCliente.cnh_validade + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                     : <span className="flex items-center gap-1 text-xs text-amber-400"><AlertCircle className="w-3.5 h-3.5" /> Pendente</span>

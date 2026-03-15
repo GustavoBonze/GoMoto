@@ -5,7 +5,7 @@ import {
   Clock, MapPin, ChevronDown, ChevronUp, UserPlus, Bike, ArrowRight, Trash2,
   Target, ClipboardList, FileText, ShieldX, AlertTriangle, History,
   FolderOpen, Upload, X, ExternalLink, CheckCircle, AlertCircle,
-  ArrowUp, ArrowDown, UserX, DollarSign,
+  ArrowUp, ArrowDown, UserX, DollarSign, Search,
 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -187,7 +187,7 @@ function ProntidaoBadge({ p }: { p: PessoaNaFila }) {
     </span>
   )
   return (
-    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#555555] text-xs">
+    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#A0A0A0] text-xs">
       <FileText className="w-3 h-3" /> Sem docs
     </span>
   )
@@ -227,7 +227,7 @@ function DocsFilaModal({ pessoa, onClose, onUpdate }: {
     <Modal open onClose={onClose} title="Documentos" size="lg">
       <div className="space-y-5">
         <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-          <p className="text-xs text-[#555555]">Candidato</p>
+          <p className="text-xs text-[#A0A0A0]">Candidato</p>
           <p className="font-semibold text-white">{pessoa.nome}</p>
           {pessoa.cpf && <p className="text-xs text-[#A0A0A0] font-mono">{pessoa.cpf}</p>}
         </div>
@@ -237,7 +237,7 @@ function DocsFilaModal({ pessoa, onClose, onUpdate }: {
           {DOCS_OBRIGATORIOS.map((t) => {
             const ok = docs.some((d) => d.tipo === t)
             return (
-              <div key={t} className={`flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg ${ok ? 'text-green-400 bg-green-500/5 border border-green-500/20' : 'text-[#555555] bg-white/[0.02] border border-white/5'}`}>
+              <div key={t} className={`flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg ${ok ? 'text-green-400 bg-green-500/5 border border-green-500/20' : 'text-[#A0A0A0] bg-white/[0.02] border border-white/5'}`}>
                 {ok ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />}
                 {DOC_LABELS[t]}
               </div>
@@ -259,8 +259,8 @@ function DocsFilaModal({ pessoa, onClose, onUpdate }: {
         {/* Lista */}
         {docs.length === 0 ? (
           <div className="text-center py-6 border border-dashed border-[#333333] rounded-xl">
-            <FolderOpen className="w-7 h-7 text-[#333333] mx-auto mb-2" />
-            <p className="text-sm text-[#555555]">Nenhum documento enviado</p>
+            <FolderOpen className="w-7 h-7 text-[#888888] mx-auto mb-2" />
+            <p className="text-sm text-[#A0A0A0]">Nenhum documento enviado</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -269,7 +269,7 @@ function DocsFilaModal({ pessoa, onClose, onUpdate }: {
                 <FileText className="w-4 h-4 text-[#BAFF1A] flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{doc.nome}</p>
-                  <p className="text-xs text-[#555555]">{DOC_LABELS[doc.tipo]} · {new Date(doc.uploaded_at).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs text-[#A0A0A0]">{DOC_LABELS[doc.tipo]} · {new Date(doc.uploaded_at).toLocaleDateString('pt-BR')}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {doc.url && (
@@ -277,7 +277,7 @@ function DocsFilaModal({ pessoa, onClose, onUpdate }: {
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
-                  <button onClick={() => remover(doc.id)} className="p-1.5 rounded-lg text-[#555555] hover:text-red-400 hover:bg-red-500/5 transition-colors">
+                  <button onClick={() => remover(doc.id)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -326,7 +326,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
             <button
               onClick={() => !isFirst && onMover(pessoa.id, 'up')}
               disabled={isFirst}
-              className={`p-0.5 rounded transition-colors ${isFirst ? 'text-[#333333] cursor-default' : 'text-[#555555] hover:text-[#BAFF1A]'}`}
+              className={`p-0.5 rounded transition-colors ${isFirst ? 'text-[#888888] cursor-default' : 'text-[#A0A0A0] hover:text-[#BAFF1A]'}`}
               title="Subir na fila"
             >
               <ArrowUp className="w-3 h-3" />
@@ -337,7 +337,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
             <button
               onClick={() => !isLast && onMover(pessoa.id, 'down')}
               disabled={isLast}
-              className={`p-0.5 rounded transition-colors ${isLast ? 'text-[#333333] cursor-default' : 'text-[#555555] hover:text-[#BAFF1A]'}`}
+              className={`p-0.5 rounded transition-colors ${isLast ? 'text-[#888888] cursor-default' : 'text-[#A0A0A0] hover:text-[#BAFF1A]'}`}
               title="Descer na fila"
             >
               <ArrowDown className="w-3 h-3" />
@@ -353,7 +353,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
             {pessoa.alerta && <AlertaBadge tipo={pessoa.alerta} />}
             {!pessoa.alerta && !expirado && <ProntidaoBadge p={pessoa} />}
             {expirado && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#666666] text-xs">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#A0A0A0] text-xs">
                 <Clock className="w-3 h-3" /> +30 dias
               </span>
             )}
@@ -365,7 +365,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
             </span>
             {pessoa.social && <SocialBtn url={pessoa.social} />}
             {!pessoa.alerta && !expirado && (
-              <span className={`text-xs ${dias > 20 ? 'text-amber-400' : 'text-[#555555]'}`}>
+              <span className={`text-xs ${dias > 20 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>
                 <Clock className="w-3 h-3 inline mr-1" />
                 {dias === 0 ? 'hoje' : `${dias}d`}
               </span>
@@ -373,14 +373,14 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
           </div>
           {pessoa.endereco && (
             <div className="flex items-start gap-1.5 mt-1.5">
-              <MapPin className="w-3 h-3 text-[#444444] mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-[#555555] leading-tight">{pessoa.endereco}</p>
+              <MapPin className="w-3 h-3 text-[#888888] mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-[#A0A0A0] leading-tight">{pessoa.endereco}</p>
             </div>
           )}
           {pessoa.objetivo && (
             <div className="flex items-start gap-1.5 mt-1">
               <Target className="w-3 h-3 text-[#BAFF1A]/50 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-[#666666] leading-tight">{pessoa.objetivo}</p>
+              <p className="text-xs text-[#A0A0A0] leading-tight">{pessoa.objetivo}</p>
             </div>
           )}
         </div>
@@ -388,11 +388,11 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
         {/* Ações */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {temDetalhes && (
-            <button onClick={() => onToggle(pessoa.id)} className="p-1.5 rounded-lg text-[#555555] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors">
+            <button onClick={() => onToggle(pessoa.id)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors">
               {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           )}
-          <button onClick={() => onDocs(pessoa)} className="p-1.5 rounded-lg text-[#555555] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-colors" title="Documentos">
+          <button onClick={() => onDocs(pessoa)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-colors" title="Documentos">
             <FolderOpen className="w-3.5 h-3.5" />
           </button>
           {!pessoa.alerta && !expirado && (
@@ -405,7 +405,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
               <ArrowUp className="w-3.5 h-3.5" /> Reativar
             </button>
           )}
-          <button onClick={() => onRemover(pessoa.id)} className="p-1.5 rounded-lg text-[#444444] hover:text-red-400 hover:bg-red-500/5 transition-colors">
+          <button onClick={() => onRemover(pessoa.id)} className="p-1.5 rounded-lg text-[#888888] hover:text-red-400 hover:bg-red-500/5 transition-colors">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -415,30 +415,30 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
       {expanded && (
         <div className="border-t border-[#2a2a2a] px-4 pb-4 pt-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {pessoa.cpf && <div><p className="text-xs text-[#555555]">CPF</p><p className="text-sm text-white font-mono">{pessoa.cpf}</p></div>}
+            {pessoa.cpf && <div><p className="text-xs text-[#A0A0A0]">CPF</p><p className="text-sm text-white font-mono">{pessoa.cpf}</p></div>}
             {pessoa.identificacao && (
               <div className="flex items-start gap-2">
-                <FileText className="w-3.5 h-3.5 text-[#555555] mt-0.5" />
-                <div><p className="text-xs text-[#555555]">Identificação</p><p className="text-sm text-white font-mono">{pessoa.identificacao}</p></div>
+                <FileText className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5" />
+                <div><p className="text-xs text-[#A0A0A0]">Identificação</p><p className="text-sm text-white font-mono">{pessoa.identificacao}</p></div>
               </div>
             )}
             {pessoa.endereco && (
               <div className="flex items-start gap-2 sm:col-span-2">
-                <MapPin className="w-3.5 h-3.5 text-[#555555] mt-0.5 flex-shrink-0" />
-                <div><p className="text-xs text-[#555555]">Endereço</p><p className="text-sm text-[#A0A0A0]">{pessoa.endereco}</p></div>
+                <MapPin className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
+                <div><p className="text-xs text-[#A0A0A0]">Endereço</p><p className="text-sm text-[#A0A0A0]">{pessoa.endereco}</p></div>
               </div>
             )}
           </div>
           {pessoa.objetivo && (
             <div className="flex items-start gap-2">
               <Target className="w-3.5 h-3.5 text-[#BAFF1A] mt-0.5 flex-shrink-0" />
-              <div><p className="text-xs text-[#555555] mb-0.5">Objetivo</p><p className="text-sm text-[#A0A0A0]">{pessoa.objetivo}</p></div>
+              <div><p className="text-xs text-[#A0A0A0] mb-0.5">Objetivo</p><p className="text-sm text-[#A0A0A0]">{pessoa.objetivo}</p></div>
             </div>
           )}
           {pessoa.andamento && (
             <div className="flex items-start gap-2">
               <ClipboardList className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
-              <div><p className="text-xs text-[#555555] mb-0.5">Andamento</p><p className="text-sm text-[#A0A0A0] whitespace-pre-line">{pessoa.andamento}</p></div>
+              <div><p className="text-xs text-[#A0A0A0] mb-0.5">Andamento</p><p className="text-sm text-[#A0A0A0] whitespace-pre-line">{pessoa.andamento}</p></div>
             </div>
           )}
           {/* Histórico como cliente */}
@@ -446,7 +446,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
             <div className="flex items-start gap-2">
               <UserX className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs text-[#555555] mb-1.5">Histórico como cliente</p>
+                <p className="text-xs text-[#A0A0A0] mb-1.5">Histórico como cliente</p>
                 <div className="space-y-2">
                   {pessoa.historico_locacao.map((h, i) => (
                     <div key={i} className="p-2.5 rounded-lg bg-purple-500/5 border border-purple-500/15 space-y-1">
@@ -457,7 +457,7 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
                         {h.moto_modelo && (
                           <span className="text-xs text-[#A0A0A0]">{h.moto_modelo}</span>
                         )}
-                        <span className="text-xs text-[#555555]">
+                        <span className="text-xs text-[#A0A0A0]">
                           {new Date(h.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
                           {h.data_fim && ` → ${new Date(h.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}`}
                         </span>
@@ -481,15 +481,15 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
             <div className="flex items-start gap-2">
               <ClipboardList className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs text-[#555555] mb-1.5">Histórico na fila</p>
+                <p className="text-xs text-[#A0A0A0] mb-1.5">Histórico na fila</p>
                 <div className="space-y-1.5">
                   {pessoa.historico_fila.map((h, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="text-[#555555] flex-shrink-0">
+                      <span className="text-[#A0A0A0] flex-shrink-0">
                         {new Date(h.data_entrada + 'T12:00:00').toLocaleDateString('pt-BR')}
                         {h.data_saida && ` → ${new Date(h.data_saida + 'T12:00:00').toLocaleDateString('pt-BR')}`}
                       </span>
-                      {h.motivo_saida && <span className="text-[#666666]">{h.motivo_saida}</span>}
+                      {h.motivo_saida && <span className="text-[#A0A0A0]">{h.motivo_saida}</span>}
                     </div>
                   ))}
                 </div>
@@ -500,18 +500,18 @@ function CardPessoa({ pessoa, dim = false, isFirst, isLast, expandedId, onToggle
           {/* Histórico de posição */}
           {pessoa.historico_posicao.length > 0 && (
             <div className="flex items-start gap-2">
-              <History className="w-3.5 h-3.5 text-[#555555] mt-0.5 flex-shrink-0" />
+              <History className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs text-[#555555] mb-1.5">Movimentações na fila</p>
+                <p className="text-xs text-[#A0A0A0] mb-1.5">Movimentações na fila</p>
                 <div className="space-y-1.5">
                   {pessoa.historico_posicao.map((h, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className="text-[#555555]">{new Date(h.data).toLocaleDateString('pt-BR')}</span>
+                      <span className="text-[#A0A0A0]">{new Date(h.data).toLocaleDateString('pt-BR')}</span>
                       <span className={`flex items-center gap-0.5 font-medium ${h.para < h.de ? 'text-green-400' : 'text-amber-400'}`}>
                         {h.para < h.de ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
                         {h.de}º → {h.para}º
                       </span>
-                      <span className="text-[#666666] truncate">{h.motivo}</span>
+                      <span className="text-[#A0A0A0] truncate">{h.motivo}</span>
                     </div>
                   ))}
                 </div>
@@ -535,6 +535,8 @@ export default function FilaPage() {
   })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showHistorico, setShowHistorico] = useState(false)
+  const [busca, setBusca] = useState('')
+  const [filtroProntidao, setFiltroProntidao] = useState('todos')
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [alocarId, setAlocarId] = useState<string | null>(null)
   const [alocarForm, setAlocarForm] = useState(defaultAlocarForm)
@@ -551,7 +553,25 @@ export default function FilaPage() {
   const [moverModal, setMoverModal] = useState<{ id: string; direcao: 'up' | 'down' } | null>(null)
   const [motivoMover, setMotivoMover] = useState('')
 
-  const ativos = fila.filter((p) => !p.alerta && getDias(p.entrou_na_fila) < 30)
+  const tabsProntidao = [
+    { label: 'Todos', value: 'todos' },
+    { label: 'Prontos', value: 'pronto' },
+    { label: 'Sem docs', value: 'sem_docs' },
+    { label: 'Com alerta', value: 'alerta' },
+  ]
+
+  const todosAtivos = fila.filter((p) => !p.alerta && getDias(p.entrou_na_fila) < 30)
+  const ativos = todosAtivos.filter((p) => {
+    const passaBusca = !busca || [p.nome, p.telefone, p.cpf].some(
+      (v) => v?.toLowerCase().includes(busca.toLowerCase())
+    )
+    const { pronto, ok } = getProntidao(p)
+    const passFiltro =
+      filtroProntidao === 'pronto' ? pronto :
+      filtroProntidao === 'sem_docs' ? ok === 0 :
+      true
+    return passaBusca && passFiltro
+  })
   const historico = fila.filter((p) => p.alerta || getDias(p.entrou_na_fila) >= 30)
   const pessoaAlocar = fila.find((p) => p.id === alocarId)
   const motoSelecionada = TODAS_MOTOS.find((m) => m.id === alocarForm.moto_id)
@@ -708,10 +728,48 @@ export default function FilaPage() {
       />
 
       <div className="p-6 space-y-3">
+        {/* Filtros rápidos + Busca */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {tabsProntidao.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFiltroProntidao(tab.value)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  filtroProntidao === tab.value
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                }`}
+              >
+                {tab.label}
+                {tab.value !== 'todos' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({tab.value === 'alerta'
+                      ? fila.filter((p) => p.alerta).length
+                      : tab.value === 'pronto'
+                      ? todosAtivos.filter((p) => getProntidao(p).pronto).length
+                      : todosAtivos.filter((p) => getProntidao(p).ok === 0).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <input
+              type="text"
+              placeholder="Buscar por nome, telefone ou CPF..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-64"
+            />
+          </div>
+        </div>
+
         {ativos.length === 0 ? (
           <div className="text-center py-16">
-            <UserPlus className="w-10 h-10 text-[#333333] mx-auto mb-3" />
-            <p className="text-[#555555] text-sm">Nenhuma pessoa na fila ativa</p>
+            <UserPlus className="w-10 h-10 text-[#888888] mx-auto mb-3" />
+            <p className="text-[#A0A0A0] text-sm">Nenhuma pessoa na fila ativa</p>
           </div>
         ) : (
           ativos.map((p, idx) => (
@@ -732,7 +790,7 @@ export default function FilaPage() {
         {historico.length > 0 && (
           <button
             onClick={() => setShowHistorico((v) => !v)}
-            className="flex items-center gap-2 text-xs text-[#555555] hover:text-[#A0A0A0] transition-colors pt-2"
+            className="flex items-center gap-2 text-xs text-[#A0A0A0] hover:text-[#A0A0A0] transition-colors pt-2"
           >
             <History className="w-3.5 h-3.5" />
             {showHistorico ? 'Ocultar histórico' : `Ver histórico (${historico.length})`}
@@ -765,7 +823,7 @@ export default function FilaPage() {
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
               <div className="flex items-center gap-2">
-                <span className="text-[#666666] text-sm">{pessoaMoverModal.posicao}º lugar</span>
+                <span className="text-[#A0A0A0] text-sm">{pessoaMoverModal.posicao}º lugar</span>
                 {moverModal?.direcao === 'up'
                   ? <ArrowUp className="w-4 h-4 text-green-400" />
                   : <ArrowDown className="w-4 h-4 text-amber-400" />
@@ -796,10 +854,10 @@ export default function FilaPage() {
           <div className="space-y-4">
             {/* Cliente */}
             <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-              <p className="text-xs text-[#555555] mb-1">Cliente</p>
+              <p className="text-xs text-[#A0A0A0] mb-1">Cliente</p>
               <p className="font-semibold text-white">{pessoaAlocar.nome}</p>
               <p className="text-sm text-[#A0A0A0]">{pessoaAlocar.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '$1 $2-$3')}</p>
-              {pessoaAlocar.cpf && <p className="text-xs text-[#555555] font-mono mt-0.5">{pessoaAlocar.cpf}</p>}
+              {pessoaAlocar.cpf && <p className="text-xs text-[#A0A0A0] font-mono mt-0.5">{pessoaAlocar.cpf}</p>}
             </div>
 
             {/* Tipo */}
