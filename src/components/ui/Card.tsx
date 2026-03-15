@@ -17,7 +17,7 @@ export function Card({ children, className, padding = 'md' }: CardProps) {
   return (
     <div
       className={cn(
-        'bg-[#202020] border border-[#333333] rounded-xl',
+        'bg-[#202020] rounded-xl border border-[#333333]',
         paddings[padding],
         className
       )}
@@ -54,7 +54,7 @@ export function StatCard({ title, value, subtitle, icon, color = 'brand', classN
       <div className="min-w-0">
         <p className="text-sm text-[#A0A0A0] truncate">{title}</p>
         <p className="text-2xl font-bold text-white mt-0.5">{value}</p>
-        {subtitle && <p className="text-xs text-[#666666] mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-[#A0A0A0] mt-0.5">{subtitle}</p>}
       </div>
     </Card>
   )

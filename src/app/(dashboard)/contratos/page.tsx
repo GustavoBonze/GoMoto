@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Plus, Eye, FileText, Upload, ExternalLink, ChevronDown, ChevronUp,
-  Clock, Bike, User, CheckCircle, History, XCircle, X,
+  Clock, Bike, User, CheckCircle, History, XCircle, X, Search,
 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -191,7 +191,7 @@ function PDFModal({ contrato, onClose, onUpdate }: {
     <Modal open onClose={onClose} title="Contrato Assinado" size="md">
       <div className="space-y-4">
         <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-          <p className="text-xs text-[#555555]">Contrato</p>
+          <p className="text-xs text-[#A0A0A0]">Contrato</p>
           <p className="font-semibold text-white">{contrato.cliente_nome}</p>
           <p className="text-xs text-[#A0A0A0]">{contrato.moto_placa} · {contrato.moto_modelo}</p>
         </div>
@@ -201,7 +201,7 @@ function PDFModal({ contrato, onClose, onUpdate }: {
             <FileText className="w-5 h-5 text-red-400 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm text-white">Contrato assinado</p>
-              <p className="text-xs text-[#555555]">PDF disponível</p>
+              <p className="text-xs text-[#A0A0A0]">PDF disponível</p>
             </div>
             <a
               href={contrato.pdf_url} target="_blank" rel="noopener noreferrer"
@@ -212,8 +212,8 @@ function PDFModal({ contrato, onClose, onUpdate }: {
           </div>
         ) : (
           <div className="text-center py-8 border border-dashed border-[#333333] rounded-xl">
-            <FileText className="w-8 h-8 text-[#333333] mx-auto mb-2" />
-            <p className="text-sm text-[#555555]">Nenhum contrato enviado ainda</p>
+            <FileText className="w-8 h-8 text-[#888888] mx-auto mb-2" />
+            <p className="text-sm text-[#A0A0A0]">Nenhum contrato enviado ainda</p>
           </div>
         )}
 
@@ -238,7 +238,7 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
   function DR({ label, value }: { label: string; value?: string }) {
     return (
       <div>
-        <p className="text-xs text-[#555555]">{label}</p>
+        <p className="text-xs text-[#A0A0A0]">{label}</p>
         <p className="text-sm text-white font-mono">{value || '—'}</p>
       </div>
     )
@@ -255,20 +255,20 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
               <TipoBadge tipo={contrato.tipo} />
               <StatusBadge status={contrato.status} />
             </div>
-            <p className="text-xs text-[#555555]">
+            <p className="text-xs text-[#A0A0A0]">
               {info.freq} · {info.duracao}
               {info.aquisicao && ' · Moto transferida no final'}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="text-xs text-[#555555]">Média mensal</p>
+            <p className="text-xs text-[#A0A0A0]">Média mensal</p>
             <p className="text-xl font-bold text-[#BAFF1A]">{fmt(valorMensal)}</p>
           </div>
         </div>
 
         {/* Dados do contrato */}
         <div>
-          <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Contrato</p>
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Contrato</p>
           <div className="grid grid-cols-2 gap-3">
             <DR label="Data início" value={fmtDate(contrato.data_inicio)} />
             <DR label="Data fim" value={fmtDate(contrato.data_fim)} />
@@ -279,7 +279,7 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
 
         {/* Regras */}
         <div className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a]">
-          <p className="text-xs text-[#555555] uppercase tracking-wider mb-2">Regras</p>
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Regras</p>
           <ul className="space-y-1 text-xs text-[#A0A0A0]">
             <li>• Pagamento {info.freq.toLowerCase()} toda quarta-feira</li>
             <li>• Juros de atraso: 10% sobre o valor da parcela</li>
@@ -291,10 +291,10 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
 
         {/* Cliente */}
         <div>
-          <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Cliente</p>
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Cliente</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <p className="text-xs text-[#555555]">Nome</p>
+              <p className="text-xs text-[#A0A0A0]">Nome</p>
               <p className="text-sm text-white">{contrato.cliente_nome}</p>
             </div>
             <DR label="CPF" value={contrato.cliente_cpf} />
@@ -302,7 +302,7 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
             <DR label="Telefone" value={contrato.cliente_telefone} />
             <DR label="UF" value={contrato.cliente_uf} />
             <div className="col-span-2">
-              <p className="text-xs text-[#555555]">Endereço</p>
+              <p className="text-xs text-[#A0A0A0]">Endereço</p>
               <p className="text-sm text-[#A0A0A0]">{contrato.cliente_endereco || '—'}</p>
             </div>
             <DR label="CEP" value={contrato.cliente_cep} />
@@ -310,7 +310,7 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
             <DR label="Categoria CNH" value={contrato.cliente_cnh_categoria} />
             {contrato.cliente_contato_emergencia && (
               <div className="col-span-2">
-                <p className="text-xs text-[#555555]">Contato de Emergência</p>
+                <p className="text-xs text-[#A0A0A0]">Contato de Emergência</p>
                 <p className="text-sm text-[#A0A0A0]">{contrato.cliente_contato_emergencia}</p>
               </div>
             )}
@@ -319,7 +319,7 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
 
         {/* Moto */}
         <div>
-          <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Moto</p>
+          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Moto</p>
           <div className="grid grid-cols-2 gap-3">
             <DR label="Placa" value={contrato.moto_placa} />
             <DR label="Modelo" value={contrato.moto_modelo} />
@@ -333,14 +333,14 @@ function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () 
 
         {contrato.observacoes && (
           <div>
-            <p className="text-xs text-[#555555] uppercase tracking-wider mb-2">Observações</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Observações</p>
             <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3">{contrato.observacoes}</p>
           </div>
         )}
 
         {contrato.motivo_encerramento && (
           <div>
-            <p className="text-xs text-[#555555] uppercase tracking-wider mb-2">Motivo do Encerramento</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Motivo do Encerramento</p>
             <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3">{contrato.motivo_encerramento}</p>
           </div>
         )}
@@ -412,7 +412,7 @@ function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
                 ? 'text-green-400 hover:bg-green-500/10'
                 : semPDF
                 ? 'text-red-400 hover:bg-red-500/10 animate-pulse'
-                : 'text-[#444444] hover:text-red-400 hover:bg-red-500/5'
+                : 'text-[#888888] hover:text-red-400 hover:bg-red-500/5'
             }`}
             title={contrato.pdf_url ? 'Ver contrato assinado' : 'PENDENTE: Enviar contrato assinado'}
           >
@@ -420,7 +420,7 @@ function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
           </button>
           <button
             onClick={() => onDetalhes(contrato)}
-            className="p-1.5 rounded-lg text-[#555555] hover:text-white hover:bg-white/5 transition-colors"
+            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
             title="Ver detalhes"
           >
             <Eye className="w-4 h-4" />
@@ -428,7 +428,7 @@ function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
           {onEncerrar && contrato.status === 'ativo' && (
             <button
               onClick={() => onEncerrar(contrato)}
-              className="p-1.5 rounded-lg text-[#444444] hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
+              className="p-1.5 rounded-lg text-[#888888] hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
               title="Encerrar contrato"
             >
               <XCircle className="w-4 h-4" />
@@ -440,19 +440,19 @@ function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
       {/* Cliente + Moto */}
       <div className="grid grid-cols-2 gap-4 mb-3">
         <div className="flex items-start gap-2">
-          <User className="w-3.5 h-3.5 text-[#555555] mt-0.5 flex-shrink-0" />
+          <User className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
           <div className="min-w-0">
-            <p className="text-xs text-[#555555]">Cliente</p>
+            <p className="text-xs text-[#A0A0A0]">Cliente</p>
             <p className="text-sm text-white font-medium leading-tight truncate">{contrato.cliente_nome}</p>
-            <p className="text-xs text-[#666666]">{contrato.cliente_telefone}</p>
+            <p className="text-xs text-[#A0A0A0]">{contrato.cliente_telefone}</p>
           </div>
         </div>
         <div className="flex items-start gap-2">
-          <Bike className="w-3.5 h-3.5 text-[#555555] mt-0.5 flex-shrink-0" />
+          <Bike className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs text-[#555555]">Moto</p>
+            <p className="text-xs text-[#A0A0A0]">Moto</p>
             <p className="text-sm text-white font-mono font-medium">{contrato.moto_placa}</p>
-            <p className="text-xs text-[#666666]">{contrato.moto_modelo}</p>
+            <p className="text-xs text-[#A0A0A0]">{contrato.moto_modelo}</p>
           </div>
         </div>
       </div>
@@ -460,34 +460,34 @@ function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
       {/* Linha de dados */}
       <div className="grid grid-cols-4 gap-3 pt-3 border-t border-[#2a2a2a]">
         <div>
-          <p className="text-xs text-[#555555]">Início</p>
+          <p className="text-xs text-[#A0A0A0]">Início</p>
           <p className="text-xs text-white">{fmtDate(contrato.data_inicio)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#555555]">Fim</p>
+          <p className="text-xs text-[#A0A0A0]">Fim</p>
           <p className={`text-xs font-medium ${alertaSemanas ? 'text-red-400' : 'text-white'}`}>
             {fmtDate(contrato.data_fim)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-[#555555]">Por {periodoLabel}</p>
+          <p className="text-xs text-[#A0A0A0]">Por {periodoLabel}</p>
           <p className="text-xs text-white font-semibold">{fmt(contrato.valor_periodo)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#555555]">Média/mês</p>
+          <p className="text-xs text-[#A0A0A0]">Média/mês</p>
           <p className="text-xs text-[#BAFF1A] font-semibold">{fmt(valorMensal)}</p>
         </div>
       </div>
 
       {/* Semanas restantes — só ativos sem alerta */}
       {contrato.status === 'ativo' && semanas > 4 && (
-        <p className="text-xs text-[#444444] mt-2">{semanas} semanas restantes</p>
+        <p className="text-xs text-[#888888] mt-2">{semanas} semanas restantes</p>
       )}
 
       {/* Motivo encerramento */}
       {contrato.motivo_encerramento && (
         <div className="mt-3 pt-3 border-t border-[#2a2a2a]">
-          <p className="text-xs text-[#555555] mb-1">Motivo do encerramento</p>
+          <p className="text-xs text-[#A0A0A0] mb-1">Motivo do encerramento</p>
           <p className="text-xs text-[#888888]">{contrato.motivo_encerramento}</p>
         </div>
       )}
@@ -499,6 +499,8 @@ function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
 export default function ContratosPage() {
   const [contratos, setContratos] = useState<Contrato[]>(mockContratos)
   const [showHistorico, setShowHistorico] = useState(false)
+  const [filtroTipo, setFiltroTipo] = useState('todos')
+  const [busca, setBusca] = useState('')
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [detalhesContrato, setDetalhesContrato] = useState<Contrato | null>(null)
   const [pdfContrato, setPdfContrato] = useState<Contrato | null>(null)
@@ -534,9 +536,26 @@ export default function ContratosPage() {
     localStorage.setItem(LS_MOTOS_ALOCADAS, JSON.stringify(ativas.map((c) => c.moto_id)))
   }, [contratos])
 
+  const tabsTipo = [
+    { label: 'Todos', value: 'todos' },
+    { label: 'Tipo 1 — Locação', value: '1' },
+    { label: 'Tipo 2 — Fidelidade Quinzenal', value: '2' },
+    { label: 'Tipo 3 — Fidelidade Semanal', value: '3' },
+  ]
+
+  function filtrarContratos(lista: Contrato[]) {
+    return lista.filter((c) => {
+      const passaTipo = filtroTipo === 'todos' || String(c.tipo) === filtroTipo
+      const passaBusca = !busca || [c.cliente_nome, c.moto_placa, c.moto_modelo].some(
+        (v) => v?.toLowerCase().includes(busca.toLowerCase())
+      )
+      return passaTipo && passaBusca
+    })
+  }
+
   const pendentes = contratos.filter((c) => c.assinatura_pendente)
-  const ativos    = contratos.filter((c) => c.status === 'ativo' && !c.assinatura_pendente)
-  const historico = contratos.filter((c) => c.status !== 'ativo')
+  const ativos    = filtrarContratos(contratos.filter((c) => c.status === 'ativo' && !c.assinatura_pendente))
+  const historico = filtrarContratos(contratos.filter((c) => c.status !== 'ativo'))
 
   const porTipo = ([1, 2, 3] as ContratoTipo[]).map((t) => ({
     tipo: t,
@@ -635,6 +654,40 @@ export default function ContratosPage() {
 
       <div className="p-6 space-y-5">
 
+        {/* Filtros rápidos + Busca */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {tabsTipo.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFiltroTipo(tab.value)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  filtroTipo === tab.value
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                }`}
+              >
+                {tab.label}
+                {tab.value !== 'todos' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({contratos.filter((c) => String(c.tipo) === tab.value && c.status === 'ativo').length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <input
+              type="text"
+              placeholder="Buscar por cliente ou placa..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-64"
+            />
+          </div>
+        </div>
+
         {/* ——— Cards de resumo ——— */}
         <div className="grid grid-cols-2 gap-4">
 
@@ -642,7 +695,7 @@ export default function ContratosPage() {
           <Card>
             <div className="flex items-start justify-between mb-3">
               <div>
-                <p className="text-xs text-[#666666] uppercase tracking-wider">Contratos Ativos</p>
+                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Contratos Ativos</p>
                 <p className="text-3xl font-bold text-white mt-0.5">{ativos.length}</p>
               </div>
               <CheckCircle className="w-5 h-5 text-green-400 mt-1" />
@@ -657,7 +710,7 @@ export default function ContratosPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[#444444] pt-3 border-t border-[#2a2a2a]">Nenhum ativo</p>
+              <p className="text-xs text-[#888888] pt-3 border-t border-[#2a2a2a]">Nenhum ativo</p>
             )}
           </Card>
 
@@ -665,10 +718,10 @@ export default function ContratosPage() {
           <Card>
             <div className="flex items-start justify-between mb-3">
               <div>
-                <p className="text-xs text-[#666666] uppercase tracking-wider">Histórico</p>
+                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Histórico</p>
                 <p className="text-3xl font-bold text-white mt-0.5">{historico.length}</p>
               </div>
-              <History className="w-5 h-5 text-[#555555] mt-1" />
+              <History className="w-5 h-5 text-[#A0A0A0] mt-1" />
             </div>
             <div className="space-y-2 pt-3 border-t border-[#2a2a2a]">
               {encerrados > 0 && (
@@ -690,7 +743,7 @@ export default function ContratosPage() {
                 </div>
               )}
               {historico.length === 0 && (
-                <p className="text-xs text-[#444444]">Nenhum histórico</p>
+                <p className="text-xs text-[#888888]">Nenhum histórico</p>
               )}
             </div>
           </Card>
@@ -719,8 +772,8 @@ export default function ContratosPage() {
         {/* ——— Lista de contratos ativos ——— */}
         {ativos.length === 0 ? (
           <div className="text-center py-16">
-            <FileText className="w-10 h-10 text-[#333333] mx-auto mb-3" />
-            <p className="text-[#555555] text-sm">Nenhum contrato ativo</p>
+            <FileText className="w-10 h-10 text-[#888888] mx-auto mb-3" />
+            <p className="text-[#A0A0A0] text-sm">Nenhum contrato ativo</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -740,7 +793,7 @@ export default function ContratosPage() {
           <>
             <button
               onClick={() => setShowHistorico((v) => !v)}
-              className="flex items-center gap-2 text-xs text-[#555555] hover:text-[#A0A0A0] transition-colors pt-1"
+              className="flex items-center gap-2 text-xs text-[#A0A0A0] hover:text-[#A0A0A0] transition-colors pt-1"
             >
               <History className="w-3.5 h-3.5" />
               {showHistorico ? 'Ocultar histórico' : `Ver histórico (${historico.length})`}
@@ -783,7 +836,7 @@ export default function ContratosPage() {
         <Modal open onClose={() => setEncerrarContrato(null)} title="Encerrar Contrato" size="sm">
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-              <p className="text-xs text-[#555555]">Contrato</p>
+              <p className="text-xs text-[#A0A0A0]">Contrato</p>
               <p className="font-semibold text-white">{encerrarContrato.cliente_nome}</p>
               <p className="text-xs text-[#A0A0A0]">{encerrarContrato.moto_placa} · {encerrarContrato.moto_modelo}</p>
             </div>
@@ -821,7 +874,7 @@ export default function ContratosPage() {
           />
 
           {/* Resumo das regras do tipo selecionado */}
-          <div className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a] text-xs text-[#666666] space-y-1">
+          <div className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a] text-xs text-[#A0A0A0] space-y-1">
             <p>• Pagamento {tipoFormInfo.freq.toLowerCase()} toda quarta-feira</p>
             <p>• Duração: {tipoFormInfo.duracao}</p>
             <p>• Manutenção: {tipoFormInfo.manutencao}</p>
@@ -831,7 +884,7 @@ export default function ContratosPage() {
 
           {/* Cliente */}
           <div className="border-t border-[#333333] pt-3">
-            <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Cliente</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Cliente</p>
             <div className="grid grid-cols-2 gap-3">
               <Input label="Nome completo" placeholder="NOME COMPLETO" value={form.cliente_nome}
                 onChange={(e) => setForm({ ...form, cliente_nome: e.target.value })} required />
@@ -844,7 +897,7 @@ export default function ContratosPage() {
 
           {/* Moto */}
           <div className="border-t border-[#333333] pt-3">
-            <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Moto</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Moto</p>
             <div className="grid grid-cols-2 gap-3">
               <Input label="Placa" placeholder="AAA0A00" value={form.moto_placa}
                 onChange={(e) => setForm({ ...form, moto_placa: e.target.value })} required />
@@ -867,7 +920,7 @@ export default function ContratosPage() {
 
           {/* Datas e valores */}
           <div className="border-t border-[#333333] pt-3">
-            <p className="text-xs text-[#555555] uppercase tracking-wider mb-3">Valores e Datas</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Valores e Datas</p>
             <div className="grid grid-cols-2 gap-3">
               <Input label="Data de Início" type="date" value={form.data_inicio}
                 onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} required />
@@ -879,7 +932,7 @@ export default function ContratosPage() {
               />
             </div>
             {valorPreview !== null && (
-              <p className="text-xs text-[#555555] mt-2">
+              <p className="text-xs text-[#A0A0A0] mt-2">
                 Valor mensal médio estimado:{' '}
                 <span className="text-[#BAFF1A] font-semibold">{fmt(valorPreview)}</span>
               </p>

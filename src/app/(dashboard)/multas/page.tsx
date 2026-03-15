@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Edit2, Trash2, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Trash2, CheckCircle, AlertTriangle, Search } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
-import { Badge, StatusBadge } from '@/components/ui/Badge'
+import { StatusBadge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -98,7 +98,55 @@ const defaultForm = {
 export default function MultasPage() {
   const [multas, setMultas] = useState<MultaComRelacoes[]>(mockMultas)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editandoId, setEditandoId] = useState<string | null>(null)
   const [form, setForm] = useState(defaultForm)
+  const [excluindo, setExcluindo] = useState<MultaComRelacoes | null>(null)
+  const [busca, setBusca] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState('todas')
+
+  const tabsStatus = [
+    { label: 'Todas', value: 'todas' },
+    { label: 'Pendentes', value: 'pendente' },
+    { label: 'Pagas', value: 'pago' },
+    { label: 'Cliente', value: 'cliente' },
+    { label: 'Empresa', value: 'empresa' },
+  ]
+
+  const multasFiltradas = multas.filter((m) => {
+    const passaBusca = !busca || (() => {
+      const q = busca.toLowerCase()
+      return (
+        m.cliente_nome.toLowerCase().includes(q) ||
+        m.moto_placa.toLowerCase().includes(q) ||
+        m.descricao.toLowerCase().includes(q)
+      )
+    })()
+    const passFiltro =
+      filtroStatus === 'todas' ? true :
+      filtroStatus === 'cliente' || filtroStatus === 'empresa' ? m.responsavel === filtroStatus :
+      m.status === filtroStatus
+    return passaBusca && passFiltro
+  })
+
+  function abrirNova() {
+    setEditandoId(null)
+    setForm(defaultForm)
+    setModalOpen(true)
+  }
+
+  function abrirEdicao(row: MultaComRelacoes) {
+    setEditandoId(row.id)
+    setForm({
+      cliente_id: row.cliente_id,
+      moto_id: row.moto_id,
+      descricao: row.descricao,
+      valor: String(row.valor),
+      data_infração: row.data_infração,
+      responsavel: row.responsavel,
+      observacoes: row.observacoes ?? '',
+    })
+    setModalOpen(true)
+  }
 
   function handleMarcarPago(id: string) {
     setMultas((prev) =>
@@ -115,23 +163,51 @@ export default function MultasPage() {
     const clienteLabel = clienteOptions.find((o) => o.value === form.cliente_id)?.label ?? ''
     const motoLabel = motoOptions.find((o) => o.value === form.moto_id)?.label ?? ''
 
-    const novaMulta: MultaComRelacoes = {
-      id: String(Date.now()),
-      cliente_id: form.cliente_id,
-      moto_id: form.moto_id,
-      descricao: form.descricao,
-      valor: parseFloat(form.valor),
-      data_infração: form.data_infração,
-      status: 'pendente',
-      responsavel: form.responsavel as 'cliente' | 'empresa',
-      observacoes: form.observacoes,
-      created_at: new Date().toISOString(),
-      cliente_nome: clienteLabel,
-      moto_placa: motoLabel.split(' — ')[0] ?? '',
+    if (editandoId) {
+      setMultas((prev) =>
+        prev.map((m) =>
+          m.id === editandoId
+            ? {
+                ...m,
+                cliente_id: form.cliente_id,
+                moto_id: form.moto_id,
+                descricao: form.descricao,
+                valor: parseFloat(form.valor),
+                data_infração: form.data_infração,
+                responsavel: form.responsavel as 'cliente' | 'empresa',
+                observacoes: form.observacoes,
+                cliente_nome: clienteLabel,
+                moto_placa: motoLabel.split(' — ')[0] ?? m.moto_placa,
+              }
+            : m
+        )
+      )
+    } else {
+      const novaMulta: MultaComRelacoes = {
+        id: String(Date.now()),
+        cliente_id: form.cliente_id,
+        moto_id: form.moto_id,
+        descricao: form.descricao,
+        valor: parseFloat(form.valor),
+        data_infração: form.data_infração,
+        status: 'pendente',
+        responsavel: form.responsavel as 'cliente' | 'empresa',
+        observacoes: form.observacoes,
+        created_at: new Date().toISOString(),
+        cliente_nome: clienteLabel,
+        moto_placa: motoLabel.split(' — ')[0] ?? '',
+      }
+      setMultas((prev) => [novaMulta, ...prev])
     }
-    setMultas((prev) => [novaMulta, ...prev])
+
     setForm(defaultForm)
     setModalOpen(false)
+  }
+
+  function confirmarExclusao() {
+    if (!excluindo) return
+    setMultas((prev) => prev.filter((m) => m.id !== excluindo.id))
+    setExcluindo(null)
   }
 
   const totalPendente = multas
@@ -160,7 +236,7 @@ export default function MultasPage() {
         <div className="max-w-xs">
           <p className="text-white line-clamp-1">{row.descricao}</p>
           {row.observacoes && (
-            <p className="text-xs text-[#666666] mt-0.5 line-clamp-1">{row.observacoes}</p>
+            <p className="text-xs text-[#A0A0A0] mt-0.5 line-clamp-1">{row.observacoes}</p>
           )}
         </div>
       ),
@@ -201,10 +277,18 @@ export default function MultasPage() {
               <CheckCircle className="w-4 h-4" />
             </button>
           )}
-          <button className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors">
+          <button
+            onClick={() => abrirEdicao(row)}
+            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
+            title="Editar"
+          >
             <Edit2 className="w-4 h-4" />
           </button>
-          <button className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors">
+          <button
+            onClick={() => setExcluindo(row)}
+            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
+            title="Excluir"
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -218,7 +302,7 @@ export default function MultasPage() {
         title="Multas"
         subtitle="Controle de infrações de trânsito"
         actions={
-          <Button onClick={() => setModalOpen(true)}>
+          <Button onClick={abrirNova}>
             <Plus className="w-4 h-4" />
             Registrar Multa
           </Button>
@@ -229,18 +313,18 @@ export default function MultasPage() {
         {/* Summary */}
         <div className="grid grid-cols-3 gap-4">
           <Card>
-            <p className="text-xs text-[#666666] uppercase tracking-wider">Total de Multas</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total de Multas</p>
             <p className="text-2xl font-bold text-white mt-1">{multas.length}</p>
           </Card>
           <Card>
-            <p className="text-xs text-[#666666] uppercase tracking-wider">Pendentes</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Pendentes</p>
             <p className="text-2xl font-bold text-amber-400 mt-1">
               {multas.filter((m) => m.status === 'pendente').length}
             </p>
             <p className="text-xs text-amber-400/70 mt-0.5">{formatCurrency(totalPendente)}</p>
           </Card>
           <Card>
-            <p className="text-xs text-[#666666] uppercase tracking-wider">Pagas</p>
+            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Pagas</p>
             <p className="text-2xl font-bold text-green-400 mt-1">
               {multas.filter((m) => m.status === 'pago').length}
             </p>
@@ -258,19 +342,60 @@ export default function MultasPage() {
           </div>
         )}
 
+        {/* Filtros rápidos + Busca */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {tabsStatus.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFiltroStatus(tab.value)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  filtroStatus === tab.value
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                }`}
+              >
+                {tab.label}
+                {tab.value !== 'todas' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({tab.value === 'cliente' || tab.value === 'empresa'
+                      ? multas.filter((m) => m.responsavel === tab.value).length
+                      : multas.filter((m) => m.status === tab.value).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <input
+              type="text"
+              placeholder="Buscar por cliente, placa ou descrição..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
+            />
+          </div>
+        </div>
+
         {/* Table */}
         <Card padding="none">
           <Table
             columns={columns}
-            data={multas}
+            data={multasFiltradas}
             keyExtractor={(row) => row.id}
             emptyMessage="Nenhuma multa registrada"
           />
         </Card>
       </div>
 
-      {/* Modal Registrar Multa */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Registrar Multa" size="lg">
+      {/* Modal Registrar / Editar Multa */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editandoId ? 'Editar Multa' : 'Registrar Multa'}
+        size="lg"
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Select
@@ -332,10 +457,30 @@ export default function MultasPage() {
             </Button>
             <Button type="submit">
               <AlertTriangle className="w-4 h-4" />
-              Registrar Multa
+              {editandoId ? 'Salvar Alterações' : 'Registrar Multa'}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Confirmar Exclusão */}
+      <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir Multa" size="sm">
+        <div className="space-y-4">
+          <p className="text-[#A0A0A0] text-sm">
+            Tem certeza que deseja excluir a multa{' '}
+            <span className="text-white font-medium">{excluindo?.descricao}</span>?
+            Esta ação não poderá ser desfeita.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setExcluindo(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarExclusao}>
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

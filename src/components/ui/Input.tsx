@@ -23,7 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           className={cn(
             'w-full px-3 py-2.5 rounded-lg text-sm text-white',
             'bg-[#2a2a2a] border border-[#333333]',
-            'placeholder:text-[#666666]',
+            'placeholder:text-[#A0A0A0]',
             'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
             'transition-colors duration-150',
             error && 'border-red-500 focus:border-red-500 focus:ring-red-500/30',
@@ -32,7 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {error && <p className="text-xs text-red-400">{error}</p>}
-        {hint && !error && <p className="text-xs text-[#666666]">{hint}</p>}
+        {hint && !error && <p className="text-xs text-[#A0A0A0]">{hint}</p>}
       </div>
     )
   }
@@ -104,7 +104,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           className={cn(
             'w-full px-3 py-2.5 rounded-lg text-sm text-white',
             'bg-[#2a2a2a] border border-[#333333]',
-            'placeholder:text-[#666666]',
+            'placeholder:text-[#A0A0A0]',
             'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
             'transition-colors duration-150 resize-none',
             error && 'border-red-500',

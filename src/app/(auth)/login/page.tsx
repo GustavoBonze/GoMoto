@@ -42,7 +42,7 @@ export default function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white">GoMoto</h1>
-            <p className="text-sm text-[#666666] mt-1">Sistema de Gestão</p>
+            <p className="text-sm text-[#A0A0A0] mt-1">Sistema de Gestão</p>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-[#666666] mt-6">
+        <p className="text-center text-xs text-[#A0A0A0] mt-6">
           GoMoto © {new Date().getFullYear()}
         </p>
       </div>
