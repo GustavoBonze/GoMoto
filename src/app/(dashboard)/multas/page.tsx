@@ -1,3 +1,22 @@
+/**
+ * @file page.tsx
+ * @description Página de Controle de Multas e Infrações de Trânsito do Sistema GoMoto.
+ * 
+ * Este componente gerencia o registro de multas recebidas pela frota, permitindo
+ * associar cada infração a um cliente específico e decidir quem é o responsável
+ * financeiro pelo pagamento (se o locatário ou a própria empresa).
+ * 
+ * Funcionalidades principais:
+ * - Cadastro de infrações com número de AIT, valor e data do ocorrido.
+ * - Controle de status de quitação (Pendente vs Pago).
+ * - Painel de resumo: total de multas, quantidade pendente e valor total a receber/pagar.
+ * - Alerta dinâmico para multas em aberto.
+ * - Filtros por status e por responsável financeiro.
+ * - Busca rápida por nome do cliente ou placa da motocicleta.
+ * 
+ * Identificadores seguem o padrão Inglês e a documentação o padrão Português Brasil.
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -10,60 +29,71 @@ import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Multa, MultaStatus } from '@/types'
+import type { Fine, FineStatus } from '@/types'
 
-type MultaComRelacoes = Multa & {
-  cliente_nome: string
-  moto_placa: string
+/**
+ * @interface FineWithRelations
+ * @description Extensão da interface Fine para facilitar a exibição de nomes
+ * legíveis na tabela sem a necessidade de múltiplos JOINS em tempo real no mock.
+ */
+type FineWithRelations = Fine & {
+  customer_name: string
+  motorcycle_plate: string
 }
 
-const mockMultas: MultaComRelacoes[] = [
+/**
+ * @constant mockFines
+ * @description Conjunto de dados fictícios para representar o histórico de multas.
+ * Demonstra diferentes tipos de responsabilidade e status de pagamento.
+ */
+const mockFines: FineWithRelations[] = [
   {
     id: '1',
-    cliente_id: '2',
-    moto_id: '2',
-    descricao: 'Excesso de velocidade — Av. Paulista',
-    valor: 293.47,
-    data_infração: '2024-02-20',
-    status: 'pendente',
-    responsavel: 'cliente',
-    observacoes: 'AIT nº 12345678. Infração registrada pelo DETRAN.',
+    customer_id: '2',
+    motorcycle_id: '2',
+    description: 'Excesso de velocidade — Av. Paulista',
+    amount: 293.47,
+    infraction_date: '2024-02-20',
+    status: 'pending',
+    responsible: 'customer',
+    observations: 'AIT nº 12345678. Infração registrada pelo DETRAN.',
     created_at: '2024-02-25T10:00:00Z',
-    cliente_nome: 'Fernanda Lima Oliveira',
-    moto_placa: 'DEF-5678',
+    customer_name: 'Fernanda Lima Oliveira',
+    motorcycle_plate: 'DEF-5678',
   },
   {
     id: '2',
-    cliente_id: '4',
-    moto_id: '4',
-    descricao: 'Estacionamento irregular',
-    valor: 195.23,
-    data_infração: '2024-01-10',
-    status: 'pago',
-    data_pagamento: '2024-01-20',
-    responsavel: 'cliente',
-    observacoes: '',
+    customer_id: '4',
+    motorcycle_id: '4',
+    description: 'Estacionamento irregular',
+    amount: 195.23,
+    infraction_date: '2024-01-10',
+    status: 'paid',
+    payment_date: '2024-01-20',
+    responsible: 'customer',
+    observations: '',
     created_at: '2024-01-15T10:00:00Z',
-    cliente_nome: 'Juliana Costa Mendes',
-    moto_placa: 'JKL-3456',
+    customer_name: 'Juliana Costa Mendes',
+    motorcycle_plate: 'JKL-3456',
   },
   {
     id: '3',
-    cliente_id: '1',
-    moto_id: '1',
-    descricao: 'Licenciamento atrasado — responsabilidade da empresa',
-    valor: 130.16,
-    data_infração: '2024-03-01',
-    status: 'pendente',
-    responsavel: 'empresa',
-    observacoes: 'Empresa responsável pelo atraso no licenciamento.',
+    customer_id: '1',
+    motorcycle_id: '1',
+    description: 'Licenciamento atrasado — responsabilidade da empresa',
+    amount: 130.16,
+    infraction_date: '2024-03-01',
+    status: 'pending',
+    responsible: 'company',
+    observations: 'Empresa responsável pelo atraso no licenciamento.',
     created_at: '2024-03-05T10:00:00Z',
-    cliente_nome: 'Carlos Eduardo Santos',
-    moto_placa: 'ABC-1234',
+    customer_name: 'Carlos Eduardo Santos',
+    motorcycle_plate: 'ABC-1234',
   },
 ]
 
-const clienteOptions = [
+/** @constant customerOptions - Lista de clientes simulada para seleção no formulário. */
+const customerOptions = [
   { value: '', label: 'Selecione um cliente' },
   { value: '1', label: 'Carlos Eduardo Santos' },
   { value: '2', label: 'Fernanda Lima Oliveira' },
@@ -71,7 +101,8 @@ const clienteOptions = [
   { value: '4', label: 'Juliana Costa Mendes' },
 ]
 
-const motoOptions = [
+/** @constant motorcycleOptions - Lista de motocicletas simulada para seleção no formulário. */
+const motorcycleOptions = [
   { value: '', label: 'Selecione uma moto' },
   { value: '1', label: 'ABC-1234 — Honda CG 160 Titan' },
   { value: '2', label: 'DEF-5678 — Honda Biz 125' },
@@ -80,212 +111,249 @@ const motoOptions = [
   { value: '5', label: 'MNO-7890 — Yamaha Crosser 150' },
 ]
 
-const responsavelOptions = [
-  { value: 'cliente', label: 'Cliente' },
-  { value: 'empresa', label: 'Empresa' },
+/** @constant responsibleOptions - Define as opções de quem deve arcar com o custo da multa. */
+const responsibleOptions = [
+  { value: 'customer', label: 'Cliente' },
+  { value: 'company', label: 'Empresa' },
 ]
 
+/** @constant defaultForm - Estado de limpeza para o formulário de multas. */
 const defaultForm = {
-  cliente_id: '',
-  moto_id: '',
-  descricao: '',
-  valor: '',
-  data_infração: '',
-  responsavel: 'cliente',
-  observacoes: '',
+  customer_id: '',
+  motorcycle_id: '',
+  description: '',
+  amount: '',
+  infraction_date: '',
+  responsible: 'customer',
+  observations: '',
 }
 
-export default function MultasPage() {
-  const [multas, setMultas] = useState<MultaComRelacoes[]>(mockMultas)
+/**
+ * @component FinesPage
+ * @description Componente funcional da página de multas.
+ * Gerencia a tabela de dados, filtragem e os modais de interação.
+ */
+export default function FinesPage() {
+  /** ESTADOS DE DADOS E VISIBILIDADE */
+  const [fines, setFines] = useState<FineWithRelations[]>(mockFines)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(defaultForm)
-  const [excluindo, setExcluindo] = useState<MultaComRelacoes | null>(null)
-  const [busca, setBusca] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('todas')
+  const [deleting, setDeleting] = useState<FineWithRelations | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
-  const tabsStatus = [
-    { label: 'Todas', value: 'todas' },
-    { label: 'Pendentes', value: 'pendente' },
-    { label: 'Pagas', value: 'pago' },
-    { label: 'Cliente', value: 'cliente' },
-    { label: 'Empresa', value: 'empresa' },
+  /** @constant statusTabs - Configuração das abas de filtro rápido por status ou responsável. */
+  const statusTabs = [
+    { label: 'Todas', value: 'all' },
+    { label: 'Pendentes', value: 'pending' },
+    { label: 'Pagas', value: 'paid' },
+    { label: 'Cliente', value: 'customer' },
+    { label: 'Empresa', value: 'company' },
   ]
 
-  const multasFiltradas = multas.filter((m) => {
-    const passaBusca = !busca || (() => {
-      const q = busca.toLowerCase()
+  /**
+   * @variable filteredFines
+   * @description Lógica de filtragem combinada: busca textual e abas de status/responsável.
+   */
+  const filteredFines = fines.filter((m) => {
+    const matchesSearch = !search || (() => {
+      const q = search.toLowerCase()
       return (
-        m.cliente_nome.toLowerCase().includes(q) ||
-        m.moto_placa.toLowerCase().includes(q) ||
-        m.descricao.toLowerCase().includes(q)
+        m.customer_name.toLowerCase().includes(q) ||
+        m.motorcycle_plate.toLowerCase().includes(q) ||
+        m.description.toLowerCase().includes(q)
       )
     })()
-    const passFiltro =
-      filtroStatus === 'todas' ? true :
-      filtroStatus === 'cliente' || filtroStatus === 'empresa' ? m.responsavel === filtroStatus :
-      m.status === filtroStatus
-    return passaBusca && passFiltro
+    
+    const matchesFilter =
+      statusFilter === 'all' ? true :
+      statusFilter === 'customer' || statusFilter === 'company' ? m.responsible === statusFilter :
+      m.status === statusFilter
+    
+    return matchesSearch && matchesFilter
   })
 
-  function abrirNova() {
-    setEditandoId(null)
+  /** HANDLERS DE ABERTURA DE MODAIS */
+
+  function openNew() {
+    setEditingId(null)
     setForm(defaultForm)
     setModalOpen(true)
   }
 
-  function abrirEdicao(row: MultaComRelacoes) {
-    setEditandoId(row.id)
+  function openEdit(row: FineWithRelations) {
+    setEditingId(row.id)
     setForm({
-      cliente_id: row.cliente_id,
-      moto_id: row.moto_id,
-      descricao: row.descricao,
-      valor: String(row.valor),
-      data_infração: row.data_infração,
-      responsavel: row.responsavel,
-      observacoes: row.observacoes ?? '',
+      customer_id: row.customer_id,
+      motorcycle_id: row.motorcycle_id,
+      description: row.description,
+      amount: String(row.amount),
+      infraction_date: row.infraction_date,
+      responsible: row.responsible,
+      observations: row.observations ?? '',
     })
     setModalOpen(true)
   }
 
-  function handleMarcarPago(id: string) {
-    setMultas((prev) =>
+  /**
+   * @function handleMarkAsPaid
+   * @description Atualiza o status de uma multa específica para 'paid' e registra a data atual.
+   * @param id - ID da multa a ser liquidada.
+   */
+  function handleMarkAsPaid(id: string) {
+    setFines((prev) =>
       prev.map((m) =>
         m.id === id
-          ? { ...m, status: 'pago' as MultaStatus, data_pagamento: new Date().toISOString().split('T')[0] }
+          ? { ...m, status: 'paid' as FineStatus, payment_date: new Date().toISOString().split('T')[0] }
           : m
       )
     )
   }
 
+  /**
+   * @function handleSubmit
+   * @description Processa o salvamento dos dados do formulário (Criação ou Edição).
+   */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const clienteLabel = clienteOptions.find((o) => o.value === form.cliente_id)?.label ?? ''
-    const motoLabel = motoOptions.find((o) => o.value === form.moto_id)?.label ?? ''
+    /** Localiza os nomes amigáveis baseados nos IDs selecionados para atualizar a denormalização local */
+    const customerLabel = customerOptions.find((o) => o.value === form.customer_id)?.label ?? ''
+    const motorcycleLabel = motorcycleOptions.find((o) => o.value === form.motorcycle_id)?.label ?? ''
 
-    if (editandoId) {
-      setMultas((prev) =>
+    if (editingId) {
+      /** Lógica de Edição */
+      setFines((prev) =>
         prev.map((m) =>
-          m.id === editandoId
+          m.id === editingId
             ? {
                 ...m,
-                cliente_id: form.cliente_id,
-                moto_id: form.moto_id,
-                descricao: form.descricao,
-                valor: parseFloat(form.valor),
-                data_infração: form.data_infração,
-                responsavel: form.responsavel as 'cliente' | 'empresa',
-                observacoes: form.observacoes,
-                cliente_nome: clienteLabel,
-                moto_placa: motoLabel.split(' — ')[0] ?? m.moto_placa,
+                customer_id: form.customer_id,
+                motorcycle_id: form.motorcycle_id,
+                description: form.description,
+                amount: parseFloat(form.amount),
+                infraction_date: form.infraction_date,
+                responsible: form.responsible as 'customer' | 'company',
+                observations: form.observations,
+                customer_name: customerLabel,
+                motorcycle_plate: motorcycleLabel.split(' — ')[0] ?? m.motorcycle_plate,
               }
             : m
         )
       )
     } else {
-      const novaMulta: MultaComRelacoes = {
+      /** Lógica de Criação */
+      const newFine: FineWithRelations = {
         id: String(Date.now()),
-        cliente_id: form.cliente_id,
-        moto_id: form.moto_id,
-        descricao: form.descricao,
-        valor: parseFloat(form.valor),
-        data_infração: form.data_infração,
-        status: 'pendente',
-        responsavel: form.responsavel as 'cliente' | 'empresa',
-        observacoes: form.observacoes,
+        customer_id: form.customer_id,
+        motorcycle_id: form.motorcycle_id,
+        description: form.description,
+        amount: parseFloat(form.amount),
+        infraction_date: form.infraction_date,
+        status: 'pending',
+        responsible: form.responsible as 'customer' | 'company',
+        observations: form.observations,
         created_at: new Date().toISOString(),
-        cliente_nome: clienteLabel,
-        moto_placa: motoLabel.split(' — ')[0] ?? '',
+        customer_name: customerLabel,
+        motorcycle_plate: motorcycleLabel.split(' — ')[0] ?? '',
       }
-      setMultas((prev) => [novaMulta, ...prev])
+      setFines((prev) => [newFine, ...prev])
     }
 
     setForm(defaultForm)
     setModalOpen(false)
   }
 
-  function confirmarExclusao() {
-    if (!excluindo) return
-    setMultas((prev) => prev.filter((m) => m.id !== excluindo.id))
-    setExcluindo(null)
+  /**
+   * @function confirmDeletion
+   * @description Executa a remoção física do registro de multa do estado.
+   */
+  function confirmDeletion() {
+    if (!deleting) return
+    setFines((prev) => prev.filter((m) => m.id !== deleting.id))
+    setDeleting(null)
   }
 
-  const totalPendente = multas
-    .filter((m) => m.status === 'pendente')
-    .reduce((sum, m) => sum + m.valor, 0)
+  /** CÁLCULOS DE SUMARIZAÇÃO */
+  const totalPending = fines
+    .filter((m) => m.status === 'pending')
+    .reduce((sum, m) => sum + m.amount, 0)
 
+  /** CONFIGURAÇÃO DE COLUNAS DA TABELA */
   const columns = [
     {
-      key: 'cliente_nome',
+      key: 'customer_name',
       header: 'Cliente',
-      render: (row: MultaComRelacoes) => (
-        <span className="font-medium text-white">{row.cliente_nome}</span>
+      render: (row: FineWithRelations) => (
+        <span className="font-medium text-white">{row.customer_name}</span>
       ),
     },
     {
-      key: 'moto_placa',
+      key: 'motorcycle_plate',
       header: 'Moto',
-      render: (row: MultaComRelacoes) => (
-        <span className="font-mono text-sm">{row.moto_placa}</span>
+      render: (row: FineWithRelations) => (
+        <span className="font-mono text-sm">{row.motorcycle_plate}</span>
       ),
     },
     {
-      key: 'descricao',
+      key: 'description',
       header: 'Descrição',
-      render: (row: MultaComRelacoes) => (
+      render: (row: FineWithRelations) => (
         <div className="max-w-xs">
-          <p className="text-white line-clamp-1">{row.descricao}</p>
-          {row.observacoes && (
-            <p className="text-xs text-[#A0A0A0] mt-0.5 line-clamp-1">{row.observacoes}</p>
+          <p className="text-white line-clamp-1">{row.description}</p>
+          {row.observations && (
+            <p className="text-xs text-[#A0A0A0] mt-0.5 line-clamp-1">{row.observations}</p>
           )}
         </div>
       ),
     },
     {
-      key: 'valor',
+      key: 'amount',
       header: 'Valor',
-      render: (row: MultaComRelacoes) => (
-        <span className="font-semibold text-red-400">{formatCurrency(row.valor)}</span>
+      render: (row: FineWithRelations) => (
+        <span className="font-semibold text-red-400">{formatCurrency(row.amount)}</span>
       ),
     },
     {
-      key: 'data_infração',
+      key: 'infraction_date',
       header: 'Data Infração',
-      render: (row: MultaComRelacoes) => <span>{formatDate(row.data_infração)}</span>,
+      render: (row: FineWithRelations) => <span>{formatDate(row.infraction_date)}</span>,
     },
     {
-      key: 'responsavel',
+      key: 'responsible',
       header: 'Responsável',
-      render: (row: MultaComRelacoes) => <StatusBadge status={row.responsavel} />,
+      render: (row: FineWithRelations) => <StatusBadge status={row.responsible} />,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (row: MultaComRelacoes) => <StatusBadge status={row.status} />,
+      render: (row: FineWithRelations) => <StatusBadge status={row.status} />,
     },
     {
-      key: 'acoes',
+      key: 'actions',
       header: 'Ações',
-      render: (row: MultaComRelacoes) => (
+      render: (row: FineWithRelations) => (
         <div className="flex items-center gap-1">
-          {row.status === 'pendente' && (
+          {/* Botão para liquidação de multa pendente */}
+          {row.status === 'pending' && (
             <button
-              onClick={() => handleMarcarPago(row.id)}
+              onClick={() => handleMarkAsPaid(row.id)}
               title="Marcar como pago"
               className="p-1.5 rounded-lg text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors"
             >
               <CheckCircle className="w-4 h-4" />
             </button>
           )}
+          {/* Ações padrões de edição e exclusão */}
           <button
-            onClick={() => abrirEdicao(row)}
+            onClick={() => openEdit(row)}
             className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
             title="Editar"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setExcluindo(row)}
+            onClick={() => setDeleting(row)}
             className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
             title="Excluir"
           >
@@ -298,11 +366,12 @@ export default function MultasPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {/* Cabeçalho da página com título e chamada para ação principal */}
       <Header
         title="Multas"
         subtitle="Controle de infrações de trânsito"
         actions={
-          <Button onClick={abrirNova}>
+          <Button onClick={openNew}>
             <Plus className="w-4 h-4" />
             Registrar Multa
           </Button>
@@ -310,57 +379,58 @@ export default function MultasPage() {
       />
 
       <div className="p-6 space-y-4">
-        {/* Summary */}
+        
+        {/* Painel de Sumarização Financeira das Multas */}
         <div className="grid grid-cols-3 gap-4">
           <Card>
             <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total de Multas</p>
-            <p className="text-2xl font-bold text-white mt-1">{multas.length}</p>
+            <p className="text-2xl font-bold text-white mt-1">{fines.length}</p>
           </Card>
           <Card>
             <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Pendentes</p>
             <p className="text-2xl font-bold text-amber-400 mt-1">
-              {multas.filter((m) => m.status === 'pendente').length}
+              {fines.filter((m) => m.status === 'pending').length}
             </p>
-            <p className="text-xs text-amber-400/70 mt-0.5">{formatCurrency(totalPendente)}</p>
+            <p className="text-xs text-amber-400/70 mt-0.5">{formatCurrency(totalPending)}</p>
           </Card>
           <Card>
             <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Pagas</p>
             <p className="text-2xl font-bold text-green-400 mt-1">
-              {multas.filter((m) => m.status === 'pago').length}
+              {fines.filter((m) => m.status === 'paid').length}
             </p>
           </Card>
         </div>
 
-        {/* Alert for pending fines */}
-        {multas.some((m) => m.status === 'pendente') && (
+        {/* Alerta Visual: Exibido apenas se houver multas pendentes de quitação */}
+        {fines.some((m) => m.status === 'pending') && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
             <p className="text-sm text-amber-400">
-              Você tem {multas.filter((m) => m.status === 'pendente').length} multa(s) pendente(s) no total de{' '}
-              <strong>{formatCurrency(totalPendente)}</strong>.
+              Você tem {fines.filter((m) => m.status === 'pending').length} multa(s) pendente(s) no total de{' '}
+              <strong>{formatCurrency(totalPending)}</strong>.
             </p>
           </div>
         )}
 
-        {/* Filtros rápidos + Busca */}
+        {/* Barra de Ferramentas: Filtros de Status e Campo de Busca Global */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-2 flex-wrap">
-            {tabsStatus.map((tab) => (
+            {statusTabs.map((tab) => (
               <button
                 key={tab.value}
-                onClick={() => setFiltroStatus(tab.value)}
+                onClick={() => setStatusFilter(tab.value)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  filtroStatus === tab.value
+                  statusFilter === tab.value
                     ? 'bg-[#BAFF1A] text-[#121212]'
                     : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
                 }`}
               >
                 {tab.label}
-                {tab.value !== 'todas' && (
+                {tab.value !== 'all' && (
                   <span className="ml-1.5 opacity-70">
-                    ({tab.value === 'cliente' || tab.value === 'empresa'
-                      ? multas.filter((m) => m.responsavel === tab.value).length
-                      : multas.filter((m) => m.status === tab.value).length})
+                    ({tab.value === 'customer' || tab.value === 'company'
+                      ? fines.filter((m) => m.responsible === tab.value).length
+                      : fines.filter((m) => m.status === tab.value).length})
                   </span>
                 )}
               </button>
@@ -371,53 +441,53 @@ export default function MultasPage() {
             <input
               type="text"
               placeholder="Buscar por cliente, placa ou descrição..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
             />
           </div>
         </div>
 
-        {/* Table */}
+        {/* Tabela de Listagem: Renderização dos dados filtrados */}
         <Card padding="none">
           <Table
             columns={columns}
-            data={multasFiltradas}
+            data={filteredFines}
             keyExtractor={(row) => row.id}
             emptyMessage="Nenhuma multa registrada"
           />
         </Card>
       </div>
 
-      {/* Modal Registrar / Editar Multa */}
+      {/* Modal: Formulário de Inclusão e Edição de Multas */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editandoId ? 'Editar Multa' : 'Registrar Multa'}
+        title={editingId ? 'Editar Multa' : 'Registrar Multa'}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Cliente"
-              options={clienteOptions}
-              value={form.cliente_id}
-              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+              options={customerOptions}
+              value={form.customer_id}
+              onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
               required
             />
             <Select
               label="Moto"
-              options={motoOptions}
-              value={form.moto_id}
-              onChange={(e) => setForm({ ...form, moto_id: e.target.value })}
+              options={motorcycleOptions}
+              value={form.motorcycle_id}
+              onChange={(e) => setForm({ ...form, motorcycle_id: e.target.value })}
               required
             />
           </div>
           <Input
             label="Descrição da Infração"
             placeholder="Excesso de velocidade — Av. Paulista"
-            value={form.descricao}
-            onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
             required
           />
           <div className="grid grid-cols-3 gap-4">
@@ -426,30 +496,30 @@ export default function MultasPage() {
               type="number"
               step="0.01"
               placeholder="293.47"
-              value={form.valor}
-              onChange={(e) => setForm({ ...form, valor: e.target.value })}
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
               required
             />
             <Input
               label="Data da Infração"
               type="date"
-              value={form.data_infração}
-              onChange={(e) => setForm({ ...form, data_infração: e.target.value })}
+              value={form.infraction_date}
+              onChange={(e) => setForm({ ...form, infraction_date: e.target.value })}
               required
             />
             <Select
               label="Responsável"
-              options={responsavelOptions}
-              value={form.responsavel}
-              onChange={(e) => setForm({ ...form, responsavel: e.target.value })}
+              options={responsibleOptions}
+              value={form.responsible}
+              onChange={(e) => setForm({ ...form, responsible: e.target.value })}
             />
           </div>
           <Textarea
             label="Observações"
-            placeholder="AIT nº, local da infração, detalhes..."
+            placeholder="AIT nº, local da infração, detalhes do recurso..."
             rows={3}
-            value={form.observacoes}
-            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+            value={form.observations}
+            onChange={(e) => setForm({ ...form, observations: e.target.value })}
           />
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
@@ -457,25 +527,25 @@ export default function MultasPage() {
             </Button>
             <Button type="submit">
               <AlertTriangle className="w-4 h-4" />
-              {editandoId ? 'Salvar Alterações' : 'Registrar Multa'}
+              {editingId ? 'Salvar Alterações' : 'Registrar Multa'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal Confirmar Exclusão */}
-      <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir Multa" size="sm">
+      {/* Modal de Confirmação: Exclusão de Multa */}
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Multa" size="sm">
         <div className="space-y-4">
           <p className="text-[#A0A0A0] text-sm">
             Tem certeza que deseja excluir a multa{' '}
-            <span className="text-white font-medium">{excluindo?.descricao}</span>?
-            Esta ação não poderá ser desfeita.
+            <span className="text-white font-medium">{deleting?.description}</span>?
+            Esta ação removerá permanentemente o histórico da infração.
           </p>
           <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setExcluindo(null)}>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
               Cancelar
             </Button>
-            <Button variant="danger" onClick={confirmarExclusao}>
+            <Button variant="danger" onClick={confirmDeletion}>
               <Trash2 className="w-4 h-4" />
               Excluir
             </Button>

@@ -1,3 +1,11 @@
+/**
+ * ARQUIVO: src/app/(dashboard)/relatorios/page.tsx
+ * DESCRIÇÃO: Página de Relatórios do sistema GoMoto. 
+ *            Apresenta um resumo estatístico do mês atual (receita, despesas, saldo)
+ *            e oferece opções para geração de relatórios detalhados (financeiro, por moto, etc.).
+ *            Nota: Atualmente a maioria das funcionalidades de exportação está em desenvolvimento.
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -18,72 +26,100 @@ import { Card, StatCard } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { formatCurrency } from '@/lib/utils'
 
-interface RelatorioCard {
-  id: string
-  titulo: string
-  descricao: string
-  icon: React.ReactNode
-  cor: 'brand' | 'success' | 'warning' | 'danger' | 'info'
-  disponivel: boolean
+/**
+ * Interface que define a estrutura de um card de relatório disponível na interface.
+ */
+interface ReportCard {
+  id: string          // Identificador único do tipo de relatório
+  title: string       // Título exibido no card
+  description: string // Descrição curta da finalidade do relatório
+  icon: React.ReactNode // Ícone do Lucide-react correspondente
+  color: 'brand' | 'success' | 'warning' | 'danger' | 'info' // Tema de cor do ícone
+  available: boolean  // Indica se a funcionalidade já está implementada
 }
 
-const relatorios: RelatorioCard[] = [
+/**
+ * Lista estática de relatórios planejados para o sistema.
+ * Utilizada para renderizar a grade de opções na interface.
+ */
+const reports: ReportCard[] = [
   {
     id: 'financeiro-mensal',
-    titulo: 'Relatório Financeiro Mensal',
-    descricao:
+    title: 'Relatório Financeiro Mensal',
+    description:
       'Visão completa das entradas e despesas do mês, saldo final e comparativo com mês anterior.',
     icon: <BarChart2 className="w-6 h-6" />,
-    cor: 'brand',
-    disponivel: false,
+    color: 'brand',
+    available: false,
   },
   {
     id: 'por-moto',
-    titulo: 'Relatório por Moto',
-    descricao:
+    title: 'Relatório por Moto',
+    description:
       'Histórico de locações, manutenções e receita gerada por cada moto da frota.',
     icon: <Bike className="w-6 h-6" />,
-    cor: 'info',
-    disponivel: false,
+    color: 'info',
+    available: false,
   },
   {
     id: 'por-cliente',
-    titulo: 'Relatório por Cliente',
-    descricao:
+    title: 'Relatório por Cliente',
+    description:
       'Histórico de contratos, cobranças e inadimplência por cliente.',
     icon: <Users className="w-6 h-6" />,
-    cor: 'success',
-    disponivel: false,
+    color: 'success',
+    available: false,
   },
   {
     id: 'fluxo-caixa',
-    titulo: 'Fluxo de Caixa',
-    descricao:
+    title: 'Fluxo de Caixa',
+    description:
       'Projeção de entradas e saídas dos próximos 30, 60 e 90 dias.',
     icon: <ArrowLeftRight className="w-6 h-6" />,
-    cor: 'warning',
-    disponivel: false,
+    color: 'warning',
+    available: false,
   },
 ]
 
-const statsDoMes = {
-  receita: 3850,
-  despesas: 2030,
-  saldo: 1820,
-  contratosAtivos: 2,
-  cobrancasPendentes: 2,
-  totalMultas: 618.86,
+/**
+ * Objeto com estatísticas simuladas do mês para exibição nos StatCards.
+ * Futuramente esses dados virão de uma consulta agregada ao Supabase.
+ */
+const monthlyStats = {
+  revenue: 3850,              // Soma total de entradas (receita bruta)
+  expenses: 2030,             // Soma total de saídas (despesas operacionais)
+  balance: 1820,              // Saldo líquido (revenue - expenses)
+  activeContracts: 2,         // Contagem de contratos com status 'ativo'
+  pendingCharges: 2,          // Contagem de cobranças que ainda não foram pagas
+  totalFines: 618.86,         // Valor total acumulado de multas de trânsito
 }
 
-export default function RelatoriosPage() {
-  const [toast, setToast] = useState(false)
+/**
+ * COMPONENTE PRINCIPAL: ReportsPage
+ * Renderiza o cabeçalho, o resumo mensal e a lista de relatórios disponíveis.
+ */
+export default function ReportsPage() {
+  /**
+   * ESTADO: controla a exibição da notificação de "em breve" (toast).
+   */
+  const [showToast, setShowToast] = useState(false)
 
-  function handleGerarRelatorio() {
-    setToast(true)
-    setTimeout(() => setToast(false), 3000)
+  /**
+   * FUNÇÃO: handleGenerateReport
+   * Acionada ao clicar em um botão de gerar relatório.
+   * Atualmente apenas exibe um alerta informando que a funcionalidade está em construção.
+   */
+  function handleGenerateReport() {
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
   }
 
-  const mesNome = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(
+  /**
+   * CONSTANTE: monthName
+   * Formata a data atual para exibir o nome do mês e o ano em português.
+   * Ex: "Março de 2026"
+   */
+  const monthName = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(
     new Date()
   )
 
@@ -92,56 +128,70 @@ export default function RelatoriosPage() {
       <Header title="Relatórios" subtitle="Análises e exportações do sistema" />
 
       <div className="p-6 space-y-6">
-        {/* Current month summary */}
+        {/* SEÇÃO: Resumo do Mês Atual */}
         <div>
+          {/* Título da seção formatado (Primeira letra maiúscula) */}
           <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">
-            Resumo — {mesNome.charAt(0).toUpperCase() + mesNome.slice(1)}
+            Resumo — {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
           </p>
+          
+          {/* Grid de cartões estatísticos rápidos */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* StatCard de Receita (Verde) */}
             <StatCard
               title="Receita"
-              value={formatCurrency(statsDoMes.receita)}
+              value={formatCurrency(monthlyStats.revenue)}
               icon={<TrendingUp className="w-5 h-5" />}
               color="success"
             />
+            {/* StatCard de Despesas (Vermelho) */}
             <StatCard
               title="Despesas"
-              value={formatCurrency(statsDoMes.despesas)}
+              value={formatCurrency(monthlyStats.expenses)}
               icon={<TrendingDown className="w-5 h-5" />}
               color="danger"
             />
+            {/* StatCard de Saldo (Cor da marca) */}
             <StatCard
               title="Saldo"
-              value={formatCurrency(statsDoMes.saldo)}
+              value={formatCurrency(monthlyStats.balance)}
               icon={<DollarSign className="w-5 h-5" />}
               color="brand"
             />
+            {/* Card simples de Contratos Ativos */}
             <Card>
               <p className="text-xs text-[#A0A0A0] truncate">Contratos Ativos</p>
-              <p className="text-2xl font-bold text-white mt-0.5">{statsDoMes.contratosAtivos}</p>
+              <p className="text-2xl font-bold text-white mt-0.5">{monthlyStats.activeContracts}</p>
             </Card>
+            {/* Card simples de Cobranças Pendentes (Alerta/Laranja) */}
             <Card>
               <p className="text-xs text-[#A0A0A0] truncate">Cobranças Pendentes</p>
               <p className="text-2xl font-bold text-amber-400 mt-0.5">
-                {statsDoMes.cobrancasPendentes}
+                {monthlyStats.pendingCharges}
               </p>
             </Card>
+            {/* Card simples de Valor de Multas (Perigo/Vermelho) */}
             <Card>
               <p className="text-xs text-[#A0A0A0] truncate">Multas</p>
               <p className="text-2xl font-bold text-red-400 mt-0.5">
-                {formatCurrency(statsDoMes.totalMultas)}
+                {formatCurrency(monthlyStats.totalFines)}
               </p>
             </Card>
           </div>
         </div>
 
-        {/* Relatorio Cards Grid */}
+        {/* SEÇÃO: Lista de Cards de Relatórios */}
         <div>
           <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">
             Relatórios disponíveis
           </p>
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {relatorios.map((rel) => {
+            {reports.map((report) => {
+              /**
+               * Mapeamento interno de estilos baseado no tipo de cor definido no ReportCard.
+               * Define as classes de fundo, texto e borda para o ícone.
+               */
               const colorMap = {
                 brand: { bg: 'bg-[#BAFF1A]/10', text: 'text-[#BAFF1A]', border: 'border-[#BAFF1A]/20' },
                 success: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' },
@@ -149,35 +199,41 @@ export default function RelatoriosPage() {
                 danger: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
                 info: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
               }
-              const colors = colorMap[rel.cor]
+              const styles = colorMap[report.color]
 
               return (
                 <div
-                  key={rel.id}
+                  key={report.id}
                   className="bg-[#202020] border border-[#333333] rounded-xl p-5 flex items-start gap-4 hover:border-[#444444] transition-colors"
                 >
-                  <div className={`p-3 rounded-xl flex-shrink-0 ${colors.bg} border ${colors.border}`}>
-                    <div className={colors.text}>{rel.icon}</div>
+                  {/* Container do Ícone com cores dinâmicas */}
+                  <div className={`p-3 rounded-xl flex-shrink-0 ${styles.bg} border ${styles.border}`}>
+                    <div className={styles.text}>{report.icon}</div>
                   </div>
+
                   <div className="flex-1 min-w-0">
+                    {/* Título e Badge de disponibilidade */}
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-white text-sm">{rel.titulo}</h3>
-                      {!rel.disponivel && (
+                      <h3 className="font-semibold text-white text-sm">{report.title}</h3>
+                      {!report.available && (
                         <Badge variant="muted" className="text-xs">
                           Em breve
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-[#A0A0A0] mb-4 leading-relaxed">{rel.descricao}</p>
+                    {/* Descrição do que o relatório oferece */}
+                    <p className="text-xs text-[#A0A0A0] mb-4 leading-relaxed">{report.description}</p>
+                    
+                    {/* Botão de ação (Habilitado apenas se disponível) */}
                     <Button
                       size="sm"
-                      variant={rel.disponivel ? 'primary' : 'outline'}
-                      onClick={handleGerarRelatorio}
-                      disabled={!rel.disponivel}
-                      className={!rel.disponivel ? 'opacity-50 cursor-not-allowed' : ''}
+                      variant={report.available ? 'primary' : 'outline'}
+                      onClick={handleGenerateReport}
+                      disabled={!report.available}
+                      className={!report.available ? 'opacity-50 cursor-not-allowed' : ''}
                     >
-                      {!rel.disponivel && <Lock className="w-3.5 h-3.5" />}
-                      {rel.disponivel ? (
+                      {!report.available && <Lock className="w-3.5 h-3.5" />}
+                      {report.available ? (
                         <>
                           <FileText className="w-3.5 h-3.5" />
                           Gerar Relatório
@@ -193,7 +249,7 @@ export default function RelatoriosPage() {
           </div>
         </div>
 
-        {/* Coming Soon notice */}
+        {/* SEÇÃO: Aviso de rodapé sobre desenvolvimento */}
         <Card className="text-center py-8">
           <BarChart2 className="w-12 h-12 text-[#888888] mx-auto mb-3" />
           <p className="text-white font-medium mb-1">Relatórios em desenvolvimento</p>
@@ -204,8 +260,8 @@ export default function RelatoriosPage() {
         </Card>
       </div>
 
-      {/* Toast notification */}
-      {toast && (
+      {/* NOTIFICAÇÃO (Toast): Feedback ao usuário para relatórios bloqueados */}
+      {showToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#202020] border border-[#BAFF1A]/30 shadow-2xl">
           <div className="w-2 h-2 rounded-full bg-[#BAFF1A]" />
           <p className="text-sm text-white">Este relatório ainda não está disponível.</p>

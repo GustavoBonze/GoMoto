@@ -1,7 +1,50 @@
-'use client'
+/**
+ * ARQUIVO: src/app/(dashboard)/clientes/page.tsx
+ * 
+ * DESCRIÇÃO GERAL:
+ * Esta página é o módulo central de "Gestão de Clientes" (Locatários) do sistema GoMoto.
+ * Ela gerencia todo o ciclo de vida do cliente, desde o cadastro inicial até o encerramento.
+ * 
+ * FUNCIONALIDADES CHAVE:
+ * 1. CRUD de Clientes: Criação, Leitura, Atualização e Exclusão de registros.
+ * 2. Gestão de Fila: Diferenciação entre clientes com contrato ativo e interessados em espera.
+ * 3. Repositório de Documentos: Sistema de upload simulado e checklist de validação de docs (CNH, RG, etc).
+ * 4. Histórico de Inativos: Seção dedicada para ex-clientes, com destaque para dívidas e motivos de saída.
+ * 5. Integração WhatsApp: Atalhos para iniciar conversas rápidas com os clientes.
+ * 
+ * ARQUITETURA:
+ * - Desenvolvido como "Client Component" (Next.js) para suportar estados interativos complexos.
+ * - Utiliza uma tabela dinâmica (Table) para listagem principal.
+ * - Emprega modais (Modal) para formulários e visualizações detalhadas, mantendo a navegação fluida.
+ */
 
+'use client' // Habilita o uso de hooks e interatividade do lado do cliente
+
+// Importação de hooks fundamentais do React
 import { useRef, useState } from 'react'
-import { Plus, Edit2, Trash2, Eye, Search, CheckCircle, AlertCircle, FolderOpen, Upload, FileText, X, ExternalLink, UserX, ChevronDown, ChevronUp, DollarSign, History } from 'lucide-react'
+
+// Importação da biblioteca Lucide para iconografia semântica
+import { 
+  Plus,             // Adicionar novo registro
+  Edit2,            // Editar dados existentes
+  Trash2,           // Remover registro
+  Eye,              // Visualizar detalhes profundos
+  Search,           // Pesquisar na listagem
+  CheckCircle,      // Indicação de sucesso ou item concluído
+  AlertCircle,      // Indicação de pendência ou erro
+  FolderOpen,       // Abrir pasta de documentos
+  Upload,           // Enviar arquivo para o servidor
+  FileText,         // Ícone genérico de documento
+  X,                // Fechar ou cancelar ação
+  ExternalLink,     // Abrir link em nova aba
+  UserX,            // Representa cliente inativo ou excluído
+  ChevronDown,      // Expandir conteúdo
+  ChevronUp,        // Recolher conteúdo
+  DollarSign,       // Representa valores monetários ou dívidas
+  History           // Acessar logs ou histórico passado
+} from 'lucide-react'
+
+// Importação dos componentes de Layout e UI atômicos do projeto
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -9,189 +52,383 @@ import { Card } from '@/components/ui/Card'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
-import type { Cliente, Documento, DocumentoTipo, HistoricoLocacaoCliente } from '@/types'
 
-// ——— Tipos de documentos disponíveis ———
-const DOC_LABELS: Record<DocumentoTipo, string> = {
-  cnh: 'CNH',
-  comprovante_residencia: 'Comprovante de Residência',
-  contrato: 'Contrato',
-  identificacao: 'RG / Identificação',
-  caucao: 'Comprovante de Caução',
-  outro: 'Outro',
+// Importação das definições de tipos para garantir integridade de dados (TypeScript)
+import type { 
+  Customer,                  // Estrutura principal do objeto Cliente
+  Document,                // Estrutura de um arquivo anexo
+  DocumentType,        // Enum de tipos suportados (cnh, rg, etc)
+  CustomerRentalHistory // Registro de locações passadas
+} from '@/types'
+
+/**
+ * MAPA: DOCUMENT_LABELS
+ * 
+ * Traduz as chaves técnicas do banco de dados para nomes amigáveis em Português.
+ * Utilizado em labels de formulários e cabeçalhos de visualização.
+ */
+const DOCUMENT_LABELS: Record<DocumentType, string> = {
+  drivers_license: 'Carteira de Habilitação (CNH)',
+  proof_of_residence: 'Comprovante de Residência',
+  contract: 'Contrato',
+  identification: 'Identidade (RG)',
+  deposit: 'Caução',
+  other: 'Outro',
 }
 
-const DOC_TIPOS: { value: DocumentoTipo; label: string }[] = Object.entries(DOC_LABELS).map(
-  ([value, label]) => ({ value: value as DocumentoTipo, label })
+/**
+ * ARRAY: DOCUMENT_TYPES
+ * 
+ * Converte o objeto DOCUMENT_LABELS em um formato compatível com o componente <Select />.
+ */
+const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = Object.entries(DOCUMENT_LABELS).map(
+  ([value, label]) => ({ value: value as DocumentType, label })
 )
 
-// ——— Dados mock ———
-const mockClientes: Cliente[] = [
+/**
+ * MOCK DATA: mockCustomers
+ * 
+ * Conjunto de dados estáticos para desenvolvimento e testes de interface.
+ * Simula clientes reais do sistema GoMoto, incluindo ex-clientes com pendências.
+ */
+const mockCustomers: Customer[] = [
   {
-    id: '1', nome: 'FABRICIO DO VALE NEPOMUCENO', cpf: '129.616.867-09', rg: '207189267', uf: 'RJ',
-    telefone: '21 98776-4348', email: '', endereco: 'R ADELINO 12 - ROLLAS 2 - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    cep: '23590-170', contato_emergencia: 'MÃE: (21) 99184-7214 | IRMÃO: (21) 96577-2573',
-    cnh: '4372430975', cnh_validade: '', cnh_categoria: 'A', status_pagamento: 'Caução pago',
-    na_fila: false, observacoes: '', documentos: [],
-    created_at: '2025-06-20T10:00:00Z', updated_at: '2025-06-20T10:00:00Z',
+    id: '1', 
+    name: 'FABRICIO DO VALE NEPOMUCENO', 
+    cpf: '129.616.867-09', 
+    rg: '207189267', 
+    state: 'RJ',
+    phone: '21 98776-4348', 
+    email: '', 
+    address: 'R ADELINO 12 - ROLLAS 2 - SANTA CRUZ - RIO DE JANEIRO - RJ',
+    zip_code: '23590-170', 
+    emergency_contact: 'MÃE: (21) 99184-7214 | IRMÃO: (21) 96577-2573',
+    drivers_license: '4372430975', 
+    drivers_license_validity: '', 
+    drivers_license_category: 'A', 
+    payment_status: 'Caução pago',
+    in_queue: false, 
+    observations: '', 
+    documents: [],
+    created_at: '2025-06-20T10:00:00Z', 
+    updated_at: '2025-06-20T10:00:00Z',
   },
   {
-    id: '2', nome: 'DOUGLAS DOS SANTOS SIMÔES', cpf: '173.964.027-60', rg: '300246329', uf: 'RJ',
-    telefone: '21 97389-7602', email: '', endereco: 'ESTRADA DE SEPETIBA N 595 - BLOCO 09 CASA 02 - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    cep: '23520-660', contato_emergencia: 'ESPOSA: (21) 96683-1232 | MÃE: (21) 97876-1439',
-    cnh: '7601971200', cnh_validade: '', cnh_categoria: 'A', status_pagamento: 'Caução pago',
-    na_fila: false, observacoes: '', documentos: [],
-    created_at: '2025-10-23T10:00:00Z', updated_at: '2025-10-23T10:00:00Z',
+    id: '2', 
+    name: 'DOUGLAS DOS SANTOS SIMÔES', 
+    cpf: '173.964.027-60', 
+    rg: '300246329', 
+    state: 'RJ',
+    phone: '21 97389-7602', 
+    email: '', 
+    address: 'ESTRADA DE SEPETIBA N 595 - BLOCO 09 CASA 02 - SANTA CRUZ - RIO DE JANEIRO - RJ',
+    zip_code: '23520-660', 
+    emergency_contact: 'ESPOSA: (21) 96683-1232 | MÃE: (21) 97876-1439',
+    drivers_license: '7601971200', 
+    drivers_license_validity: '', 
+    drivers_license_category: 'A', 
+    payment_status: 'Caução pago',
+    in_queue: false, 
+    observations: '', 
+    documents: [],
+    created_at: '2025-10-23T10:00:00Z', 
+    updated_at: '2025-10-23T10:00:00Z',
   },
   {
-    id: '3', nome: 'FLAVIO SILVA COUTINHO', cpf: '054.666.677-41', rg: '8466667741', uf: 'RJ',
-    telefone: '21 96445-2588', email: '', endereco: 'RUA ITAMBARACA SN CASA 2 LT 11 QD 124 - COSMOS - RIO DE JANEIRO - RJ',
-    cep: '23060-070', contato_emergencia: 'GUILHERME (filho): (21) 95947-8641 | MARIANA (filha): (21) 95904-1370',
-    cnh: '4201494036', cnh_validade: '', cnh_categoria: 'A', status_pagamento: 'Caução pago',
-    na_fila: false, observacoes: '', documentos: [],
-    created_at: '2025-02-06T10:00:00Z', updated_at: '2025-02-06T10:00:00Z',
+    id: '3', 
+    name: 'FLAVIO SILVA COUTINHO', 
+    cpf: '054.666.677-41', 
+    rg: '8466667741', 
+    state: 'RJ',
+    phone: '21 96445-2588', 
+    email: '', 
+    address: 'RUA ITAMBARACA SN CASA 2 LT 11 QD 124 - COSMOS - RIO DE JANEIRO - RJ',
+    zip_code: '23060-070', 
+    emergency_contact: 'GUILHERME (filho): (21) 95947-8641 | MARIANA (filha): (21) 95904-1370',
+    drivers_license: '4201494036', 
+    drivers_license_validity: '', 
+    drivers_license_category: 'A', 
+    payment_status: 'Caução pago',
+    in_queue: false, 
+    observations: '', 
+    documents: [],
+    created_at: '2025-02-06T10:00:00Z', 
+    updated_at: '2025-02-06T10:00:00Z',
   },
   {
-    id: '4', nome: 'ALEXANDRE DANTAS DAS SILVA', cpf: '099.762.467-14', rg: '12488178', uf: 'RJ',
-    telefone: '21 98116-5350', email: '', endereco: 'CAMINHO DE TUTOIA 1SN QD 120 FUNDOS - COSMOS - RIO DE JANEIRO - RJ',
-    cep: '23060-275', contato_emergencia: '(21) 98116-5350',
-    cnh: '9225925768', cnh_validade: '', cnh_categoria: 'A', status_pagamento: 'Caução pago',
-    na_fila: false, observacoes: '', documentos: [],
-    created_at: '2026-03-09T10:00:00Z', updated_at: '2026-03-09T10:00:00Z',
+    id: '4', 
+    name: 'ALEXANDRE DANTAS DAS SILVA', 
+    cpf: '099.762.467-14', 
+    rg: '12488178', 
+    state: 'RJ',
+    phone: '21 98116-5350', 
+    email: '', 
+    address: 'CAMINHO DE TUTOIA 1SN QD 120 FUNDOS - COSMOS - RIO DE JANEIRO - RJ',
+    zip_code: '23060-275', 
+    emergency_contact: '(21) 98116-5350',
+    drivers_license: '9225925768', 
+    drivers_license_validity: '', 
+    drivers_license_category: 'A', 
+    payment_status: 'Caução pago',
+    in_queue: false, 
+    observations: '', 
+    documents: [],
+    created_at: '2026-03-09T10:00:00Z', 
+    updated_at: '2026-03-09T10:00:00Z',
   },
-  // ——— Ex-clientes ———
+  
+  /* 
+   * SEÇÃO: EX-CLIENTES (HISTÓRICO)
+   * Representa clientes que já utilizaram o sistema mas estão inativos.
+   * Crucial para identificar inadimplentes recorrentes.
+   */
   {
-    id: 'ex1', nome: 'JOHNNY TAVARES', cpf: '145.525.957-84', rg: '271370075', uf: 'RJ',
-    telefone: '21 98662-9070', email: '', endereco: 'AV. JOÃO XXIII, 1050 BL 08 APT 401 MIKONOS - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    cep: '23560-903', contato_emergencia: '',
-    cnh: '', cnh_validade: '', cnh_categoria: 'A', status_pagamento: '',
-    na_fila: false, ativo: false,
-    data_saida: '2024-10-15',
-    motivo_saida: 'Encerrou contrato com dívida em aberto.',
-    historico_locacao: [
-      { data_inicio: '2024-06-01', data_fim: '2024-10-15', moto_placa: 'BBB1B11', moto_modelo: 'YAMAHA/YS150 FAZER SED', motivo_saida: 'Encerrou contrato com dívida em aberto.', valor_devido: 850 },
+    id: 'ex1', 
+    name: 'JOHNNY TAVARES', 
+    cpf: '145.525.957-84', 
+    rg: '271370075', 
+    state: 'RJ',
+    phone: '21 98662-9070', 
+    email: '', 
+    address: 'AV. JOÃO XXIII, 1050 BL 08 APT 401 MIKONOS - SANTA CRUZ - RIO DE JANEIRO - RJ',
+    zip_code: '23560-903', 
+    emergency_contact: '',
+    drivers_license: '', 
+    drivers_license_validity: '', 
+    drivers_license_category: 'A', 
+    payment_status: '',
+    in_queue: false, 
+    active: false, // Flag de inatividade
+    departure_date: '2024-10-15',
+    departure_reason: 'Encerrou contrato com dívida em aberto.',
+    rental_history: [
+      { 
+        start_date: '2024-06-01', 
+        end_date: '2024-10-15', 
+        motorcycle_license_plate: 'BBB1B11', 
+        motorcycle_model: 'YAMAHA/YS150 FAZER SED', 
+        departure_reason: 'Encerrou contrato com dívida em aberto.', 
+        amount_due: 850 
+      },
     ],
-    observacoes: 'Motorista de aplicativo. Comprovante de residência de Realengo — pendência de Santa Cruz.', documentos: [],
-    created_at: '2024-06-01T10:00:00Z', updated_at: '2024-10-15T10:00:00Z',
+    observations: 'Motorista de aplicativo. Comprovante de residência de Realengo — pendência de Santa Cruz.', 
+    documents: [],
+    created_at: '2024-06-01T10:00:00Z', 
+    updated_at: '2024-10-15T10:00:00Z',
   },
   {
-    id: 'ex2', nome: 'ANDERSON LIMA', cpf: '143.985.447-55', rg: '268137676', uf: 'RJ',
-    telefone: '21 97632-6541', email: '', endereco: 'ESTRADA DA PEDRA, 1700 - GUARATIBA - RIO DE JANEIRO - RJ',
-    cep: '23030-380', contato_emergencia: '',
-    cnh: '', cnh_validade: '', cnh_categoria: 'A', status_pagamento: '',
-    na_fila: false, ativo: false,
-    data_saida: '2025-01-20',
-    motivo_saida: 'Abandonou a moto e sumiu com dívida em aberto.',
-    historico_locacao: [
-      { data_inicio: '2024-08-01', data_fim: '2025-01-20', moto_placa: 'AAA0A00', moto_modelo: 'HONDA/CG 160 START', motivo_saida: 'Abandonou a moto e sumiu com dívida em aberto.', valor_devido: 1200 },
+    id: 'ex2', 
+    name: 'ANDERSON LIMA', 
+    cpf: '143.985.447-55', 
+    rg: '268137676', 
+    state: 'RJ',
+    phone: '21 97632-6541', 
+    email: '', 
+    address: 'ESTRADA DA PEDRA, 1700 - GUARATIBA - RIO DE JANEIRO - RJ',
+    zip_code: '23030-380', 
+    emergency_contact: '',
+    drivers_license: '', 
+    drivers_license_validity: '', 
+    drivers_license_category: 'A', 
+    payment_status: '',
+    in_queue: false, 
+    active: false,
+    departure_date: '2025-01-20',
+    departure_reason: 'Abandonou a moto e sumiu com dívida em aberto.',
+    rental_history: [
+      { 
+        start_date: '2024-08-01', 
+        end_date: '2025-01-20', 
+        motorcycle_license_plate: 'AAA0A00', 
+        motorcycle_model: 'HONDA/CG 160 START', 
+        departure_reason: 'Abandonou a moto e sumiu com dívida em aberto.', 
+        amount_due: 1200 
+      },
     ],
-    observacoes: '', documentos: [],
-    created_at: '2024-08-01T10:00:00Z', updated_at: '2025-01-20T10:00:00Z',
+    observations: '', 
+    documents: [],
+    created_at: '2024-08-01T10:00:00Z', 
+    updated_at: '2025-01-20T10:00:00Z',
   },
 ]
 
-const defaultForm = {
-  nome: '', cpf: '', rg: '', uf: 'RJ', telefone: '', email: '',
-  endereco: '', cep: '', contato_emergencia: '',
-  cnh: '', cnh_validade: '', cnh_categoria: '', status_pagamento: '', observacoes: '',
+/**
+ * ESTADO INICIAL: defaultFormState
+ * 
+ * Define o esqueleto de dados para o formulário de cadastro/edição.
+ * Garante que os componentes Input do React sejam "Controlled Components".
+ */
+const defaultFormState = {
+  name: '',               // Nome completo
+  cpf: '',                // Documento CPF
+  rg: '',                 // Documento RG
+  state: 'RJ',            // Estado de origem
+  phone: '',              // Telefone (WhatsApp)
+  email: '',              // Endereço eletrônico
+  address: '',            // Rua, número, complemento
+  zipCode: '',            // Código postal (CEP)
+  emergencyContact: '',   // Nome e tel de parentes
+  cnh: '',                // Número do registro da CNH
+  cnhExpiry: '',          // Data de validade da CNH
+  cnhCategory: '',        // Categorias habilitadas (A, B, AB)
+  paymentStatus: '',      // Descritivo do caução
+  notes: '',              // Campo de observações de texto livre
 }
 
-function clienteToForm(c: Cliente) {
+/**
+ * FUNÇÃO: customerToForm
+ * 
+ * Converte o objeto de domínio 'Customer' para o formato plano do formulário.
+ * Lida com valores nulos ou indefinidos convertendo-os em strings vazias.
+ */
+function customerToForm(customer: Customer) {
   return {
-    nome: c.nome, cpf: c.cpf, rg: c.rg ?? '', uf: c.uf ?? 'RJ',
-    telefone: c.telefone, email: c.email ?? '',
-    endereco: c.endereco ?? '', cep: c.cep ?? '',
-    contato_emergencia: c.contato_emergencia ?? '',
-    cnh: c.cnh, cnh_validade: c.cnh_validade ?? '',
-    cnh_categoria: c.cnh_categoria ?? '',
-    status_pagamento: c.status_pagamento ?? '',
-    observacoes: c.observacoes ?? '',
+    name: customer.name, 
+    cpf: customer.cpf, 
+    rg: customer.rg ?? '', 
+    state: customer.state ?? 'RJ',
+    phone: customer.phone, 
+    email: customer.email ?? '',
+    address: customer.address ?? '', 
+    zipCode: customer.zip_code ?? '',
+    emergencyContact: customer.emergency_contact ?? '',
+    cnh: customer.drivers_license, 
+    cnhExpiry: customer.drivers_license_validity ?? '',
+    cnhCategory: customer.drivers_license_category ?? '',
+    paymentStatus: customer.payment_status ?? '',
+    notes: customer.observations ?? '',
   }
 }
 
-const ufOptions = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS',
+/**
+ * CONFIGURAÇÃO: STATE_OPTIONS
+ * 
+ * Gera uma lista de objetos para o Select de Unidades Federativas.
+ */
+const STATE_OPTIONS = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS',
   'MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
 ].map((uf) => ({ value: uf, label: uf }))
 
-function getDocIcon(tipo: DocumentoTipo) {
-  const colors: Record<DocumentoTipo, string> = {
-    cnh: 'text-blue-400', comprovante_residencia: 'text-green-400',
-    contrato: 'text-purple-400', identificacao: 'text-yellow-400',
-    caucao: 'text-[#BAFF1A]', outro: 'text-[#A0A0A0]',
+/**
+ * FUNÇÃO: getDocumentIconColor
+ * 
+ * Atribui cores semânticas aos ícones de documentos para facilitar a distinção visual.
+ */
+function getDocumentIconColor(type: DocumentType) {
+  const colors: Record<DocumentType, string> = {
+    drivers_license: 'text-blue-400',                   // Azul para habilitação
+    proof_of_residence: 'text-green-400', // Verde para residência
+    contract: 'text-purple-400',            // Roxo para termos legais
+    identification: 'text-yellow-400',       // Amarelo para RG/CPF
+    deposit: 'text-[#BAFF1A]',               // Cor da marca para financeiro
+    other: 'text-[#A0A0A0]',                // Cinza para outros
   }
-  return colors[tipo] ?? 'text-[#A0A0A0]'
+  return colors[type] ?? 'text-[#A0A0A0]'
 }
 
-// ——— Card de ex-cliente ———
-function ExClienteCard({ cliente }: { cliente: Cliente }) {
-  const [expanded, setExpanded] = useState(false)
-  const totalDivida = (cliente.historico_locacao ?? []).reduce((sum, h) => sum + (h.valor_devido ?? 0), 0)
+/**
+ * SUB-COMPONENTE: FormerCustomerCard
+ * 
+ * Renderiza um painel específico para ex-clientes.
+ * Focado em transparência de dívidas e histórico operacional.
+ */
+function FormerCustomerCard({ customer }: { customer: Customer }) {
+  // Estado local para controlar a abertura do histórico de locações
+  const [isExpanded, setIsExpanded] = useState(false)
+  // Cálculo somatório do montante devido pelo ex-cliente
+  const totalDebt = (customer.rental_history ?? []).reduce((sum, h) => sum + (h.amount_due ?? 0), 0)
 
   return (
-    <div className="bg-[#202020] border border-[#2a2a2a] rounded-xl overflow-hidden opacity-75">
-      <div className="flex items-center gap-3 p-4">
-        <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
-          <UserX className="w-4 h-4 text-red-400" />
+    <div className="bg-[#202020] border border-[#2a2a2a] rounded-xl overflow-hidden opacity-85 hover:opacity-100 transition-opacity">
+      {/* Cabeçalho do Card */}
+      <div className="flex items-center gap-4 p-4">
+        {/* Avatar/Ícone de Inativo */}
+        <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+          <UserX className="w-5 h-5 text-red-400" />
         </div>
+        
+        {/* Informações Resumidas */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-sm text-[#A0A0A0]">{cliente.nome}</p>
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">
-              <UserX className="w-3 h-3" /> Ex-cliente
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="font-bold text-sm text-[#E0E0E0]">{customer.name}</p>
+            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase">
+              <UserX className="w-3 h-3" /> EX-CLIENTE
             </span>
-            {totalDivida > 0 && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold">
+            {/* Alerta de Dívida: Só exibe se houver valor > 0 */}
+            {totalDebt > 0 && (
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-[10px] font-black uppercase animate-pulse">
                 <DollarSign className="w-3 h-3" />
-                Deve R$ {totalDivida.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                DÉBITO: R$ {totalDebt.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <p className="text-xs text-[#A0A0A0] font-mono">{cliente.cpf}</p>
-            {cliente.data_saida && (
-              <p className="text-xs text-[#A0A0A0]">
-                Saiu em {new Date(cliente.data_saida + 'T12:00:00').toLocaleDateString('pt-BR')}
+          <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+            <p className="text-[11px] text-[#606060] font-mono font-bold">{customer.cpf}</p>
+            {customer.departure_date && (
+              <p className="text-[11px] text-[#606060] font-medium italic">
+                Encerramento em {new Date(customer.departure_date + 'T12:00:00').toLocaleDateString('pt-BR')}
               </p>
-            )}
-            {cliente.motivo_saida && (
-              <p className="text-xs text-red-400/70 truncate max-w-xs">{cliente.motivo_saida}</p>
             )}
           </div>
         </div>
-        {(cliente.historico_locacao ?? []).length > 0 && (
+        
+        {/* Gatilho de Expansão (Accordion) */}
+        {(customer.rental_history ?? []).length > 0 && (
           <button
-            onClick={() => setExpanded((v) => !v)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors flex-shrink-0"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="p-2 rounded-xl text-[#606060] hover:text-white hover:bg-white/5 transition-all flex-shrink-0 border border-transparent hover:border-white/10"
+            title={isExpanded ? "Ocultar Histórico" : "Ver Histórico de Locações"}
           >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>
         )}
       </div>
 
-      {expanded && (
-        <div className="border-t border-[#2a2a2a] px-4 pb-4 pt-3 space-y-3">
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Histórico de locações</p>
-          {(cliente.historico_locacao ?? []).map((h: HistoricoLocacaoCliente, i: number) => (
-            <div key={i} className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a] space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                {h.moto_placa && <span className="font-mono text-xs text-white font-semibold">{h.moto_placa}</span>}
-                {h.moto_modelo && <span className="text-xs text-[#A0A0A0]">{h.moto_modelo}</span>}
-                <span className="text-xs text-[#A0A0A0]">
-                  {new Date(h.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
-                  {h.data_fim && ` → ${new Date(h.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}`}
-                </span>
+      {/* PAINEL EXPANSÍVEL: Histórico e Motivações */}
+      {isExpanded && (
+        <div className="border-t border-[#2a2a2a] px-4 pb-4 pt-4 space-y-4 bg-black/10">
+          <h6 className="text-[10px] text-[#BAFF1A] font-black uppercase tracking-[0.2em] ml-1">Log de Locações Passadas</h6>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {(customer.rental_history ?? []).map((h: CustomerRentalHistory, i: number) => (
+              <div key={i} className="p-4 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-3">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    {h.motorcycle_license_plate && <span className="font-mono text-xs text-white font-bold bg-white/5 px-2 py-0.5 rounded border border-white/10">{h.motorcycle_license_plate}</span>}
+                    {h.motorcycle_model && <span className="text-xs text-[#A0A0A0] font-medium">{h.motorcycle_model}</span>}
+                  </div>
+                  <span className="text-[11px] text-[#606060] font-bold">
+                    {new Date(h.start_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                    {h.end_date && ` — ${new Date(h.end_date + 'T12:00:00').toLocaleDateString('pt-BR')}`}
+                  </span>
+                </div>
+                
+                {/* Detalhamento do encerramento */}
+                <div className="space-y-1">
+                  <p className="text-xs text-[#A0A0A0] font-medium leading-relaxed">
+                    <span className="text-red-400 font-bold uppercase text-[9px] mr-2">Motivo da Saída:</span> 
+                    {h.departure_reason}
+                  </p>
+                  {h.amount_due && (
+                    <p className="flex items-center gap-1.5 text-xs text-orange-400 font-black">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      VALOR EM ABERTO NO CONTRATO: R$ {h.amount_due.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-orange-400">{h.motivo_saida}</p>
-              {h.valor_devido && (
-                <span className="flex items-center gap-1 text-xs text-red-400 font-semibold">
-                  <DollarSign className="w-3 h-3" />
-                  Deve R$ {h.valor_devido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
-              )}
+            ))}
+          </div>
+          
+          {/* Observações administrativas críticas */}
+          {customer.observations && (
+            <div className="mt-4 p-3 bg-red-500/5 rounded-lg border border-red-500/10">
+              <p className="text-[11px] text-red-300 font-medium italic leading-relaxed">
+                <span className="font-black not-italic text-red-400 mr-2">NOTA INTERNA:</span>
+                {customer.observations}
+              </p>
             </div>
-          ))}
-          {cliente.observacoes && (
-            <p className="text-xs text-[#A0A0A0] italic">{cliente.observacoes}</p>
           )}
         </div>
       )}
@@ -199,230 +436,375 @@ function ExClienteCard({ cliente }: { cliente: Cliente }) {
   )
 }
 
-// ——— Modal de Documentos ———
-function DocumentosModal({
-  cliente,
+/**
+ * MODAL: DocumentsModal
+ * 
+ * Interface dedicada para o gerenciamento documental do locatário.
+ */
+function DocumentsModal({
+  customer,
   onClose,
   onUpdate,
 }: {
-  cliente: Cliente
+  customer: Customer
   onClose: () => void
-  onUpdate: (id: string, docs: Documento[]) => void
+  onUpdate: (id: string, docs: Document[]) => void
 }) {
-  const [docs, setDocs] = useState<Documento[]>(cliente.documentos ?? [])
-  const [tipoSelecionado, setTipoSelecionado] = useState<DocumentoTipo>('cnh')
-  const fileRef = useRef<HTMLInputElement>(null)
+  // Estado local sincronizado com a lista de documentos do cliente
+  const [docs, setDocs] = useState<Document[]>(customer.documents ?? [])
+  // Tipo de documento selecionado no dropdown de envio
+  const [selectedType, setSelectedType] = useState<DocumentType>('drivers_license')
+  // Referência para o input hidden de arquivos
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
+  /**
+   * HANDLER: handleFileChange
+   * 
+   * Simula o fluxo de upload: lê arquivo local, gera ID e URL Blob.
+   */
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    const novo: Documento = {
-      id: String(Date.now()),
-      tipo: tipoSelecionado,
-      nome: file.name,
-      url: URL.createObjectURL(file),
-      uploaded_at: new Date().toISOString(),
+    if (!file) return // Sai se o usuário cancelar a seleção
+    
+    // Criação do objeto Documento
+    const newDoc: Document = {
+      id: String(Date.now()),           // Gera ID único por timestamp
+      type: selectedType,              // Tipo definido no Select
+      name: file.name,                 // Nome original do arquivo
+      url: URL.createObjectURL(file),  // Gera URL temporária para preview
+      uploaded_at: new Date().toISOString(), // Timestamp do upload
     }
-    const updated = [...docs, novo]
-    setDocs(updated)
-    onUpdate(cliente.id, updated)
-    if (fileRef.current) fileRef.current.value = ''
+    
+    const updatedDocs = [...docs, newDoc]
+    setDocs(updatedDocs)               // Atualiza estado local do modal
+    onUpdate(customer.id, updatedDocs) // Notifica o componente pai
+    
+    // Reseta o input para permitir enviar o mesmo arquivo novamente se necessário
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  function handleRemover(id: string) {
-    const updated = docs.filter((d) => d.id !== id)
-    setDocs(updated)
-    onUpdate(cliente.id, updated)
+  /**
+   * HANDLER: handleRemoveDocument
+   * 
+   * Remove fisicamente um documento do registro.
+   */
+  function handleRemoveDocument(id: string) {
+    const updatedDocs = docs.filter((d) => d.id !== id)
+    setDocs(updatedDocs)
+    onUpdate(customer.id, updatedDocs)
   }
 
-  const docsOrdenados = [...docs].sort((a, b) => a.tipo.localeCompare(b.tipo))
+  // Ordenação alfabética por tipo para exibição consistente
+  const sortedDocs = [...docs].sort((a, b) => a.type.localeCompare(b.type))
 
   return (
-    <Modal open onClose={onClose} title="Documentos" size="lg">
-      <div className="space-y-5">
-        {/* Cabeçalho cliente */}
-        <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-          <p className="text-xs text-[#A0A0A0]">Cliente</p>
-          <p className="font-semibold text-white">{cliente.nome}</p>
-          <p className="text-xs text-[#A0A0A0] font-mono">{cliente.cpf}</p>
+    <Modal open onClose={onClose} title="Gestão de Arquivos e Documentação" size="lg">
+      <div className="space-y-6">
+        
+        {/* HEADER DO MODAL: Identificação rápida do proprietário dos docs */}
+        <div className="p-4 rounded-xl bg-[#2a2a2a]/50 border border-[#333333] flex items-center justify-between">
+          <div>
+            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest mb-1">Dono do Documento</p>
+            <p className="font-bold text-white text-base">{customer.name}</p>
+            <p className="text-xs text-[#A0A0A0] font-mono mt-0.5">{customer.cpf}</p>
+          </div>
+          <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#606060]">
+            <FolderOpen className="w-6 h-6" />
+          </div>
         </div>
 
-        {/* Upload */}
-        <div className="flex gap-3 items-end">
+        {/* ÁREA DE ENVIO: Seleção de tipo e Gatilho de arquivo */}
+        <div className="flex gap-4 items-end bg-[#1a1a1a] p-5 rounded-2xl border border-white/5">
           <div className="flex-1">
             <Select
-              label="Tipo de documento"
-              options={DOC_TIPOS}
-              value={tipoSelecionado}
-              onChange={(e) => setTipoSelecionado(e.target.value as DocumentoTipo)}
+              label="Selecione o tipo de documento a enviar"
+              options={DOCUMENT_TYPES}
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value as DocumentType)}
             />
           </div>
-          <input ref={fileRef} type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png,.webp" />
-          <Button onClick={() => fileRef.current?.click()} variant="secondary">
+          {/* Input oculto acionado programaticamente */}
+          <input 
+            ref={fileInputRef} 
+            type="file" 
+            className="hidden" 
+            onChange={handleFileChange} 
+            accept=".pdf,.jpg,.jpeg,.png,.webp" 
+          />
+          <Button 
+            onClick={() => fileInputRef.current?.click()} 
+            variant="secondary" 
+            className="mb-0.5 h-[42px] px-6 shadow-xl"
+          >
             <Upload className="w-4 h-4" />
-            Enviar arquivo
+            SUBIR ARQUIVO
           </Button>
         </div>
 
-        {/* Lista de documentos */}
-        {docsOrdenados.length === 0 ? (
-          <div className="text-center py-8 border border-dashed border-[#333333] rounded-xl">
-            <FolderOpen className="w-8 h-8 text-[#888888] mx-auto mb-2" />
-            <p className="text-sm text-[#A0A0A0]">Nenhum documento enviado</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {docsOrdenados.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#2a2a2a] border border-[#333333]">
-                <FileText className={`w-4 h-4 flex-shrink-0 ${getDocIcon(doc.tipo)}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{doc.nome}</p>
-                  <p className="text-xs text-[#A0A0A0]">
-                    {DOC_LABELS[doc.tipo]} · {new Date(doc.uploaded_at).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {doc.url && (
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
-                      title="Visualizar"
+        {/* LISTAGEM: Arquivos armazenados no sistema */}
+        <div className="space-y-3">
+          <h6 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] ml-1">Arquivos no Prontuário</h6>
+          
+          {sortedDocs.length === 0 ? (
+            /* Estado Vazio */
+            <div className="text-center py-16 border-2 border-dashed border-[#2a2a2a] rounded-2xl bg-black/5">
+              <FolderOpen className="w-12 h-12 text-[#333333] mx-auto mb-3" />
+              <p className="text-sm text-[#555555] font-medium italic">Nenhum documento digitalizado até o momento.</p>
+            </div>
+          ) : (
+            /* Lista de Cards de Documento */
+            <div className="grid grid-cols-1 gap-2">
+              {sortedDocs.map((doc) => (
+                <div key={doc.id} className="group flex items-center gap-4 p-4 rounded-xl bg-[#202020] border border-[#333333] hover:border-[#555555] transition-all">
+                  <div className={`p-2.5 rounded-lg bg-white/5 ${getDocumentIconColor(doc.type)}`}>
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{doc.name}</p>
+                    <p className="text-[10px] text-[#606060] font-black uppercase tracking-tight mt-1">
+                      {DOCUMENT_LABELS[doc.type]} • Enviado em {new Date(doc.uploaded_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Botão de Visualização */}
+                    {doc.url && (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-xl text-[#A0A0A0] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/10 transition-colors"
+                        title="Ver arquivo original"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                    {/* Botão de Remoção */}
+                    <button
+                      onClick={() => handleRemoveDocument(doc.id)}
+                      className="p-2 rounded-xl text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="Excluir documento permanentemente"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  <button
-                    onClick={() => handleRemover(doc.id)}
-                    className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
-                    title="Remover"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Checklist de documentos obrigatórios */}
-        <div className="border-t border-[#333333] pt-4">
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Documentos obrigatórios</p>
-          <div className="grid grid-cols-2 gap-2">
-            {(['cnh', 'identificacao', 'comprovante_residencia', 'contrato', 'caucao'] as DocumentoTipo[]).map((tipo) => {
-              const enviado = docs.some((d) => d.tipo === tipo)
+        {/* CHECKLIST: Status da Documentação Obrigatória */}
+        <div className="border-t border-[#333333] pt-6 mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em]">Checklist de Auditoria</p>
+            {/* Indicador de progresso total */}
+            <span className="text-[10px] font-bold text-[#A0A0A0] bg-white/5 px-2 py-0.5 rounded">
+              {docs.length}/5 ITENS
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {(['drivers_license', 'identification', 'proof_of_residence', 'contract', 'deposit'] as DocumentType[]).map((type) => {
+              const isSent = docs.some((d) => d.type === type)
               return (
-                <div key={tipo} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg ${
-                  enviado ? 'text-green-400 bg-green-500/5' : 'text-[#A0A0A0] bg-white/[0.02]'
+                <div key={type} className={`flex items-center gap-3 text-[11px] font-bold px-3 py-2.5 rounded-xl border transition-all ${
+                  isSent 
+                    ? 'text-green-400 bg-green-500/5 border-green-500/10' 
+                    : 'text-[#555555] bg-white/[0.01] border-[#252525] grayscale'
                 }`}>
-                  {enviado
-                    ? <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    : <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  {isSent
+                    ? <CheckCircle className="w-4 h-4 flex-shrink-0 animate-in zoom-in-50" />
+                    : <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   }
-                  {DOC_LABELS[tipo]}
+                  <span className="truncate">{DOCUMENT_LABELS[type].split(' (')[0]}</span>
                 </div>
               )
             })}
           </div>
         </div>
 
-        <div className="flex justify-end pt-1">
-          <Button variant="ghost" onClick={onClose}>Fechar</Button>
+        {/* Ações de Fechamento */}
+        <div className="flex justify-end pt-2">
+          <Button variant="ghost" onClick={onClose} className="px-10">CONCLUÍDO</Button>
         </div>
       </div>
     </Modal>
   )
 }
 
-// ——— Componente principal ———
-export default function ClientesPage() {
-  const [clientes, setClientes] = useState<Cliente[]>(mockClientes)
+/**
+ * COMPONENTE PRINCIPAL: CustomersPage
+ * 
+ * Gerencia a listagem dinâmica e operações de negócio de Clientes.
+ */
+export default function CustomersPage() {
+  /*
+   * ESTADOS DE DADOS E NAVEGAÇÃO
+   */
+  // Master list de clientes vindos do "DB"
+  const [customers, setCustomers] = useState<Customer[]>(mockCustomers)
+  // Texto dinâmico de busca global
   const [search, setSearch] = useState('')
+  // Visibilidade do modal de CRUD
   const [modalOpen, setModalOpen] = useState(false)
+  // Identificador de edição: null = Novo / string = ID existente
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState(defaultForm)
-  const [detailsCliente, setDetailsCliente] = useState<Cliente | null>(null)
-  const [deleteCliente, setDeleteCliente] = useState<Cliente | null>(null)
-  const [docsCliente, setDocsCliente] = useState<Cliente | null>(null)
-  const [showExClientes, setShowExClientes] = useState(false)
+  // Estado local do formulário preenchido pelo usuário
+  const [form, setForm] = useState(defaultFormState)
+  // Seleção de um cliente para ver o perfil completo em modo leitura
+  const [customerDetails, setCustomerDetails] = useState<Customer | null>(null)
+  // Seleção de um cliente para confirmação de deleção
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
+  // Seleção de um cliente para o fluxo de documentos
+  const [customerDocsModal, setCustomerDocsModal] = useState<Customer | null>(null)
+  // Controla a visibilidade da seção de inativos
+  const [showFormerCustomers, setShowFormerCustomers] = useState(false)
+  // Valor da tab ativa (Todos, Ativos, Fila)
+  const [statusFilter, setStatusFilter] = useState('todos')
 
-  const ativos = clientes.filter((c) => c.ativo !== false)
-  const exClientes = clientes.filter((c) => c.ativo === false)
+  /*
+   * DERIVAÇÃO DE DADOS (Memoized Logic)
+   */
+  // Separação lógica entre quem está no sistema e quem já saiu
+  const activeCustomers = customers.filter((c) => c.active !== false)
+  const formerCustomers = customers.filter((c) => c.active === false)
 
-  const tabsStatus = [
-    { label: 'Todos', value: 'todos' },
-    { label: 'Ativos', value: 'ativo' },
-    { label: 'Na Fila', value: 'fila' },
+  // Configuração das abas de filtro superior
+  const statusTabs = [
+    { label: 'Todos os Clientes', value: 'todos' },
+    { label: 'Contratos Ativos', value: 'ativo' },
+    { label: 'Na Fila de Espera', value: 'fila' },
   ]
 
-  const [filtroStatus, setFiltroStatus] = useState('todos')
-
-  const filtered = ativos.filter((c) => {
-    const passaBusca =
-      c.nome.toLowerCase().includes(search.toLowerCase()) ||
+  /**
+   * LÓGICA: filteredCustomers
+   * 
+   * Filtra em tempo real os clientes ativos com base no texto de busca e na tab selecionada.
+   */
+  const filteredCustomers = activeCustomers.filter((c) => {
+    // Busca por Nome, CPF ou Telefone (case-insensitive)
+    const passesSearch =
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.cpf.includes(search) ||
-      c.telefone.includes(search)
-    const passFiltro =
-      filtroStatus === 'fila' ? c.na_fila === true :
-      filtroStatus === 'ativo' ? !c.na_fila :
-      true
-    return passaBusca && passFiltro
+      c.phone.includes(search)
+    
+    // Filtro por categoria operacional
+    const passesFilter =
+      statusFilter === 'fila' ? c.in_queue === true :      // Apenas quem aguarda moto
+      statusFilter === 'ativo' ? !c.in_queue :             // Apenas quem já está rodando
+      true                                               // Exibe ambos
+      
+    return passesSearch && passesFilter
   })
 
-  function openNovoCliente() { setEditingId(null); setForm(defaultForm); setModalOpen(true) }
-  function openEditCliente(c: Cliente) { setEditingId(c.id); setForm(clienteToForm(c)); setModalOpen(true) }
+  /*
+   * HANDLERS OPERACIONAIS
+   */
+  // Inicia cadastro de novo cliente limpando o formulário
+  function openNewCustomer() { 
+    setEditingId(null); 
+    setForm(defaultFormState); 
+    setModalOpen(true) 
+  }
+  
+  // Inicia edição carregando dados atuais do cliente no form
+  function openEditCustomer(c: Customer) { 
+    setEditingId(c.id); 
+    setForm(customerToForm(c)); 
+    setModalOpen(true) 
+  }
 
+  /**
+   * HANDLER: handleSubmit
+   * 
+   * Salva os dados capturados pelo formulário.
+   */
   function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const data: Partial<Cliente> = {
-      nome: form.nome.toUpperCase(), cpf: form.cpf, rg: form.rg, uf: form.uf,
-      telefone: form.telefone, email: form.email, endereco: form.endereco, cep: form.cep,
-      contato_emergencia: form.contato_emergencia,
-      cnh: form.cnh, cnh_validade: form.cnh_validade, cnh_categoria: form.cnh_categoria,
-      status_pagamento: form.status_pagamento, observacoes: form.observacoes,
+    e.preventDefault() // Impede postback do form HTML
+    
+    // Objeto de dados higienizado e formatado
+    const data: Partial<Customer> = {
+      name: form.name.toUpperCase(),           // Padroniza nomes em MAIÚSCULO
+      cpf: form.cpf, 
+      rg: form.rg, 
+      state: form.state,
+      phone: form.phone, 
+      email: form.email.toLowerCase(),         // E-mail em minúsculo
+      address: form.address, 
+      zip_code: form.zipCode,
+      emergency_contact: form.emergencyContact,
+      drivers_license: form.cnh, 
+      drivers_license_validity: form.cnhExpiry, 
+      drivers_license_category: form.cnhCategory.toUpperCase(),
+      payment_status: form.paymentStatus, 
+      observations: form.notes,
       updated_at: new Date().toISOString(),
     }
+
     if (editingId) {
-      setClientes((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...data } : c)))
+      // ATUALIZAÇÃO: Substitui o item no array preservando campos não editáveis
+      setCustomers((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...data } : c)))
     } else {
-      setClientes((prev) => [{
-        id: String(Date.now()), na_fila: false, documentos: [],
-        created_at: new Date().toISOString(), ...data,
-      } as Cliente, ...prev])
+      // INSERÇÃO: Cria novo objeto com campos obrigatórios do sistema
+      setCustomers((prev) => [{
+        id: String(Date.now()), // ID fictício
+        in_queue: false,         // Por padrão entra como ativo (ajustável no dashboard)
+        documents: [],         // Inicia sem documentos
+        created_at: new Date().toISOString(), 
+        ...data,
+      } as Customer, ...prev])
     }
-    setModalOpen(false)
+    
+    setModalOpen(false) // Fecha o modal após sucesso
   }
 
-  function handleDelete(c: Cliente) {
-    setClientes((prev) => prev.filter((x) => x.id !== c.id))
-    setDeleteCliente(null)
+  // Remove o cliente do estado local
+  function handleDeleteCustomer(c: Customer) {
+    setCustomers((prev) => prev.filter((x) => x.id !== c.id))
+    setDeletingCustomer(null)
   }
 
-  function handleUpdateDocs(clienteId: string, docs: Documento[]) {
-    setClientes((prev) => prev.map((c) => c.id === clienteId ? { ...c, documentos: docs } : c))
-    // atualiza o modal aberto também
-    setDocsCliente((prev) => prev && prev.id === clienteId ? { ...prev, documentos: docs } : prev)
+  // Atualiza a sub-coleção de documentos de um cliente específico
+  function handleUpdateDocuments(customerId: string, docs: Document[]) {
+    // Atualiza na lista principal de clientes
+    setCustomers((prev) => prev.map((c) => c.id === customerId ? { ...c, documents: docs } : c))
+    // Sincroniza o modal de detalhes se estiver aberto para o mesmo cliente
+    setCustomerDocsModal((prev) => prev && prev.id === customerId ? { ...prev, documents: docs } : prev)
   }
 
+  /**
+   * DEFINIÇÃO: columns
+   * 
+   * Estrutura de dados que descreve como renderizar cada célula da tabela de clientes.
+   */
   const columns = [
     {
-      key: 'nome', header: 'Nome',
-      render: (row: Cliente) => (
-        <div>
-          <p className="font-medium text-white text-sm">{row.nome}</p>
-          <p className="text-xs text-[#A0A0A0] font-mono mt-0.5">{row.cpf}</p>
+      key: 'name', 
+      header: 'Nome do Locatário',
+      render: (row: Customer) => (
+        <div className="py-1">
+          <p className="font-bold text-white text-sm group-hover:text-[#BAFF1A] transition-colors">{row.name}</p>
+          <p className="text-[10px] text-[#606060] font-mono font-bold mt-1 tracking-tighter">{row.cpf}</p>
         </div>
       ),
     },
     {
-      key: 'telefone', header: 'Telefone',
-      render: (row: Cliente) => {
-        const numero = row.telefone.replace(/\D/g, '')
+      key: 'phone', 
+      header: 'Contato WhatsApp',
+      render: (row: Customer) => {
+        // Remove caracteres não numéricos para o link da API do WhatsApp
+        const cleanedNumber = row.phone.replace(/\D/g, '')
         return (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{row.telefone}</span>
-            <a href={`https://web.whatsapp.com/send?phone=55${numero}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="opacity-80 hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-[#A0A0A0]">{row.phone}</span>
+            {/* Atalho WebWhatsApp com DDI fixo para Brasil (55) */}
+            <a 
+              href={`https://web.whatsapp.com/send?phone=55${cleanedNumber}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              title="Iniciar conversa no WhatsApp" 
+              className="w-7 h-7 bg-[#25D366]/10 rounded-lg flex items-center justify-center hover:bg-[#25D366]/20 transition-all border border-[#25D366]/20"
+            >
               <svg viewBox="0 0 32 32" className="w-4 h-4"><path d="M16 0C7.163 0 0 7.163 0 16c0 2.833.742 5.493 2.043 7.805L0 32l8.418-2.01A15.937 15.937 0 0 0 16 32c8.837 0 16-7.163 16-16S24.837 0 16 0z" fill="#25D366"/><path d="M23.07 19.44c-.356-.178-2.107-1.04-2.434-1.16-.327-.12-.565-.178-.803.178-.238.356-.921 1.16-1.129 1.397-.208.238-.416.267-.772.089-.356-.178-1.503-.554-2.863-1.766-1.058-.944-1.772-2.109-1.98-2.465-.208-.356-.022-.548.156-.726.16-.16.356-.416.534-.624.178-.208.237-.356.356-.594.119-.238.06-.446-.03-.624-.089-.178-.803-1.935-1.1-2.649-.29-.695-.585-.6-.803-.611l-.683-.012c-.238 0-.624.089-.951.446-.327.356-1.248 1.219-1.248 2.974 0 1.754 1.278 3.449 1.456 3.687.178.238 2.514 3.836 6.092 5.381.852.367 1.517.587 2.035.752.855.272 1.634.234 2.249.142.686-.102 2.107-.861 2.404-1.693.297-.832.297-1.545.208-1.693-.089-.149-.327-.238-.683-.416z" fill="#fff"/></svg>
             </a>
           </div>
@@ -430,131 +812,193 @@ export default function ClientesPage() {
       },
     },
     {
-      key: 'cnh', header: 'CNH',
-      render: (row: Cliente) => (
-        <div>
-          <p className="font-mono text-sm text-white">{row.cnh}</p>
-          {row.cnh_validade
-            ? <p className="text-xs text-[#A0A0A0] mt-0.5">Válida até {new Date(row.cnh_validade + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
-            : <p className="text-xs text-amber-400/70 mt-0.5">Validade pendente</p>
+      key: 'drivers_license', 
+      header: 'Registro CNH',
+      render: (row: Customer) => (
+        <div className="min-w-[120px]">
+          <p className="font-mono text-sm text-white font-bold">{row.drivers_license}</p>
+          {row.drivers_license_validity
+            ? <p className="text-[10px] text-[#606060] font-bold mt-0.5 uppercase tracking-tighter">Val.: {new Date(row.drivers_license_validity + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+            : <p className="text-[10px] text-amber-500/60 font-black mt-0.5 uppercase tracking-tighter">Validade não informada</p>
           }
         </div>
       ),
     },
     {
-      key: 'docs', header: 'Docs',
-      render: (row: Cliente) => {
-        const total = row.documentos?.length ?? 0
-        const obrigatorios: DocumentoTipo[] = ['cnh', 'identificacao', 'comprovante_residencia', 'contrato', 'caucao']
-        const ok = obrigatorios.filter((t) => row.documentos?.some((d) => d.tipo === t)).length
+      key: 'documents', 
+      header: 'Docs.',
+      render: (row: Customer) => {
+        // Lógica para contar quantos docs obrigatórios foram enviados
+        const required: DocumentType[] = ['drivers_license', 'identification', 'proof_of_residence', 'contract', 'deposit']
+        const completed = required.filter((t) => row.documents?.some((d) => d.type === t)).length
+        
+        // Cores semânticas baseadas na completude
+        const colorClass = completed === required.length ? 'text-green-400' : completed > 0 ? 'text-amber-400' : 'text-[#606060]'
+        
         return (
-          <span className={`text-xs font-medium ${ok === obrigatorios.length ? 'text-green-400' : ok > 0 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>
-            {total === 0 ? '—' : `${ok}/${obrigatorios.length}`}
-          </span>
+          <div className="flex flex-col items-center">
+             <span className={`text-[11px] font-black font-mono ${colorClass}`}>
+              {completed === 5 ? 'COMPLETO' : `${completed}/5`}
+            </span>
+            <div className="w-12 h-1 bg-white/5 rounded-full mt-1.5 overflow-hidden">
+               <div className={`h-full transition-all duration-500 ${completed === 5 ? 'bg-green-500' : 'bg-amber-500'}`} style={{width: `${(completed/5)*100}%`}} />
+            </div>
+          </div>
         )
       },
     },
     {
-      key: 'status_pagamento', header: 'Caução',
-      render: (row: Cliente) =>
-        row.status_pagamento ? (
-          <span className="flex items-center gap-1 text-xs text-green-400">
-            <CheckCircle className="w-3.5 h-3.5" /> Pago
+      key: 'payment_status', 
+      header: 'Caução / Dep.',
+      render: (row: Customer) =>
+        row.payment_status ? (
+          <span className="flex items-center gap-1.5 text-[10px] font-black text-green-400 uppercase tracking-tight bg-green-500/5 px-2 py-1 rounded-full border border-green-500/10">
+            <CheckCircle className="w-3 h-3" /> CONFIRMADO
           </span>
-        ) : <span className="text-xs text-[#A0A0A0]">—</span>,
+        ) : <span className="text-[10px] font-bold text-[#606060] uppercase tracking-widest italic">— PENDENTE —</span>,
     },
     {
-      key: 'na_fila', header: 'Status',
-      render: (row: Cliente) => row.na_fila
-        ? <Badge variant="warning">Na fila</Badge>
-        : <Badge variant="success">Ativo</Badge>,
+      key: 'in_queue', 
+      header: 'Estado Atual',
+      render: (row: Customer) => row.in_queue
+        ? <Badge variant="warning" className="font-black italic">NA FILA</Badge>
+        : <Badge variant="success" className="font-black">RODANDO</Badge>,
     },
     {
-      key: 'acoes', header: 'Ações',
-      render: (row: Cliente) => (
-        <div className="flex items-center gap-1">
-          <button onClick={() => setDetailsCliente(row)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors" title="Ver detalhes">
-            <Eye className="w-4 h-4" />
+      key: 'acoes', 
+      header: 'Ações de Gestão',
+      render: (row: Customer) => (
+        <div className="flex items-center gap-1.5">
+          {/* Visualizar Perfil */}
+          <button 
+            onClick={() => setCustomerDetails(row)} 
+            className="p-2 rounded-xl text-[#606060] hover:text-white hover:bg-white/5 transition-all border border-transparent hover:border-white/10" 
+            title="Ver ficha completa"
+          >
+            <Eye className="w-4.5 h-4.5" />
           </button>
-          <button onClick={() => openEditCliente(row)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors" title="Editar">
-            <Edit2 className="w-4 h-4" />
+          {/* Editar Dados */}
+          <button 
+            onClick={() => openEditCustomer(row)} 
+            className="p-2 rounded-xl text-[#606060] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/10 transition-all border border-transparent hover:border-[#BAFF1A]/10" 
+            title="Editar informações"
+          >
+            <Edit2 className="w-4.5 h-4.5" />
           </button>
-          <button onClick={() => setDocsCliente(row)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-colors" title="Documentos">
-            <FolderOpen className="w-4 h-4" />
+          {/* Gerir Documentos */}
+          <button 
+            onClick={() => setCustomerDocsModal(row)} 
+            className="p-2 rounded-xl text-[#606060] hover:text-blue-400 hover:bg-blue-400/10 transition-all border border-transparent hover:border-blue-400/10" 
+            title="Arquivos e Documentos"
+          >
+            <FolderOpen className="w-4.5 h-4.5" />
           </button>
-          <button onClick={() => setDeleteCliente(row)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors" title="Excluir">
-            <Trash2 className="w-4 h-4" />
+          {/* Excluir Registro */}
+          <button 
+            onClick={() => setDeletingCustomer(row)} 
+            className="p-2 rounded-xl text-[#606060] hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/10" 
+            title="Remover do sistema"
+          >
+            <Trash2 className="w-4.5 h-4.5" />
           </button>
         </div>
       ),
     },
   ]
 
+  /**
+   * RENDERIZAÇÃO DA PÁGINA: CustomersPage
+   */
   return (
     <div className="flex flex-col min-h-full">
+      {/* 
+        * CABEÇALHO PRINCIPAL
+        * Controla o título e a ação primária de adição de novo locatário.
+        */}
       <Header
-        title="Clientes"
-        subtitle={`${ativos.length} clientes ativos`}
+        title="Gestão de Clientes"
+        subtitle={`${activeCustomers.length} locatários ativos cadastrados`}
         actions={
-          <Button onClick={openNovoCliente}>
-            <Plus className="w-4 h-4" /> Novo Cliente
+          <Button onClick={openNewCustomer} className="shadow-lg shadow-[#BAFF1A]/10">
+            <Plus className="w-4 h-4" /> 
+            NOVO CADASTRO
           </Button>
         }
       />
 
-      <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex gap-2 flex-wrap">
-            {tabsStatus.map((tab) => (
+      {/* ÁREA DE CONTEÚDO */}
+      <div className="p-6 space-y-6">
+        
+        {/* BARRA DE FERRAMENTAS: Filtros e Busca Global */}
+        <div className="flex items-center gap-4 flex-wrap">
+          
+          {/* NAVEGAÇÃO POR ABAS (STATUS) */}
+          <div className="flex gap-2 flex-wrap bg-[#1a1a1a] p-1 rounded-xl border border-[#333333]">
+            {statusTabs.map((tab) => (
               <button
                 key={tab.value}
-                onClick={() => setFiltroStatus(tab.value)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  filtroStatus === tab.value
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                onClick={() => setStatusFilter(tab.value)}
+                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all duration-200 ${
+                  statusFilter === tab.value
+                    ? 'bg-[#BAFF1A] text-[#121212] shadow-inner'
+                    : 'text-[#606060] hover:text-white hover:bg-white/5'
                 }`}
               >
                 {tab.label}
+                {/* Badge numérica dentro da aba */}
                 {tab.value !== 'todos' && (
-                  <span className="ml-1.5 opacity-70">
-                    ({tab.value === 'fila'
-                      ? ativos.filter((c) => c.na_fila).length
-                      : ativos.filter((c) => !c.na_fila).length})
+                  <span className={`ml-2 text-[9px] px-1.5 py-0.5 rounded-full ${
+                    statusFilter === tab.value ? 'bg-black/10' : 'bg-white/5'
+                  }`}>
+                    {tab.value === 'fila'
+                      ? activeCustomers.filter((c) => c.in_queue).length
+                      : activeCustomers.filter((c) => !c.in_queue).length}
                   </span>
                 )}
               </button>
             ))}
           </div>
-          <div className="ml-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+
+          {/* INPUT DE PESQUISA INTELIGENTE */}
+          <div className="ml-auto relative min-w-[350px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444444]" />
             <input
-              type="text" placeholder="Buscar por nome, CPF ou telefone..."
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
+              type="text" 
+              placeholder="Pesquisar por Nome, CPF ou WhatsApp..."
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#BAFF1A]/40 focus:ring-1 focus:ring-[#BAFF1A]/10 transition-all"
             />
           </div>
         </div>
-        <Card padding="none">
-          <Table columns={columns} data={filtered} keyExtractor={(row) => row.id} emptyMessage="Nenhum cliente encontrado" />
+
+        {/* LISTAGEM DE RESULTADOS (TABELA) */}
+        <Card padding="none" className="overflow-hidden border-[#333333] shadow-2xl">
+          <Table 
+            columns={columns} 
+            data={filteredCustomers} 
+            keyExtractor={(row) => row.id} 
+            emptyMessage="Nenhum registro encontrado para os critérios de busca." 
+          />
         </Card>
 
-        {/* ——— Ex-clientes ——— */}
-        {exClientes.length > 0 && (
-          <div>
+        {/* SEÇÃO: HISTÓRICO DE EX-CLIENTES (Inativos/Devedores) */}
+        {formerCustomers.length > 0 && (
+          <div className="pt-4">
             <button
-              onClick={() => setShowExClientes((v) => !v)}
-              className="flex items-center gap-2 text-xs text-[#A0A0A0] hover:text-[#A0A0A0] transition-colors py-2"
+              onClick={() => setShowFormerCustomers((v) => !v)}
+              className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#606060] hover:text-[#BAFF1A] transition-all px-2 py-3 border border-dashed border-[#252525] rounded-xl hover:border-[#BAFF1A]/30 w-full justify-center bg-[#1a1a1a]/40"
             >
-              <History className="w-3.5 h-3.5" />
-              {showExClientes ? 'Ocultar ex-clientes' : `Ver ex-clientes (${exClientes.length})`}
-              {showExClientes ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              <History className="w-4 h-4 group-hover:rotate-[-45deg] transition-transform" />
+              {showFormerCustomers ? 'OCULTAR HISTÓRICO DE INATIVOS' : `EXIBIR ARQUIVO DE EX-CLIENTES (${formerCustomers.length})`}
+              {showFormerCustomers ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
 
-            {showExClientes && (
-              <div className="space-y-3 pt-1">
-                {exClientes.map((c) => (
-                  <ExClienteCard key={c.id} cliente={c} />
+            {/* Renderização Condicional do Bloco de Inativos */}
+            {showFormerCustomers && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 animate-in slide-in-from-top-4 duration-500">
+                {formerCustomers.map((c) => (
+                  <FormerCustomerCard key={c.id} customer={c} />
                 ))}
               </div>
             )}
@@ -562,127 +1006,311 @@ export default function ClientesPage() {
         )}
       </div>
 
-      {/* Modal Novo / Editar */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Editar Cliente' : 'Novo Cliente'} size="lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Nome completo" placeholder="NOME COMPLETO" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
-            <Input label="CPF" placeholder="000.000.000-00" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} required />
+      {/* 
+        * MODAL: FORMULÁRIO DE CADASTRO / EDIÇÃO
+        * Lida com a coleta de dados cadastrais profundos.
+        */}
+      <Modal 
+        open={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        title={editingId ? 'Atualizar Dados do Locatário' : 'Novo Cadastro de Locatário'} 
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6 p-1">
+          {/* Seção 1: Identificação Básica */}
+          <div className="grid grid-cols-2 gap-5">
+            <Input 
+              label="Nome Completo (Conforme CNH/RG)" 
+              placeholder="EX: JOÃO DA SILVA" 
+              value={form.name} 
+              onChange={(e) => setForm({ ...form, name: e.target.value })} 
+              required 
+            />
+            <Input 
+              label="Número do CPF" 
+              placeholder="000.000.000-00" 
+              value={form.cpf} 
+              onChange={(e) => setForm({ ...form, cpf: e.target.value })} 
+              required 
+            />
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <Input label="RG" placeholder="000000000" value={form.rg} onChange={(e) => setForm({ ...form, rg: e.target.value })} />
-            <Select label="UF" options={ufOptions} value={form.uf} onChange={(e) => setForm({ ...form, uf: e.target.value })} />
-            <Input label="Telefone" placeholder="21 99999-0000" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} required />
+
+          {/* Seção 2: Documentos e Contato */}
+          <div className="grid grid-cols-3 gap-5">
+            <Input 
+              label="Número do RG" 
+              placeholder="Digite apenas números" 
+              value={form.rg} 
+              onChange={(e) => setForm({ ...form, rg: e.target.value })} 
+            />
+            <Select 
+              label="UF Emissor" 
+              options={STATE_OPTIONS} 
+              value={form.state} 
+              onChange={(e) => setForm({ ...form, state: e.target.value })} 
+            />
+            <Input 
+              label="WhatsApp / Celular" 
+              placeholder="(21) 90000-0000" 
+              value={form.phone} 
+              onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+              required 
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Endereço" placeholder="Rua, número - Bairro - Cidade - UF" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
-            <Input label="CEP" placeholder="00000-000" value={form.cep} onChange={(e) => setForm({ ...form, cep: e.target.value })} />
+
+          {/* Seção 3: Endereço Residencial */}
+          <div className="grid grid-cols-4 gap-5">
+            <div className="col-span-3">
+              <Input 
+                label="Endereço Completo (Rua, Número, Comp.)" 
+                placeholder="Rua Exemplo, 123 - Bloco 4 Apt 101" 
+                value={form.address} 
+                onChange={(e) => setForm({ ...form, address: e.target.value })} 
+              />
+            </div>
+            <Input 
+              label="CEP" 
+              placeholder="00000-000" 
+              value={form.zipCode} 
+              onChange={(e) => setForm({ ...form, zipCode: e.target.value })} 
+            />
           </div>
-          <Textarea label="Contato de Emergência" placeholder="Nome (parentesco): (21) 99999-0000" rows={2} value={form.contato_emergencia} onChange={(e) => setForm({ ...form, contato_emergencia: e.target.value })} />
-          <div className="border-t border-[#333333] pt-2">
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">CNH</p>
-            <div className="grid grid-cols-3 gap-4">
-              <Input label="Número da CNH" placeholder="00000000000" value={form.cnh} onChange={(e) => setForm({ ...form, cnh: e.target.value })} required />
-              <Input label="Validade CNH" type="date" value={form.cnh_validade} onChange={(e) => setForm({ ...form, cnh_validade: e.target.value })} />
-              <Input label="Categoria" placeholder="A, AB..." value={form.cnh_categoria} onChange={(e) => setForm({ ...form, cnh_categoria: e.target.value })} />
+
+          {/* Seção 4: Contatos Críticos */}
+          <Textarea 
+            label="Contatos de Emergência (Nome, Parentesco e Telefone)" 
+            placeholder="Ex: Mãe: (21) 98888-7777 | Esposa: (21) 99999-0000" 
+            rows={3} 
+            value={form.emergencyContact} 
+            onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })} 
+          />
+          
+          {/* BLOCO: DADOS TÉCNICOS DA CNH (Habilitação) */}
+          <div className="bg-[#1a1a1a] p-5 rounded-2xl border border-white/5 space-y-4">
+            <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Informações de Trânsito (CNH)</h5>
+            <div className="grid grid-cols-3 gap-5">
+              <Input 
+                label="Número de Registro CNH" 
+                placeholder="00000000000" 
+                value={form.cnh} 
+                onChange={(e) => setForm({ ...form, cnh: e.target.value })} 
+                required 
+              />
+              <Input 
+                label="Validade da Carteira" 
+                type="date" 
+                value={form.cnhExpiry} 
+                onChange={(e) => setForm({ ...form, cnhExpiry: e.target.value })} 
+              />
+              <Input 
+                label="Categoria (A, AB, etc)" 
+                placeholder="EX: A" 
+                value={form.cnhCategory} 
+                onChange={(e) => setForm({ ...form, cnhCategory: e.target.value })} 
+              />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="E-mail" type="email" placeholder="cliente@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <Input label="Status do Pagamento (Caução)" placeholder="Caução pago" value={form.status_pagamento} onChange={(e) => setForm({ ...form, status_pagamento: e.target.value })} />
+          
+          {/* Seção 5: Financeiro e Extra */}
+          <div className="grid grid-cols-2 gap-5">
+            <Input 
+              label="E-mail de Contato" 
+              type="email" 
+              placeholder="cliente@exemplo.com" 
+              value={form.email} 
+              onChange={(e) => setForm({ ...form, email: e.target.value })} 
+            />
+            <Input 
+              label="Status do Caução / Garantia" 
+              placeholder="Ex: R$ 500,00 Pago em 10/10" 
+              value={form.paymentStatus} 
+              onChange={(e) => setForm({ ...form, paymentStatus: e.target.value })} 
+            />
           </div>
-          <Textarea label="Observações" placeholder="Informações adicionais..." rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button type="submit">
-              {editingId ? <><Edit2 className="w-4 h-4" /> Salvar Alterações</> : <><Plus className="w-4 h-4" /> Cadastrar Cliente</>}
+
+          {/* Seção 6: Observações Internas */}
+          <Textarea 
+            label="Prontuário Interno / Notas Administrativas" 
+            placeholder="Histórico de comportamento, restrições ou detalhes observados na entrevista..." 
+            rows={4} 
+            value={form.notes} 
+            onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+          />
+          
+          {/* BARRA DE AÇÕES DO FORMULÁRIO */}
+          <div className="flex gap-4 justify-end pt-4 border-t border-white/5">
+            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="px-8">
+              DESCARTAR
+            </Button>
+            <Button type="submit" className="px-12 shadow-lg shadow-[#BAFF1A]/20">
+              {editingId ? (
+                /* Botão para edição */
+                <>
+                  <Edit2 className="w-4 h-4" /> 
+                  EFETIVAR ALTERAÇÕES
+                </>
+              ) : (
+                /* Botão para novo cadastro */
+                <>
+                  <Plus className="w-4 h-4" /> 
+                  CONCLUIR CADASTRO
+                </>
+              )}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal Ver Detalhes */}
-      {detailsCliente && (
-        <Modal open={!!detailsCliente} onClose={() => setDetailsCliente(null)} title="Detalhes do Cliente" size="lg">
-          <div className="space-y-5">
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#333333]">
-              <div>
-                <h3 className="text-lg font-bold text-white">{detailsCliente.nome}</h3>
-                <p className="text-sm text-[#A0A0A0] font-mono mt-0.5">{detailsCliente.cpf}</p>
+      {/* 
+        * MODAL: PERFIL COMPLETO DO CLIENTE (Módulo de Leitura/Detalhes)
+        */}
+      {customerDetails && (
+        <Modal 
+          open={!!customerDetails} 
+          onClose={() => setCustomerDetails(null)} 
+          title="Ficha Cadastral do Locatário" 
+          size="lg"
+        >
+          <div className="space-y-8 p-1">
+            {/* CABEÇALHO DO PERFIL */}
+            <div className="flex items-start justify-between gap-6 pb-6 border-b border-white/5">
+              <div className="flex items-center gap-5">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] rounded-2xl flex items-center justify-center border border-[#333333] shadow-2xl">
+                   <span className="text-2xl font-black text-[#BAFF1A]">{customerDetails.name.charAt(0)}</span>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">{customerDetails.name}</h3>
+                  <p className="text-sm text-[#A0A0A0] font-mono font-bold mt-1.5 tracking-widest">{customerDetails.cpf}</p>
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                {detailsCliente.na_fila ? <Badge variant="warning">Na fila</Badge> : <Badge variant="success">Ativo</Badge>}
-                {detailsCliente.status_pagamento && (
-                  <span className="flex items-center gap-1 text-xs text-green-400">
-                    <CheckCircle className="w-3.5 h-3.5" /> {detailsCliente.status_pagamento}
+              <div className="flex flex-col items-end gap-3">
+                {/* Badge de status operacional */}
+                {customerDetails.in_queue ? (
+                  <Badge variant="warning" className="px-4 py-1 font-black italic">AGUARDANDO MOTO</Badge>
+                ) : (
+                  <Badge variant="success" className="px-4 py-1 font-black">LOCAÇÃO ATIVA</Badge>
+                )}
+                {/* Indicador visual de caução */}
+                {customerDetails.payment_status && (
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-black uppercase italic">
+                    <CheckCircle className="w-3.5 h-3.5" /> CAUÇÃO: {customerDetails.payment_status}
                   </span>
                 )}
               </div>
             </div>
-            <div>
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Dados Pessoais</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-[#A0A0A0]">RG</p><p className="text-sm text-white font-mono">{detailsCliente.rg || '—'}</p></div>
-                <div><p className="text-xs text-[#A0A0A0]">UF</p><p className="text-sm text-white">{detailsCliente.uf || '—'}</p></div>
-                <div><p className="text-xs text-[#A0A0A0]">Telefone</p><p className="text-sm text-white">{detailsCliente.telefone}</p></div>
-                <div><p className="text-xs text-[#A0A0A0]">E-mail</p><p className="text-sm text-white">{detailsCliente.email || '—'}</p></div>
-                <div className="col-span-2"><p className="text-xs text-[#A0A0A0]">Endereço</p><p className="text-sm text-[#A0A0A0]">{detailsCliente.endereco || '—'}</p></div>
-                <div><p className="text-xs text-[#A0A0A0]">CEP</p><p className="text-sm text-white font-mono">{detailsCliente.cep || '—'}</p></div>
-              </div>
+            
+            {/* GRID DE INFORMAÇÕES PESSOAIS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <section className="space-y-5">
+                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Identificação Civil</h5>
+                <div className="grid grid-cols-2 gap-y-5">
+                   <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Registro RG</p><p className="text-sm text-white font-mono font-bold">{customerDetails.rg || '—'}</p></div>
+                   <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Órgão/UF</p><p className="text-sm text-white font-bold">{customerDetails.state || '—'}</p></div>
+                   <div className="col-span-2"><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Endereço de Residência</p><p className="text-sm text-[#A0A0A0] leading-relaxed italic">{customerDetails.address || '—'}</p></div>
+                   <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Código CEP</p><p className="text-sm text-white font-mono font-bold">{customerDetails.zip_code || '—'}</p></div>
+                </div>
+              </section>
+
+              <section className="space-y-5">
+                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Meios de Contato</h5>
+                <div className="grid grid-cols-1 gap-y-5">
+                   <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">WhatsApp / Primário</p><p className="text-sm text-white font-black">{customerDetails.phone}</p></div>
+                   <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">E-mail Cadastrado</p><p className="text-sm text-white font-medium">{customerDetails.email || '—'}</p></div>
+                </div>
+              </section>
             </div>
-            {detailsCliente.contato_emergencia && (
-              <div>
-                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Contato de Emergência</p>
-                <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3">{detailsCliente.contato_emergencia}</p>
+            
+            {/* SEÇÃO: CONTATO EMERGENCIAL (Destaque visual para situações de crise) */}
+            {customerDetails.emergency_contact && (
+              <div className="bg-[#2a2a2a]/30 p-5 rounded-2xl border border-dashed border-[#444444]">
+                <h5 className="text-[10px] font-black text-red-400 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" /> CONTATOS DE EMERGÊNCIA
+                </h5>
+                <p className="text-sm text-[#E0E0E0] font-medium leading-relaxed italic">"{customerDetails.emergency_contact}"</p>
               </div>
             )}
-            <div>
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">CNH</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-[#A0A0A0]">Número</p><p className="text-sm text-white font-mono">{detailsCliente.cnh}</p></div>
-                <div><p className="text-xs text-[#A0A0A0]">Categoria</p><p className="text-sm text-white">{detailsCliente.cnh_categoria || '—'}</p></div>
+            
+            {/* BLOCO: PRONTUÁRIO DE TRÂNSITO (CNH) */}
+            <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5">
+              <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-6">Prontuário de Motorista (CNH)</h5>
+              <div className="grid grid-cols-3 gap-6">
+                <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Nº Registro</p><p className="text-sm text-white font-mono font-black tracking-widest">{customerDetails.drivers_license}</p></div>
+                <div><p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Habilitação</p><p className="text-sm text-white font-black">CAT: {customerDetails.drivers_license_category || '—'}</p></div>
                 <div>
-                  <p className="text-xs text-[#A0A0A0]">Validade</p>
-                  {detailsCliente.cnh_validade
-                    ? <p className="text-sm text-white">{new Date(detailsCliente.cnh_validade + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
-                    : <span className="flex items-center gap-1 text-xs text-amber-400"><AlertCircle className="w-3.5 h-3.5" /> Pendente</span>
+                  <p className="text-[10px] text-[#606060] font-bold uppercase mb-1">Validade Legal</p>
+                  {customerDetails.drivers_license_validity
+                    ? <p className="text-sm text-white font-black">{new Date(customerDetails.drivers_license_validity + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                    : <span className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase"><AlertCircle className="w-3.5 h-3.5" /> PENDENTE</span>
                   }
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3 pt-2 border-t border-[#333333]">
-              <Button variant="ghost" onClick={() => setDetailsCliente(null)}>Fechar</Button>
-              <Button variant="secondary" onClick={() => { setDetailsCliente(null); setDocsCliente(detailsCliente) }}>
-                <FolderOpen className="w-4 h-4" /> Documentos
+
+            {/* SEÇÃO: OBSERVAÇÕES E NOTAS INTERNAS */}
+            {customerDetails.observations && (
+              <div className="space-y-3">
+                <h5 className="text-[10px] font-black text-[#606060] uppercase tracking-[0.2em] ml-1">Observações do Gestor</h5>
+                <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                   <p className="text-xs text-[#808080] leading-relaxed italic">{customerDetails.observations}</p>
+                </div>
+              </div>
+            )}
+
+            {/* BARRA DE AÇÕES DO PERFIL */}
+            <div className="flex justify-end gap-4 pt-6 border-t border-white/5">
+              <Button variant="ghost" onClick={() => setCustomerDetails(null)} className="px-8">FECHAR</Button>
+              <Button 
+                variant="secondary" 
+                onClick={() => { setCustomerDetails(null); setCustomerDocsModal(customerDetails) }}
+                className="px-8"
+              >
+                <FolderOpen className="w-4 h-4" /> REPOSITÓRIO DE DOCS
               </Button>
-              <Button onClick={() => { setDetailsCliente(null); openEditCliente(detailsCliente) }}>
-                <Edit2 className="w-4 h-4" /> Editar
+              <Button 
+                onClick={() => { setCustomerDetails(null); openEditCustomer(customerDetails) }}
+                className="px-10"
+              >
+                <Edit2 className="w-4 h-4" /> EDITAR PERFIL
               </Button>
             </div>
           </div>
         </Modal>
       )}
 
-      {/* Modal Documentos */}
-      {docsCliente && (
-        <DocumentosModal
-          cliente={clientes.find((c) => c.id === docsCliente.id) ?? docsCliente}
-          onClose={() => setDocsCliente(null)}
-          onUpdate={handleUpdateDocs}
+      {/* 
+        * MODAL: DOCUMENTOS (Lógica isolada)
+        */}
+      {customerDocsModal && (
+        <DocumentsModal
+          customer={customers.find((c) => c.id === customerDocsModal.id) ?? customerDocsModal}
+          onClose={() => setCustomerDocsModal(null)}
+          onUpdate={handleUpdateDocuments}
         />
       )}
 
-      {/* Modal Excluir */}
-      {deleteCliente && (
-        <Modal open={!!deleteCliente} onClose={() => setDeleteCliente(null)} title="Excluir Cliente" size="sm">
-          <div className="space-y-4">
-            <p className="text-[#A0A0A0] text-sm">
-              Tem certeza que deseja excluir <span className="text-white font-semibold">{deleteCliente.nome}</span>?
-            </p>
-            <div className="flex gap-3 justify-end pt-2">
-              <Button variant="ghost" onClick={() => setDeleteCliente(null)}>Cancelar</Button>
-              <Button variant="danger" onClick={() => handleDelete(deleteCliente)}>
-                <Trash2 className="w-4 h-4" /> Excluir
+      {/* 
+        * MODAL: CONFIRMAÇÃO DE DELEÇÃO
+        */}
+      {deletingCustomer && (
+        <Modal 
+          open={!!deletingCustomer} 
+          onClose={() => setDeletingCustomer(null)} 
+          title="Confirmar Exclusão de Cadastro" 
+          size="sm"
+        >
+          <div className="space-y-6">
+            <div className="p-5 bg-red-500/5 border border-red-500/10 rounded-2xl text-center">
+              <p className="text-[#A0A0A0] text-sm leading-relaxed">
+                Você está prestes a remover permanentemente o locatário <br />
+                <strong className="text-white text-base font-black uppercase tracking-tight">{deletingCustomer.name}</strong>
+                <br /><br />
+                <span className="text-red-400 font-bold uppercase text-[10px]">Aviso: Esta ação destruirá todo o histórico vinculado e não pode ser desfeita.</span>
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <Button variant="ghost" onClick={() => setDeletingCustomer(null)} className="flex-1">CANCELAR</Button>
+              <Button variant="danger" onClick={() => handleDeleteCustomer(deletingCustomer)} className="flex-1 shadow-lg shadow-red-500/20">
+                <Trash2 className="w-4 h-4" /> REMOVER DEFINITIVO
               </Button>
             </div>
           </div>
@@ -691,3 +1319,10 @@ export default function ClientesPage() {
     </div>
   )
 }
+
+/**
+ * NOTAS DE MANUTENÇÃO:
+ * - O upload de arquivos atualmente é fictício (URL.createObjectURL). Em produção, integrar com Supabase Storage.
+ * - Adicionar suporte para máscaras de CPF e Telefone nos Inputs em versões futuras.
+ * - Implementar lógica de paginação na tabela caso a lista de clientes ultrapasse 100 registros.
+ */
