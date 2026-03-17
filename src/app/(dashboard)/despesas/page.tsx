@@ -1,3 +1,23 @@
+/**
+ * @file page.tsx
+ * @description Página de Gestão de Despesas e Custos Operacionais do Sistema GoMoto.
+ * 
+ * Este componente é vital para o controle financeiro, permitindo o registro minucioso
+ * de todas as saídas de capital. Ele diferencia gastos estruturais (como compra de motos e marketing)
+ * de gastos operacionais (como manutenção e seguros).
+ * 
+ * Funcionalidades principais:
+ * - Lançamento de despesas vinculadas a veículos específicos ou gastos gerais.
+ * - Classificação por pagador: permite identificar se o custo foi absorvido pela empresa,
+ *   pelos sócios ou se será descontado do locatário (Desconto na Semanal).
+ * - Monitoramento de quilometragem (KM) no momento da despesa para histórico técnico.
+ * - Dashboard de métricas: Total Acumulado, Variação Mensal e Ticket Médio de Gasto.
+ * - Análise de rentabilidade negativa: identificação do veículo que mais gerou custos no mês.
+ * - Filtragem por pagador e busca textual abrangente.
+ * 
+ * Identificadores seguem o padrão Inglês e a documentação o padrão Português Brasil.
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -11,51 +31,58 @@ import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 import { Pagination } from '@/components/ui/Pagination'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import type { Expense } from '@/types'
 
-interface Despesa {
-  id: string
-  veiculo: string           // placa
-  data: string
-  tipo_despesa: string      // Preventiva, Corretiva, Troca de óleo, Seguro, etc.
-  valor: number
-  pagador: string           // Jamerson, Gustavo, Caixa da Empresa, Desconto na Semanal
-  quilometragem?: number
-  observacao?: string
-  created_at: string
+/**
+ * @interface LocalExpense
+ * @description Extensão local da interface Expense para suportar campos específicos
+ * da UI de gestão de despesas (como payer e odometer) que podem não estar na entidade base.
+ */
+interface LocalExpense extends Omit<Expense, 'category' | 'motorcycle_id' | 'description'> {
+  vehicle: string           // Placa ou "Geral"
+  category: string          // Tipo da despesa
+  payer: string             // Quem efetuou o pagamento
+  odometer?: number         // KM no momento do registro
 }
 
-const mockDespesas: Despesa[] = [
-  { id: '146', veiculo: 'RJA5J85', data: '2026-03-09', tipo_despesa: 'Preventiva', valor: 12.50, pagador: 'Caixa da Empresa', quilometragem: 29282, observacao: 'Troca de óleo, valor da nota 25,00', created_at: '2026-03-09T10:00:00Z' },
-  { id: '145', veiculo: 'RJA5J85', data: '2026-02-27', tipo_despesa: 'Preventiva', valor: 45.75, pagador: 'Caixa da Empresa', quilometragem: 27058, observacao: 'Kit relação. Valor da nota 91,50', created_at: '2026-02-27T10:00:00Z' },
-  { id: '144', veiculo: 'SYF1C42', data: '2026-02-27', tipo_despesa: 'Corretiva', valor: 100.00, pagador: 'Caixa da Empresa', observacao: 'Pneu dianteiro + mão de obra mecânico', created_at: '2026-02-27T10:00:00Z' },
-  { id: '143', veiculo: 'SYF1C42', data: '2026-02-25', tipo_despesa: 'Corretiva', valor: 115.00, pagador: 'Caixa da Empresa', observacao: '65,00 guidão novo + 50,00 mão de obra mecânico', created_at: '2026-02-25T10:00:00Z' },
-  { id: '142', veiculo: 'RJA5J85', data: '2026-02-24', tipo_despesa: 'Troca de óleo', valor: 14.45, pagador: 'Caixa da Empresa', quilometragem: 27058, observacao: 'Valor da nota 28,90', created_at: '2026-02-24T10:00:00Z' },
-  { id: '141', veiculo: 'RJA5J85', data: '2026-02-20', tipo_despesa: 'Seguro', valor: 169.90, pagador: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
-  { id: '140', veiculo: 'RIW4J89', data: '2026-02-20', tipo_despesa: 'Seguro', valor: 171.28, pagador: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
-  { id: '139', veiculo: 'KYN9J41', data: '2026-02-20', tipo_despesa: 'Seguro', valor: 171.00, pagador: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
-  { id: '138', veiculo: 'SYF1C42', data: '2026-02-20', tipo_despesa: 'Seguro', valor: 191.28, pagador: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
-  { id: '137', veiculo: 'RJA5J85', data: '2026-02-13', tipo_despesa: 'Corretiva', valor: 20.00, pagador: 'Caixa da Empresa', observacao: 'Troca da lona de freio', created_at: '2026-02-13T10:00:00Z' },
-  { id: '136', veiculo: 'RJA5J85', data: '2026-02-11', tipo_despesa: 'Corretiva', valor: 27.00, pagador: 'Caixa da Empresa', observacao: 'Lâmpada farol', created_at: '2026-02-11T10:00:00Z' },
-  { id: '135', veiculo: 'SYF1C42', data: '2026-02-09', tipo_despesa: 'Corretiva', valor: 250.00, pagador: 'Caixa da Empresa', observacao: 'Roda traseira da Start 160', created_at: '2026-02-09T10:00:00Z' },
-  { id: '131', veiculo: 'RJA5J85', data: '2026-01-21', tipo_despesa: 'Seguro', valor: 169.90, pagador: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
-  { id: '130', veiculo: 'RIW4J89', data: '2026-01-21', tipo_despesa: 'Seguro', valor: 171.28, pagador: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
-  { id: '129', veiculo: 'KYN9J41', data: '2026-01-21', tipo_despesa: 'Seguro', valor: 171.00, pagador: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
-  { id: '128', veiculo: 'SYF1C42', data: '2026-01-21', tipo_despesa: 'Seguro', valor: 191.28, pagador: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
-  { id: '126', veiculo: 'SYF1C42', data: '2026-01-15', tipo_despesa: 'Troca de óleo', valor: 17.00, pagador: 'Caixa da Empresa', quilometragem: 46578, observacao: 'Valor da nota 34,00', created_at: '2026-01-15T10:00:00Z' },
-  { id: '125', veiculo: 'SYF1C42', data: '2026-01-02', tipo_despesa: 'Troca de óleo', valor: 17.00, pagador: 'Caixa da Empresa', quilometragem: 45525, observacao: 'Valor da nota 34,00', created_at: '2026-01-02T10:00:00Z' },
-  { id: '124', veiculo: 'RIW4J89', data: '2026-01-06', tipo_despesa: 'Troca de óleo', valor: 15.00, pagador: 'Caixa da Empresa', quilometragem: 67908, observacao: 'Valor da nota 30,00', created_at: '2026-01-06T10:00:00Z' },
-  { id: '103', veiculo: 'SYF1C42', data: '2025-10-31', tipo_despesa: 'Troca de óleo', valor: 17.00, pagador: 'Desconto na Semanal', quilometragem: 35572, observacao: 'Valor da nota 34,00', created_at: '2025-10-31T10:00:00Z' },
-  { id: '86', veiculo: 'RIW4J89', data: '2025-09-10', tipo_despesa: 'Troca de óleo', valor: 15.00, pagador: 'Desconto na Semanal', quilometragem: 42503, observacao: 'Troca de óleo 30,00', created_at: '2025-09-10T10:00:00Z' },
-  { id: '73', veiculo: 'SYF1C42', data: '2025-08-20', tipo_despesa: 'Pneu', valor: 124.50, pagador: 'Desconto na Semanal', quilometragem: 27999, observacao: 'Pneu novo', created_at: '2025-08-20T10:00:00Z' },
-  { id: '57', veiculo: 'SYF1C42', data: '2025-08-10', tipo_despesa: 'Relação da moto', valor: 79.00, pagador: 'Desconto na Semanal', quilometragem: 23242, observacao: 'Relação R$ 65 (50%) - Parafuso R$ 14 (50%)', created_at: '2025-08-10T10:00:00Z' },
-  { id: '43', veiculo: 'SYF1C42', data: '2025-07-15', tipo_despesa: 'Bateria', valor: 158.00, pagador: 'Desconto na Semanal', quilometragem: 16879, observacao: 'Bateria R$145 - Mão de obra R$10 - Parafuso R$3', created_at: '2025-07-15T10:00:00Z' },
-  { id: '5', veiculo: 'SYF1C42', data: '2025-01-23', tipo_despesa: 'IPVA', valor: 270.40, pagador: 'Jamerson', created_at: '2025-01-23T10:00:00Z' },
-  { id: '2', veiculo: 'KYN9J41', data: '2025-01-16', tipo_despesa: 'Compra da moto', valor: 10000.00, pagador: 'Gustavo', observacao: 'Adquirido do Sr. Juarez Ribeiro', created_at: '2025-01-16T10:00:00Z' },
-  { id: '1', veiculo: 'SYF1C42', data: '2025-01-10', tipo_despesa: 'Compra da moto', valor: 13000.00, pagador: 'Jamerson', observacao: 'Adquirido do Bruno', created_at: '2025-01-10T10:00:00Z' },
+/**
+ * @constant mockExpenses
+ * @description Dados de teste para popular a tabela de despesas.
+ * Inclui desde compras de ativos (motos) até manutenções preventivas e seguros.
+ */
+const mockExpenses: LocalExpense[] = [
+  { id: '146', vehicle: 'RJA5J85', date: '2026-03-09', category: 'Preventiva', amount: 12.50, payer: 'Caixa da Empresa', odometer: 29282, observations: 'Troca de óleo, valor da nota 25,00', created_at: '2026-03-09T10:00:00Z' },
+  { id: '145', vehicle: 'RJA5J85', date: '2026-02-27', category: 'Preventiva', amount: 45.75, payer: 'Caixa da Empresa', odometer: 27058, observations: 'Kit relação. Valor da nota 91,50', created_at: '2026-02-27T10:00:00Z' },
+  { id: '144', vehicle: 'SYF1C42', date: '2026-02-27', category: 'Corretiva', amount: 100.00, payer: 'Caixa da Empresa', observations: 'Pneu dianteiro + mão de obra mecânico', created_at: '2026-02-27T10:00:00Z' },
+  { id: '143', vehicle: 'SYF1C42', date: '2026-02-25', category: 'Corretiva', amount: 115.00, payer: 'Caixa da Empresa', observations: '65,00 guidão novo + 50,00 mão de obra mecânico', created_at: '2026-02-25T10:00:00Z' },
+  { id: '142', vehicle: 'RJA5J85', date: '2026-02-24', category: 'Troca de óleo', amount: 14.45, payer: 'Caixa da Empresa', odometer: 27058, observations: 'Valor da nota 28,90', created_at: '2026-02-24T10:00:00Z' },
+  { id: '141', vehicle: 'RJA5J85', date: '2026-02-20', category: 'Seguro', amount: 169.90, payer: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
+  { id: '140', vehicle: 'RIW4J89', date: '2026-02-20', category: 'Seguro', amount: 171.28, payer: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
+  { id: '139', vehicle: 'KYN9J41', date: '2026-02-20', category: 'Seguro', amount: 171.00, payer: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
+  { id: '138', vehicle: 'SYF1C42', date: '2026-02-20', category: 'Seguro', amount: 191.28, payer: 'Caixa da Empresa', created_at: '2026-02-20T10:00:00Z' },
+  { id: '137', vehicle: 'RJA5J85', date: '2026-02-13', category: 'Corretiva', amount: 20.00, payer: 'Caixa da Empresa', observations: 'Troca da lona de freio', created_at: '2026-02-13T10:00:00Z' },
+  { id: '136', vehicle: 'RJA5J85', date: '2026-02-11', category: 'Corretiva', amount: 27.00, payer: 'Caixa da Empresa', observations: 'Lâmpada farol', created_at: '2026-02-11T10:00:00Z' },
+  { id: '135', vehicle: 'SYF1C42', date: '2026-02-09', category: 'Corretiva', amount: 250.00, payer: 'Caixa da Empresa', observations: 'Roda traseira da Start 160', created_at: '2026-02-09T10:00:00Z' },
+  { id: '131', vehicle: 'RJA5J85', date: '2026-01-21', category: 'Seguro', amount: 169.90, payer: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
+  { id: '130', vehicle: 'RIW4J89', date: '2026-01-21', category: 'Seguro', amount: 171.28, payer: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
+  { id: '129', vehicle: 'KYN9J41', date: '2026-01-21', category: 'Seguro', amount: 171.00, payer: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
+  { id: '128', vehicle: 'SYF1C42', date: '2026-01-21', category: 'Seguro', amount: 191.28, payer: 'Caixa da Empresa', created_at: '2026-01-21T10:00:00Z' },
+  { id: '126', vehicle: 'SYF1C42', date: '2026-01-15', category: 'Troca de óleo', amount: 17.00, payer: 'Caixa da Empresa', odometer: 46578, observations: 'Valor da nota 34,00', created_at: '2026-01-15T10:00:00Z' },
+  { id: '125', vehicle: 'SYF1C42', date: '2026-01-02', category: 'Troca de óleo', amount: 17.00, payer: 'Caixa da Empresa', odometer: 45525, observations: 'Valor da nota 34,00', created_at: '2026-01-02T10:00:00Z' },
+  { id: '124', vehicle: 'RIW4J89', date: '2026-01-06', category: 'Troca de óleo', amount: 15.00, payer: 'Caixa da Empresa', odometer: 67908, observations: 'Valor da nota 30,00', created_at: '2026-01-06T10:00:00Z' },
+  { id: '103', vehicle: 'SYF1C42', date: '2025-10-31', category: 'Troca de óleo', amount: 17.00, payer: 'Desconto na Semanal', odometer: 35572, observations: 'Valor da nota 34,00', created_at: '2025-10-31T10:00:00Z' },
+  { id: '86', vehicle: 'RIW4J89', date: '2025-09-10', category: 'Troca de óleo', amount: 15.00, payer: 'Desconto na Semanal', odometer: 42503, observations: 'Troca de óleo 30,00', created_at: '2025-09-10T10:00:00Z' },
+  { id: '73', vehicle: 'SYF1C42', date: '2025-08-20', category: 'Pneu', amount: 124.50, payer: 'Desconto na Semanal', odometer: 27999, observations: 'Pneu novo', created_at: '2025-08-20T10:00:00Z' },
+  { id: '57', vehicle: 'SYF1C42', date: '2025-08-10', category: 'Relação da moto', amount: 79.00, payer: 'Desconto na Semanal', odometer: 23242, observations: 'Relação R$ 65 (50%) - Parafuso R$ 14 (50%)', created_at: '2025-08-10T10:00:00Z' },
+  { id: '43', vehicle: 'SYF1C42', date: '2025-07-15', category: 'Bateria', amount: 158.00, payer: 'Desconto na Semanal', odometer: 16879, observations: 'Bateria R$145 - Mão de obra R$10 - Parafuso R$3', created_at: '2025-07-15T10:00:00Z' },
+  { id: '5', vehicle: 'SYF1C42', date: '2025-01-23', category: 'IPVA', amount: 270.40, payer: 'Jamerson', created_at: '2025-01-23T10:00:00Z' },
+  { id: '2', vehicle: 'KYN9J41', date: '2025-01-16', category: 'Compra da moto', amount: 10000.00, payer: 'Gustavo', observations: 'Adquirido do Sr. Juarez Ribeiro', created_at: '2025-01-16T10:00:00Z' },
+  { id: '1', vehicle: 'SYF1C42', date: '2025-01-10', category: 'Compra da moto', amount: 13000.00, payer: 'Jamerson', observations: 'Adquirido do Bruno', created_at: '2025-01-10T10:00:00Z' },
 ]
 
-const tipoDespesaOptions = [
-  { value: '', label: 'Selecione o tipo' },
+/** @constant expenseCategoryOptions - Lista de categorias para classificação dos gastos. */
+const expenseCategoryOptions = [
+  { value: '', label: 'Selecione o tipo de despesa' },
   { value: 'Compra da moto', label: 'Compra da moto' },
   { value: 'Seguro', label: 'Seguro' },
   { value: 'IPVA', label: 'IPVA' },
@@ -69,7 +96,8 @@ const tipoDespesaOptions = [
   { value: 'Outros', label: 'Outros' },
 ]
 
-const pagadorOptions = [
+/** @constant payerOptions - Identifica a origem do recurso financeiro utilizado. */
+const payerOptions = [
   { value: '', label: 'Selecione o pagador' },
   { value: 'Caixa da Empresa', label: 'Caixa da Empresa' },
   { value: 'Desconto na Semanal', label: 'Desconto na Semanal' },
@@ -77,7 +105,8 @@ const pagadorOptions = [
   { value: 'Jamerson', label: 'Jamerson' },
 ]
 
-const veiculoOptions = [
+/** @constant vehicleOptions - Associa a despesa a uma moto específica da frota. */
+const vehicleOptions = [
   { value: '', label: 'Selecione o veículo' },
   { value: 'KYN9J41', label: 'KYN9J41' },
   { value: 'SYF1C42', label: 'SYF1C42' },
@@ -86,7 +115,8 @@ const veiculoOptions = [
   { value: 'Geral', label: 'Geral (sem moto específica)' },
 ]
 
-const tipoBadge: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger' | 'orange'> = {
+/** @constant categoryBadge - Mapeamento de cores para os crachás de categoria. */
+const categoryBadge: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger' | 'orange'> = {
   Preventiva: 'info',
   Corretiva: 'warning',
   'Troca de óleo': 'muted',
@@ -103,228 +133,252 @@ const tipoBadge: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'bran
   Outros: 'muted',
 }
 
-const pagadorBadge: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger' | 'orange'> = {
+/** @constant payerBadge - Mapeamento de cores para os crachás de pagador. */
+const payerBadge: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger' | 'orange'> = {
   'Caixa da Empresa': 'success',
   'Desconto na Semanal': 'orange',
   Gustavo: 'brand',
   Jamerson: 'info',
 }
 
+/** @constant defaultForm - Estado inicial para reset do formulário de despesa. */
 const defaultForm = {
-  veiculo: '',
-  data: new Date().toISOString().split('T')[0],
-  tipo_despesa: '',
-  valor: '',
-  pagador: '',
-  quilometragem: '',
-  observacao: '',
+  vehicle: '',
+  date: new Date().toISOString().split('T')[0],
+  category: '',
+  amount: '',
+  payer: '',
+  odometer: '',
+  observations: '',
 }
 
+/** @constant PAGE_SIZE - Quantidade de itens por página na tabela. */
 const PAGE_SIZE = 10
 
-// ─────────────────────────────────────────────────────────────
-// Supabase (quando conectar):
-// const { data, count } = await supabase
-//   .from('despesas')
-//   .select('*', { count: 'exact' })
-//   .order('data', { ascending: false })
-//   .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-// ─────────────────────────────────────────────────────────────
-
-export default function DespesasPage() {
-  const [despesas, setDespesas] = useState<Despesa[]>(mockDespesas)
+/**
+ * @component ExpensesPage
+ * @description Componente principal para gestão do módulo de despesas.
+ * Centraliza cálculos, filtragem e interface de usuário para o fluxo financeiro de saída.
+ */
+export default function ExpensesPage() {
+  /** ESTADO LOCAL */
+  const [expenses, setExpenses] = useState<LocalExpense[]>(mockExpenses)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editando, setEditando] = useState<Despesa | null>(null)
-  const [excluindo, setExcluindo] = useState<Despesa | null>(null)
+  const [editing, setEditing] = useState<LocalExpense | null>(null)
+  const [deleting, setDeleting] = useState<LocalExpense | null>(null)
   const [form, setForm] = useState(defaultForm)
-  const [busca, setBusca] = useState('')
-  const [filtroPagador, setFiltroPagador] = useState('todos')
+  const [search, setSearch] = useState('')
+  const [payerFilter, setPayerFilter] = useState('all')
   const [page, setPage] = useState(0)
 
-  const hoje = new Date()
-  const mesAtual = hoje.getMonth()
-  const anoAtual = hoje.getFullYear()
-  const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1
-  const anoAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual
+  /** CÁLCULOS DE PERÍODO */
+  const today = new Date()
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
+  const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
+  const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
 
-  const despesasMes = despesas.filter((d) => {
-    const dt = new Date(d.data)
-    return dt.getMonth() === mesAtual && dt.getFullYear() === anoAtual
+  /** @variable currentMonthExpenses - Filtra gastos ocorridos no mês atual. */
+  const currentMonthExpenses = expenses.filter((d) => {
+    const dt = new Date(d.date)
+    return dt.getMonth() === currentMonth && dt.getFullYear() === currentYear
   })
 
-  const despesasMesAnterior = despesas.filter((d) => {
-    const dt = new Date(d.data)
-    return dt.getMonth() === mesAnterior && dt.getFullYear() === anoAnterior
+  /** @variable previousMonthExpenses - Filtra gastos ocorridos no mês passado. */
+  const previousMonthExpenses = expenses.filter((d) => {
+    const dt = new Date(d.date)
+    return dt.getMonth() === previousMonth && dt.getFullYear() === previousYear
   })
 
-  const totalMes = despesasMes.reduce((sum, d) => sum + d.valor, 0)
-  const totalMesAnterior = despesasMesAnterior.reduce((sum, d) => sum + d.valor, 0)
-  const variacaoMes = totalMesAnterior > 0
-    ? ((totalMes - totalMesAnterior) / totalMesAnterior) * 100
+  /** MÉTRICAS FINANCEIRAS */
+  const currentMonthTotal = currentMonthExpenses.reduce((sum, d) => sum + d.amount, 0)
+  const previousMonthTotal = previousMonthExpenses.reduce((sum, d) => sum + d.amount, 0)
+  const monthlyVariation = previousMonthTotal > 0
+    ? ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
     : null
 
-  const totalGeral = despesas.reduce((sum, d) => sum + d.valor, 0)
-  const ticketMedio = despesas.length > 0 ? totalGeral / despesas.length : 0
+  const totalOverall = expenses.reduce((sum, d) => sum + d.amount, 0)
+  const averageTicket = expenses.length > 0 ? totalOverall / expenses.length : 0
 
-  // Quanto foi custeado pela empresa vs clientes (desconto semanal)
-  const totalDescontoSemanal = despesas
-    .filter((d) => d.pagador === 'Desconto na Semanal')
-    .reduce((sum, d) => sum + d.valor, 0)
-  const totalEmpresa = totalGeral - totalDescontoSemanal
+  /** @variable totalWeeklyDiscount - Soma de despesas pagas com desconto na semanal do cliente. */
+  const totalWeeklyDiscount = expenses
+    .filter((d) => d.payer === 'Desconto na Semanal')
+    .reduce((sum, d) => sum + d.amount, 0)
+  
+  /** @variable totalCompany - Custo líquido absorvido pela empresa (descontando o que o cliente pagou). */
+  const totalCompany = totalOverall - totalWeeklyDiscount
 
-  function breakdownPagador(lista: Despesa[]) {
-    const map: Record<string, { valor: number; qtd: number }> = {}
-    lista.forEach((d) => {
-      if (!map[d.pagador]) map[d.pagador] = { valor: 0, qtd: 0 }
-      map[d.pagador].valor += d.valor
-      map[d.pagador].qtd += 1
+  /**
+   * @function getBreakdownByPayer
+   * @description Gera resumo de gastos agrupados por quem pagou a conta.
+   */
+  function getBreakdownByPayer(list: LocalExpense[]) {
+    const map: Record<string, { amount: number; count: number }> = {}
+    list.forEach((d) => {
+      if (!map[d.payer]) map[d.payer] = { amount: 0, count: 0 }
+      map[d.payer].amount += d.amount
+      map[d.payer].count += 1
     })
-    return Object.entries(map).sort((a, b) => b[1].valor - a[1].valor)
+    return Object.entries(map).sort((a, b) => b[1].amount - a[1].amount)
   }
 
-  function breakdownTipo(lista: Despesa[]) {
-    const map: Record<string, { valor: number; qtd: number }> = {}
-    lista.forEach((d) => {
-      if (!map[d.tipo_despesa]) map[d.tipo_despesa] = { valor: 0, qtd: 0 }
-      map[d.tipo_despesa].valor += d.valor
-      map[d.tipo_despesa].qtd += 1
+  /**
+   * @function getBreakdownByCategory
+   * @description Gera resumo de gastos agrupados por categoria (ex: IPVA, Peças).
+   */
+  function getBreakdownByCategory(list: LocalExpense[]) {
+    const map: Record<string, { amount: number; count: number }> = {}
+    list.forEach((d) => {
+      if (!map[d.category]) map[d.category] = { amount: 0, count: 0 }
+      map[d.category].amount += d.amount
+      map[d.category].count += 1
     })
-    return Object.entries(map).sort((a, b) => b[1].valor - a[1].valor)
+    return Object.entries(map).sort((a, b) => b[1].amount - a[1].amount)
   }
 
-  // Moto mais cara do mês
-  const custoPorMoto: Record<string, number> = {}
-  despesasMes.forEach((d) => {
-    custoPorMoto[d.veiculo] = (custoPorMoto[d.veiculo] ?? 0) + d.valor
+  /** ANÁLISE DE CUSTO POR VEÍCULO NO MÊS ATUAL */
+  const costByMotorcycle: Record<string, number> = {}
+  currentMonthExpenses.forEach((d) => {
+    costByMotorcycle[d.vehicle] = (costByMotorcycle[d.vehicle] ?? 0) + d.amount
   })
-  const motoMaisCara = Object.entries(custoPorMoto).sort((a, b) => b[1] - a[1])[0]
+  /** @variable mostExpensiveMotorcycle - Identifica qual moto teve o maior custo de manutenção/taxas no mês. */
+  const mostExpensiveMotorcycle = Object.entries(costByMotorcycle).sort((a, b) => b[1] - a[1])[0]
 
-  const tabsPagador = [
-    { label: 'Todos', value: 'todos' },
+  /** OPÇÕES DE ABAS PARA FILTRO POR PAGADOR */
+  const payerTabs = [
+    { label: 'Todos', value: 'all' },
     { label: 'Caixa', value: 'Caixa da Empresa' },
     { label: 'Desc. Semanal', value: 'Desconto na Semanal' },
     { label: 'Gustavo', value: 'Gustavo' },
     { label: 'Jamerson', value: 'Jamerson' },
   ]
 
-  // Filtragem
-  const despesasFiltradas = despesas.filter((d) => {
-    const q = busca.toLowerCase()
-    const passaBusca =
-      d.veiculo.toLowerCase().includes(q) ||
-      d.tipo_despesa.toLowerCase().includes(q) ||
-      d.pagador.toLowerCase().includes(q) ||
-      (d.observacao?.toLowerCase().includes(q) ?? false)
-    const passaPagador = filtroPagador === 'todos' || d.pagador === filtroPagador
-    return passaBusca && passaPagador
+  /** LÓGICA DE FILTRAGEM E BUSCA */
+  const filteredExpenses = expenses.filter((d) => {
+    const q = search.toLowerCase()
+    const matchesSearch =
+      d.vehicle.toLowerCase().includes(q) ||
+      d.category.toLowerCase().includes(q) ||
+      d.payer.toLowerCase().includes(q) ||
+      (d.observations?.toLowerCase().includes(q) ?? false)
+    const matchesPayer = payerFilter === 'all' || d.payer === payerFilter
+    return matchesSearch && matchesPayer
   })
 
-  const total = despesasFiltradas.length
-  const despesasPagina = despesasFiltradas.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  /** PAGINAÇÃO */
+  const totalItems = filteredExpenses.length
+  const pageExpenses = filteredExpenses.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
-  function handleBusca(valor: string) {
-    setBusca(valor)
+  /** HANDLERS DE UI */
+
+  function handleSearch(value: string) {
+    setSearch(value)
     setPage(0)
   }
 
-  function handleFiltroPagador(valor: string) {
-    setFiltroPagador(valor)
+  function handlePayerFilter(value: string) {
+    setPayerFilter(value)
     setPage(0)
   }
 
-  function abrirNova() {
-    setEditando(null)
+  function openNew() {
+    setEditing(null)
     setForm(defaultForm)
     setModalOpen(true)
   }
 
-  function abrirEdicao(despesa: Despesa) {
-    setEditando(despesa)
+  function openEdit(expense: LocalExpense) {
+    setEditing(expense)
     setForm({
-      veiculo: despesa.veiculo,
-      data: despesa.data,
-      tipo_despesa: despesa.tipo_despesa,
-      valor: String(despesa.valor),
-      pagador: despesa.pagador,
-      quilometragem: despesa.quilometragem ? String(despesa.quilometragem) : '',
-      observacao: despesa.observacao ?? '',
+      vehicle: expense.vehicle,
+      date: expense.date,
+      category: expense.category,
+      amount: String(expense.amount),
+      payer: expense.payer,
+      odometer: expense.odometer ? String(expense.odometer) : '',
+      observations: expense.observations ?? '',
     })
     setModalOpen(true)
   }
 
+  /**
+   * @function handleSubmit
+   * @description Processa o formulário para salvar alterações ou criar novos registros.
+   */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (editando) {
-      setDespesas((prev) =>
+    if (editing) {
+      setExpenses((prev) =>
         prev.map((d) =>
-          d.id === editando.id
+          d.id === editing.id
             ? {
                 ...d,
-                veiculo: form.veiculo,
-                data: form.data,
-                tipo_despesa: form.tipo_despesa,
-                valor: parseFloat(form.valor),
-                pagador: form.pagador,
-                quilometragem: form.quilometragem ? parseInt(form.quilometragem) : undefined,
-                observacao: form.observacao || undefined,
+                vehicle: form.vehicle,
+                date: form.date,
+                category: form.category,
+                amount: parseFloat(form.amount),
+                payer: form.payer,
+                odometer: form.odometer ? parseInt(form.odometer) : undefined,
+                observations: form.observations || undefined,
               }
             : d
         )
       )
     } else {
-      const nova: Despesa = {
+      const newExpense: LocalExpense = {
         id: String(Date.now()),
-        veiculo: form.veiculo,
-        data: form.data,
-        tipo_despesa: form.tipo_despesa,
-        valor: parseFloat(form.valor),
-        pagador: form.pagador,
-        quilometragem: form.quilometragem ? parseInt(form.quilometragem) : undefined,
-        observacao: form.observacao || undefined,
+        vehicle: form.vehicle,
+        date: form.date,
+        category: form.category,
+        amount: parseFloat(form.amount),
+        payer: form.payer,
+        odometer: form.odometer ? parseInt(form.odometer) : undefined,
+        observations: form.observations || undefined,
         created_at: new Date().toISOString(),
       }
-      setDespesas((prev) => [nova, ...prev])
+      setExpenses((prev) => [newExpense, ...prev])
     }
     setForm(defaultForm)
-    setEditando(null)
+    setEditing(null)
     setModalOpen(false)
   }
 
-  function handleExcluir() {
-    if (!excluindo) return
-    setDespesas((prev) => prev.filter((d) => d.id !== excluindo.id))
-    setExcluindo(null)
+  function handleDelete() {
+    if (!deleting) return
+    setExpenses((prev) => prev.filter((d) => d.id !== deleting.id))
+    setDeleting(null)
   }
 
+  /** ESTRUTURA DA TABELA */
   const columns = [
     {
       key: 'id',
       header: '#',
-      render: (row: Despesa) => <span className="text-[#A0A0A0] text-xs">{row.id}</span>,
+      render: (row: LocalExpense) => <span className="text-[#A0A0A0] text-xs">{row.id}</span>,
     },
     {
-      key: 'veiculo',
+      key: 'vehicle',
       header: 'Veículo',
-      render: (row: Despesa) => (
+      render: (row: LocalExpense) => (
         <span className="font-mono text-sm font-semibold text-white bg-[#2a2a2a] px-2 py-0.5 rounded">
-          {row.veiculo}
+          {row.vehicle}
         </span>
       ),
     },
     {
-      key: 'data',
+      key: 'date',
       header: 'Data / KM',
-      render: (row: Despesa) => {
-        const temMoto = row.veiculo && row.veiculo !== 'Geral'
-        const semKm = temMoto && !row.quilometragem
+      render: (row: LocalExpense) => {
+        const hasMoto = row.vehicle && row.vehicle !== 'Geral'
+        const missingKm = hasMoto && !row.odometer
         return (
           <div>
-            <p className="text-white text-sm">{formatDate(row.data)}</p>
-            {row.quilometragem ? (
+            <p className="text-white text-sm">{formatDate(row.date)}</p>
+            {row.odometer ? (
               <p className="text-xs text-[#A0A0A0] mt-0.5">
-                {row.quilometragem.toLocaleString('pt-BR')} km
+                {row.odometer.toLocaleString('pt-BR')} km
               </p>
-            ) : semKm ? (
+            ) : missingKm ? (
               <p className="text-xs text-red-400 mt-0.5 font-medium">
                 ⚠ km não informado
               </p>
@@ -334,49 +388,49 @@ export default function DespesasPage() {
       },
     },
     {
-      key: 'tipo_despesa',
-      header: 'Tipo',
-      render: (row: Despesa) => (
-        <Badge variant={tipoBadge[row.tipo_despesa] ?? 'muted'}>{row.tipo_despesa}</Badge>
+      key: 'category',
+      header: 'Tipo de Despesa',
+      render: (row: LocalExpense) => (
+        <Badge variant={categoryBadge[row.category] ?? 'muted'}>{row.category}</Badge>
       ),
     },
     {
-      key: 'pagador',
+      key: 'payer',
       header: 'Pagador',
-      render: (row: Despesa) => (
-        <Badge variant={pagadorBadge[row.pagador] ?? 'muted'}>{row.pagador}</Badge>
+      render: (row: LocalExpense) => (
+        <Badge variant={payerBadge[row.payer] ?? 'muted'}>{row.payer}</Badge>
       ),
     },
     {
-      key: 'valor',
+      key: 'amount',
       header: 'Valor',
-      render: (row: Despesa) => (
-        <span className="font-semibold text-red-400">{formatCurrency(row.valor)}</span>
+      render: (row: LocalExpense) => (
+        <span className="font-semibold text-red-400">{formatCurrency(row.amount)}</span>
       ),
     },
     {
-      key: 'observacao',
+      key: 'observations',
       header: 'Observação',
-      render: (row: Despesa) => (
-        <p className="text-xs text-[#A0A0A0] max-w-[220px] truncate" title={row.observacao}>
-          {row.observacao || '—'}
+      render: (row: LocalExpense) => (
+        <p className="text-xs text-[#A0A0A0] max-w-[220px] truncate" title={row.observations}>
+          {row.observations || '—'}
         </p>
       ),
     },
     {
-      key: 'acoes',
+      key: 'actions',
       header: '',
-      render: (row: Despesa) => (
+      render: (row: LocalExpense) => (
         <div className="flex items-center gap-1">
           <button
-            onClick={() => abrirEdicao(row)}
+            onClick={() => openEdit(row)}
             className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
             title="Editar"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setExcluindo(row)}
+            onClick={() => setDeleting(row)}
             className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
             title="Excluir"
           >
@@ -389,11 +443,12 @@ export default function DespesasPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {/* Cabeçalho superior com título dinâmico */}
       <Header
         title="Despesas"
         subtitle="Registro de gastos e custos"
         actions={
-          <Button onClick={abrirNova}>
+          <Button onClick={openNew}>
             <Plus className="w-4 h-4" />
             Nova Despesa
           </Button>
@@ -402,62 +457,62 @@ export default function DespesasPage() {
 
       <div className="p-6 space-y-5">
 
-        {/* Cards expandidos */}
+        {/* Painel de Métricas e Dashboards em Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Card Total Geral */}
+          {/* Card 1: Resumo de Gastos Totais e por Pagador */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total Geral</p>
-              <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalGeral)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-1">{despesas.length} registros · ticket médio {formatCurrency(ticketMedio)}</p>
+              <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalOverall)}</p>
+              <p className="text-xs text-[#A0A0A0] mt-1">{expenses.length} registros · ticket médio {formatCurrency(averageTicket)}</p>
             </div>
             <div className="p-4 space-y-2 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por pagador</p>
-              {breakdownPagador(despesas).map(([pagador, { valor, qtd }]) => (
-                <div key={pagador} className="flex items-center justify-between">
-                  <span className="text-xs text-[#A0A0A0]">{pagador}</span>
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por pagador (Geral)</p>
+              {getBreakdownByPayer(expenses).map(([payer, { amount, count }]) => (
+                <div key={payer} className="flex items-center justify-between">
+                  <span className="text-xs text-[#A0A0A0]">{payer}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#A0A0A0]">{qtd}x</span>
-                    <span className="text-xs font-medium text-white">{formatCurrency(valor)}</span>
+                    <span className="text-xs text-[#A0A0A0]">{count}x</span>
+                    <span className="text-xs font-medium text-white">{formatCurrency(amount)}</span>
                   </div>
                 </div>
               ))}
             </div>
             <div className="p-4">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Custo real da empresa</p>
-              <p className="text-sm font-semibold text-red-400">{formatCurrency(totalEmpresa)}</p>
+              <p className="text-sm font-semibold text-red-400">{formatCurrency(totalCompany)}</p>
               <p className="text-xs text-[#A0A0A0] mt-0.5">
-                Desconto na semanal (clientes): {formatCurrency(totalDescontoSemanal)}
+                Desconto na semanal (clientes): {formatCurrency(totalWeeklyDiscount)}
               </p>
             </div>
           </Card>
 
-          {/* Card Total do Mês */}
+          {/* Card 2: Fluxo de Caixa Mensal e Variação vs Mês Anterior */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total do Mês</p>
-              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(totalMes)}</p>
+              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(currentMonthTotal)}</p>
               <div className="mt-1">
-                {variacaoMes !== null ? (
-                  <span className={`text-xs font-medium ${variacaoMes > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                    {variacaoMes > 0 ? '▲' : '▼'} {Math.abs(variacaoMes).toFixed(1)}% vs mês anterior
+                {monthlyVariation !== null ? (
+                  <span className={`text-xs font-medium ${monthlyVariation > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {monthlyVariation > 0 ? '▲' : '▼'} {Math.abs(monthlyVariation).toFixed(1)}% vs mês anterior
                   </span>
                 ) : (
-                  <span className="text-xs text-[#A0A0A0]">{despesasMes.length} registros</span>
+                  <span className="text-xs text-[#A0A0A0]">{currentMonthExpenses.length} registros</span>
                 )}
               </div>
             </div>
             <div className="p-4 space-y-2">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por tipo</p>
-              {breakdownTipo(despesasMes).length === 0
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por tipo (Mês)</p>
+              {getBreakdownByCategory(currentMonthExpenses).length === 0
                 ? <p className="text-xs text-[#A0A0A0]">Sem despesas este mês</p>
-                : breakdownTipo(despesasMes).map(([tipo, { valor, qtd }]) => (
-                  <div key={tipo} className="flex items-center justify-between">
-                    <span className="text-xs text-[#A0A0A0]">{tipo}</span>
+                : getBreakdownByCategory(currentMonthExpenses).map(([category, { amount, count }]) => (
+                  <div key={category} className="flex items-center justify-between">
+                    <span className="text-xs text-[#A0A0A0]">{category}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#A0A0A0]">{qtd}x</span>
-                      <span className="text-xs font-medium text-white">{formatCurrency(valor)}</span>
+                      <span className="text-xs text-[#A0A0A0]">{count}x</span>
+                      <span className="text-xs font-medium text-white">{formatCurrency(amount)}</span>
                     </div>
                   </div>
                 ))
@@ -465,60 +520,60 @@ export default function DespesasPage() {
             </div>
           </Card>
 
-          {/* Card Registros + Moto mais cara + Pagador do mês */}
+          {/* Card 3: Eficiência Operacional e Veículo Mais Caro */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total de Registros</p>
-              <p className="text-2xl font-bold text-white mt-1">{despesas.length}</p>
-              <p className="text-xs text-[#A0A0A0] mt-1">{despesasMes.length} no mês atual</p>
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Volume de Lançamentos</p>
+              <p className="text-2xl font-bold text-white mt-1">{expenses.length}</p>
+              <p className="text-xs text-[#A0A0A0] mt-1">{currentMonthExpenses.length} no mês atual</p>
             </div>
             <div className="p-4 space-y-2 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por pagador (mês)</p>
-              {breakdownPagador(despesasMes).length === 0
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por pagador (Mês)</p>
+              {getBreakdownByPayer(currentMonthExpenses).length === 0
                 ? <p className="text-xs text-[#A0A0A0]">Sem despesas este mês</p>
-                : breakdownPagador(despesasMes).map(([pagador, { valor, qtd }]) => (
-                  <div key={pagador} className="flex items-center justify-between">
-                    <span className="text-xs text-[#A0A0A0]">{pagador}</span>
+                : getBreakdownByPayer(currentMonthExpenses).map(([payer, { amount, count }]) => (
+                  <div key={payer} className="flex items-center justify-between">
+                    <span className="text-xs text-[#A0A0A0]">{payer}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#A0A0A0]">{qtd}x</span>
-                      <span className="text-xs font-medium text-white">{formatCurrency(valor)}</span>
+                      <span className="text-xs text-[#A0A0A0]">{count}x</span>
+                      <span className="text-xs font-medium text-white">{formatCurrency(amount)}</span>
                     </div>
                   </div>
                 ))
               }
             </div>
             <div className="p-4">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Moto mais cara (mês)</p>
-              {motoMaisCara ? (
+              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Moto mais cara (Mês)</p>
+              {mostExpensiveMotorcycle ? (
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-semibold text-white bg-[#2a2a2a] px-2 py-0.5 rounded">{motoMaisCara[0]}</span>
-                  <span className="text-sm font-semibold text-red-400">{formatCurrency(motoMaisCara[1])}</span>
+                  <span className="font-mono text-sm font-semibold text-white bg-[#2a2a2a] px-2 py-0.5 rounded">{mostExpensiveMotorcycle[0]}</span>
+                  <span className="text-sm font-semibold text-red-400">{formatCurrency(mostExpensiveMotorcycle[1])}</span>
                 </div>
               ) : (
-                <p className="text-xs text-[#A0A0A0]">Sem dados este mês</p>
+                <p className="text-xs text-[#A0A0A0]">Dados insuficientes</p>
               )}
             </div>
           </Card>
 
         </div>
 
-        {/* Filtros rápidos + Busca */}
+        {/* Controles de Filtros e Pesquisa Global */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-2 flex-wrap">
-            {tabsPagador.map((tab) => (
+            {payerTabs.map((tab) => (
               <button
                 key={tab.value}
-                onClick={() => handleFiltroPagador(tab.value)}
+                onClick={() => handlePayerFilter(tab.value)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  filtroPagador === tab.value
+                  payerFilter === tab.value
                     ? 'bg-[#BAFF1A] text-[#121212]'
                     : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
                 }`}
               >
                 {tab.label}
-                {tab.value !== 'todos' && (
+                {tab.value !== 'all' && (
                   <span className="ml-1.5 opacity-70">
-                    ({despesas.filter((d) => d.pagador === tab.value).length})
+                    ({expenses.filter((d) => d.payer === tab.value).length})
                   </span>
                 )}
               </button>
@@ -529,47 +584,47 @@ export default function DespesasPage() {
             <input
               type="text"
               placeholder="Buscar por veículo, tipo, pagador ou observação..."
-              value={busca}
-              onChange={(e) => handleBusca(e.target.value)}
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
               className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
             />
           </div>
         </div>
 
-        {/* Tabela + Paginação */}
+        {/* Tabela de Listagem de Despesas com Paginação Local */}
         <Card padding="none">
           <Table
             columns={columns}
-            data={despesasPagina}
+            data={pageExpenses}
             keyExtractor={(row) => row.id}
             emptyMessage="Nenhuma despesa encontrada"
           />
           <Pagination
             page={page}
             pageSize={PAGE_SIZE}
-            total={total}
+            total={totalItems}
             onPageChange={setPage}
           />
         </Card>
       </div>
 
-      {/* Modal de Confirmação de Exclusão */}
-      <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Confirmar Exclusão" size="sm">
+      {/* Modal de Confirmação para Exclusão Logística de Registros */}
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Confirmar Exclusão" size="sm">
         <div className="space-y-4">
           <div className="p-4 bg-red-500/8 border border-red-500/20 rounded-lg">
             <p className="text-sm text-white font-medium">Tem certeza que deseja excluir esta despesa?</p>
-            <p className="text-xs text-[#A0A0A0] mt-2">Esta ação não pode ser desfeita.</p>
+            <p className="text-xs text-[#A0A0A0] mt-2">Esta operação removerá o gasto dos balanços financeiros mensais.</p>
           </div>
-          {excluindo && (
+          {deleting && (
             <div className="p-3 bg-[#2a2a2a] rounded-lg space-y-1">
               <p className="text-xs text-[#A0A0A0]">Despesa a ser excluída:</p>
-              <p className="text-sm text-white font-medium">{excluindo.tipo_despesa} — {excluindo.veiculo}</p>
-              <p className="text-xs text-[#A0A0A0]">{formatCurrency(excluindo.valor)} · {formatDate(excluindo.data)} · {excluindo.pagador}</p>
+              <p className="text-sm text-white font-medium">{deleting.category} — {deleting.vehicle}</p>
+              <p className="text-xs text-[#A0A0A0]">{formatCurrency(deleting.amount)} · {formatDate(deleting.date)} · {deleting.payer}</p>
             </div>
           )}
           <div className="flex gap-3 justify-end pt-1">
-            <Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button>
-            <Button variant="danger" onClick={handleExcluir}>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDelete}>
               <Trash2 className="w-4 h-4" />
               Sim, excluir
             </Button>
@@ -577,37 +632,37 @@ export default function DespesasPage() {
         </div>
       </Modal>
 
-      {/* Modal Nova / Editar Despesa */}
+      {/* Modal: Formulário Unificado para Nova Despesa ou Edição */}
       <Modal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditando(null) }}
-        title={editando ? 'Editar Despesa' : 'Nova Despesa'}
+        onClose={() => { setModalOpen(false); setEditing(null) }}
+        title={editing ? 'Editar Despesa' : 'Nova Despesa'}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Veículo (Placa)"
-              options={veiculoOptions}
-              value={form.veiculo}
-              onChange={(e) => setForm({ ...form, veiculo: e.target.value })}
+              options={vehicleOptions}
+              value={form.vehicle}
+              onChange={(e) => setForm({ ...form, vehicle: e.target.value })}
               required
             />
             <Input
               label="Data"
               type="date"
-              value={form.data}
-              onChange={(e) => setForm({ ...form, data: e.target.value })}
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Tipo de Despesa"
-              options={tipoDespesaOptions}
-              value={form.tipo_despesa}
-              onChange={(e) => setForm({ ...form, tipo_despesa: e.target.value })}
+              label="Tipo"
+              options={expenseCategoryOptions}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
               required
             />
             <Input
@@ -615,8 +670,8 @@ export default function DespesasPage() {
               type="number"
               step="0.01"
               placeholder="0.00"
-              value={form.valor}
-              onChange={(e) => setForm({ ...form, valor: e.target.value })}
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
               required
             />
           </div>
@@ -624,36 +679,36 @@ export default function DespesasPage() {
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Pagador"
-              options={pagadorOptions}
-              value={form.pagador}
-              onChange={(e) => setForm({ ...form, pagador: e.target.value })}
+              options={payerOptions}
+              value={form.payer}
+              onChange={(e) => setForm({ ...form, payer: e.target.value })}
               required
             />
             <Input
               label="Quilometragem (opcional)"
               type="number"
               placeholder="Ex: 29.282"
-              value={form.quilometragem}
-              onChange={(e) => setForm({ ...form, quilometragem: e.target.value })}
-              hint="km no momento da despesa"
+              value={form.odometer}
+              onChange={(e) => setForm({ ...form, odometer: e.target.value })}
+              hint="KM atual para registro técnico"
             />
           </div>
 
           <Textarea
             label="Observação"
-            placeholder="Ex: Troca de óleo, valor da nota 34,00"
+            placeholder="Ex: Nota fiscal, detalhes das peças, etc."
             rows={3}
-            value={form.observacao}
-            onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+            value={form.observations}
+            onChange={(e) => setForm({ ...form, observations: e.target.value })}
           />
 
           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => { setModalOpen(false); setEditando(null) }}>
+            <Button type="button" variant="ghost" onClick={() => { setModalOpen(false); setEditing(null) }}>
               Cancelar
             </Button>
             <Button type="submit" variant="danger">
               <TrendingDown className="w-4 h-4" />
-              {editando ? 'Salvar Alterações' : 'Registrar Despesa'}
+              {editing ? 'Salvar Alterações' : 'Registrar Despesa'}
             </Button>
           </div>
         </form>

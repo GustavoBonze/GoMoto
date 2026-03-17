@@ -1,953 +1,995 @@
-'use client'
+/**
+ * ARQUIVO: src/app/(dashboard)/contratos/page.tsx
+ * 
+ * DESCRIÇÃO GERAL:
+ * Esta página representa o módulo de "Gestão Contratual" do ecossistema GoMoto.
+ * Sua principal função é formalizar juridicamente e financeiramente a entrega de um veículo a um locatário.
+ * 
+ * REGRAS DE NEGÓCIO POR TIPO DE CONTRATO:
+ * - TIPO 1 (Locação Pura): Focado em flexibilidade. Ciclos de 90 dias com renovação automática.
+ *   Manutenção preventiva dividida (GoMoto fornece peças, cliente paga mão de obra ou vice-versa).
+ * - TIPO 2 (Fidelidade Quinzenal): Plano de aquisição (Rent-to-own). Pagamentos a cada 15 dias.
+ *   Duração de 24 meses. Ao final, a moto é transferida para o cliente.
+ * - TIPO 3 (Fidelidade Semanal): Similar ao Tipo 2, mas com fluxo de caixa semanal.
+ *   Responsabilidade de manutenção 100% do cliente para acelerar a quitação.
+ * 
+ * FLUXO OPERACIONAL:
+ * 1. Geração: O contrato nasce a partir da alocação de uma moto a um cliente da fila.
+ * 2. Assinatura: O sistema marca como "Pendente" até que o PDF assinado seja carregado.
+ * 3. Vigência: Monitoramento dinâmico de semanas restantes e alertas de proximidade do fim.
+ * 4. Encerramento: Finalização por conclusão, distrato (cancelamento) ou inadimplência (quebra).
+ */
 
+'use client' // Define como Client Component para gerenciar estados de modais e filtros
+
+// Importação de hooks do React para ciclo de vida e estado
 import { useEffect, useRef, useState } from 'react'
+
+// Importação da biblioteca Lucide para iconografia de interface
 import {
-  Plus, Eye, FileText, Upload, ExternalLink, ChevronDown, ChevronUp,
-  Clock, Bike, User, CheckCircle, History, XCircle, X, Search,
+  Plus,             // Ícone para criar novo contrato
+  Eye,              // Ícone para visualizar detalhes
+  FileText,         // Ícone representativo de documento/PDF
+  Upload,           // Ícone para envio de arquivos
+  ExternalLink,     // Ícone para abrir links externos (PDF)
+  ChevronDown,      // Seta para baixo (expansão)
+  ChevronUp,        // Seta para cima (recolhimento)
+  Clock,            // Ícone de tempo/vencimento
+  Bike,             // Ícone de veículo
+  User,             // Ícone de cliente
+  CheckCircle,      // Ícone de sucesso/concluído
+  History,          // Ícone de arquivo morto/histórico
+  XCircle,          // Ícone de erro/cancelamento
+  AlertCircle,      // Ícone de alerta/aviso
+  X,                // Ícone de fechar
+  Search,           // Ícone de busca
 } from 'lucide-react'
+
+// Importação de componentes de Layout e UI atômicos
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { LS_MOTOS_ALOCADAS, LS_NEW_CONTRACTS } from '@/data/motos'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import type { ContratoTipo, ContratoStatus } from '@/types'
 
-// ——— Tipos locais ———
-interface Contrato {
-  id: string
-  tipo: ContratoTipo
-  cliente_id: string
-  cliente_nome: string
-  cliente_cpf: string
-  cliente_telefone: string
-  cliente_rg?: string
-  cliente_uf?: string
-  cliente_endereco?: string
-  cliente_cep?: string
-  cliente_cnh?: string
-  cliente_cnh_categoria?: string
-  cliente_contato_emergencia?: string
-  moto_id: string
-  moto_placa: string
-  moto_modelo: string
-  moto_marca: string
-  moto_ano: string
-  moto_cor: string
-  moto_renavam?: string
-  moto_chassi?: string
-  data_inicio: string
-  data_fim: string
-  valor_periodo: number   // semanal p/ tipo 1 e 3 / quinzenal p/ tipo 2
-  status: ContratoStatus
-  assinatura_pendente?: boolean
-  pdf_url?: string
-  motivo_encerramento?: string
-  observacoes?: string
-  created_at: string
-  updated_at: string
+// Importação de constantes de integração com LocalStorage (persistência temporária)
+import { LS_ALLOCATED_MOTORCYCLES, LS_NEW_CONTRACTS } from '@/data/motos'
+
+// Importação de tipos globais para segurança de tipos (TypeScript)
+import type { 
+  ContractType,     // Enum numérico (1, 2, 3) para tipos de plano
+  ContractStatus  // Enum string (ativo, encerrado, etc) para status
+} from '@/types'
+
+/**
+ * INTERFACE: Contract
+ * 
+ * Representa a "Fotografia" (Snapshot) do acordo no momento da assinatura.
+ * IMPORTANTE: Dados como endereço e telefone são salvos aqui para que, mesmo que o cliente mude de endereço no futuro, 
+ * o registro do contrato assinado permaneça fiel ao documento físico da época.
+ */
+interface Contract {
+  id: string                        // Identificador único do contrato
+  type: ContractType                // Categoria do plano (Locação ou Fidelidade)
+  customer_id: string               // ID de referência do cliente no banco
+  customerName: string              // Nome completo do locatário
+  customerCpf: string               // CPF para validade jurídica
+  customerPhone: string             // Contato principal
+  customerRg?: string               // Identidade
+  customerState?: string            // UF de origem
+  customerAddress?: string          // Endereço na data da assinatura
+  customerZipCode?: string          // CEP
+  customerCnh?: string              // Número da CNH do motorista
+  customerCnhCategory?: string      // Categoria (deve conter 'A')
+  customerEmergencyContact?: string // Contato de segurança
+  motorcycle_id: string             // ID de referência do veículo
+  motorcycle_plate: string          // Placa (identificação visual)
+  motorcycleModel: string           // Modelo da moto (Ex: Pop 110)
+  motorcycleBrand: string           // Fabricante (Ex: Honda)
+  motorcycleYear: string            // Ano de fabricação
+  motorcycleColor: string           // Cor predominante
+  motorcycleRenavam?: string        // Código RENAVAM
+  motorcycleChassis?: string        // Número do Chassi
+  start_date: string                // Data de início da vigência (YYYY-MM-DD)
+  end_date: string                  // Data prevista para término (YYYY-MM-DD)
+  closing_date?: string             // Data de encerramento
+  weekly_rate?: number              // Valor pactuado por ciclo (Semana)
+  biweekly_rate?: number            // Valor pactuado por ciclo (Quinzena)
+  monthly_rate?: number             // Valor pactuado por ciclo (Mês)
+  deposit?: number                  // Valor de caução
+  status: ContractStatus            // Estado atual do acordo
+  signed?: boolean                  // Flag que indica assinatura
+  pdf_url?: string                  // Link para o arquivo PDF no storage
+  closureReason?: string            // Justificativa caso o contrato seja encerrado precocemente
+  observations?: string             // Observações administrativas gerais
+  created_at: string                // Timestamp de registro
+  updated_at: string                // Timestamp de última modificação
 }
 
-// ——— Metadados dos tipos ———
-const TIPO_INFO: Record<ContratoTipo, {
-  label: string
-  freq: string
-  duracao: string
-  aquisicao: boolean
-  manutencao: string
+/**
+ * CONSTANTE: TYPE_INFO
+ * 
+ * Dicionário de configuração das regras de cada modalidade de contrato.
+ * Utilizado para automatizar textos explicativos e cálculos na interface.
+ */
+const TYPE_INFO: Record<ContractType, {
+  label: string                     // Nome comercial do plano
+  frequency: string                 // Periodicidade de cobrança
+  duration: string                  // Tempo total de validade
+  acquisition: boolean              // Indica se o cliente ganha a moto no final
+  maintenance: string               // Regra de divisão de custos de oficina
 }> = {
-  1: { label: 'Locação',              freq: 'Semanal',    duracao: '90 dias (renovável)', aquisicao: false, manutencao: 'Dividida entre as partes' },
-  2: { label: 'Fidelidade Quinzenal', freq: 'Quinzenal',  duracao: '24 meses',            aquisicao: true,  manutencao: 'Dividida entre as partes' },
-  3: { label: 'Fidelidade Semanal',   freq: 'Semanal',    duracao: '24 meses',            aquisicao: true,  manutencao: '100% cliente (enviar comprovantes)' },
+  1: { 
+    label: 'Locação Convencional', 
+    frequency: 'Semanal',    
+    duration: '90 dias (renovável)', 
+    acquisition: false, 
+    maintenance: 'Peças por conta da GoMoto / Mão de obra pelo cliente' 
+  },
+  2: { 
+    label: 'Fidelidade Quinzenal', 
+    frequency: 'Quinzenal',  
+    duration: '24 meses (Quitação)', 
+    acquisition: true,  
+    maintenance: 'Dividida 50/50 entre locador e locatário' 
+  },
+  3: { 
+    label: 'Fidelidade Semanal',   
+    frequency: 'Semanal',    
+    duration: '24 meses (Quitação)', 
+    acquisition: true,  
+    maintenance: '100% Responsabilidade do Cliente' 
+  },
 }
 
-const TIPO_COLORS: Record<ContratoTipo, string> = {
-  1: 'bg-blue-500/15 border-blue-500/30 text-blue-400',
-  2: 'bg-purple-500/15 border-purple-500/30 text-purple-400',
-  3: 'bg-[#BAFF1A]/10 border-[#BAFF1A]/20 text-[#BAFF1A]',
+/**
+ * MAPAS DE CORES E ESTILOS VISUAIS
+ * 
+ * Padronizam a identidade visual baseada no estado dos dados.
+ */
+const TYPE_COLORS: Record<ContractType, string> = {
+  1: 'bg-blue-500/15 border-blue-500/30 text-blue-400',      // Azul para Locação
+  2: 'bg-purple-500/15 border-purple-500/30 text-purple-400', // Roxo para Fidelidade Quinzenal
+  3: 'bg-[#BAFF1A]/10 border-[#BAFF1A]/20 text-[#BAFF1A]',   // Verde Limão para Fidelidade Semanal
 }
 
-const STATUS_COLORS: Record<ContratoStatus, string> = {
-  ativo:     'bg-green-500/15 border-green-500/30 text-green-400',
-  encerrado: 'bg-white/5 border-white/10 text-[#888888]',
-  cancelado: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
-  quebrado:  'bg-red-500/15 border-red-500/30 text-red-400',
+const STATUS_COLORS: Record<ContractStatus, string> = {
+  active:     'bg-green-500/15 border-green-500/30 text-green-400',  // Verde para em vigor
+  closed: 'bg-white/5 border-white/10 text-[#888888]',           // Cinza para concluído
+  cancelled: 'bg-amber-500/15 border-amber-500/30 text-amber-400',  // Laranja para distrato
+  broken:  'bg-red-500/15 border-red-500/30 text-red-400',        // Vermelho para inadimplência
 }
 
-const STATUS_LABELS: Record<ContratoStatus, string> = {
-  ativo: 'Ativo', encerrado: 'Encerrado', cancelado: 'Cancelado', quebrado: 'Quebrado',
+const STATUS_LABELS: Record<ContractStatus, string> = {
+  active: 'Em Vigência', 
+  closed: 'Concluído', 
+  cancelled: 'Cancelado', 
+  broken: 'Quebra de Contrato',
 }
 
-// ——— Mock data ———
-const mockContratos: Contrato[] = [
+/**
+ * LISTA: mockContracts
+ * 
+ * Lista inicial de contratos para popular a UI.
+ */
+const mockContracts: Contract[] = [
   {
-    id: '1', tipo: 1,
-    cliente_id: '1', cliente_nome: 'FABRICIO DO VALE NEPOMUCENO', cliente_cpf: '129.616.867-09',
-    cliente_telefone: '21 98776-4348', cliente_rg: '207189267', cliente_uf: 'RJ',
-    cliente_endereco: 'R ADELINO 12 - ROLLAS 2 - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    cliente_cep: '23590-170', cliente_cnh: '4372430975', cliente_cnh_categoria: 'A',
-    cliente_contato_emergencia: 'MÃE: (21) 99184-7214 | IRMÃO: (21) 96577-2573',
-    moto_id: '4', moto_placa: 'RJA5J85', moto_modelo: 'HONDA/CG 160 START',
-    moto_marca: 'HONDA', moto_ano: '24/25', moto_cor: 'PRETO',
-    moto_renavam: '01267415698', moto_chassi: '9C2JC3110RR001234',
-    data_inicio: '2026-02-05', data_fim: '2026-05-06',
-    valor_periodo: 350, status: 'ativo',
-    observacoes: '', created_at: '2026-02-05T10:00:00Z', updated_at: '2026-02-05T10:00:00Z',
+    id: '1', type: 1,
+    customer_id: '1', customerName: 'FABRICIO DO VALE NEPOMUCENO', customerCpf: '129.616.867-09',
+    customerPhone: '21 98776-4348', customerRg: '207189267', customerState: 'RJ',
+    customerAddress: 'R ADELINO 12 - ROLLAS 2 - SANTA CRUZ - RIO DE JANEIRO - RJ',
+    customerZipCode: '23590-170', customerCnh: '4372430975', customerCnhCategory: 'A',
+    customerEmergencyContact: 'MÃE: (21) 99184-7214 | IRMÃO: (21) 96577-2573',
+    motorcycle_id: '4', motorcycle_plate: 'RJA5J85', motorcycleModel: 'HONDA/CG 160 START',
+    motorcycleBrand: 'HONDA', motorcycleYear: '24/25', motorcycleColor: 'PRETO',
+    start_date: '2026-02-05', end_date: '2026-05-06',
+    weekly_rate: 350, status: 'active', signed: true,
+    observations: '', created_at: '2026-02-05T10:00:00Z', updated_at: '2026-02-05T10:00:00Z',
   },
   {
-    id: '2', tipo: 2,
-    cliente_id: '2', cliente_nome: 'DOUGLAS DOS SANTOS SIMÔES', cliente_cpf: '173.964.027-60',
-    cliente_telefone: '21 97389-7602', cliente_rg: '300246329', cliente_uf: 'RJ',
-    cliente_endereco: 'ESTRADA DE SEPETIBA N 595 - BLOCO 09 CASA 02 - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    cliente_cep: '23520-660', cliente_cnh: '7601971200', cliente_cnh_categoria: 'A',
-    cliente_contato_emergencia: 'ESPOSA: (21) 96683-1232 | MÃE: (21) 97876-1439',
-    moto_id: '2', moto_placa: 'KYN9J41', moto_modelo: 'YAMAHA/YS150 FAZER SED',
-    moto_marca: 'YAMAHA', moto_ano: '23/24', moto_cor: 'CINZA',
-    data_inicio: '2025-10-23', data_fim: '2027-10-23',
-    valor_periodo: 630, status: 'ativo',
-    observacoes: 'Moto será transferida ao final do contrato.',
+    id: '2', type: 2,
+    customer_id: '2', customerName: 'DOUGLAS DOS SANTOS SIMÔES', customerCpf: '173.964.027-60',
+    customerPhone: '21 97389-7602', customerRg: '300246329', customerState: 'RJ',
+    customerAddress: 'ESTRADA DE SEPETIBA N 595 - BLOCO 09 CASA 02 - SANTA CRUZ - RIO DE JANEIRO - RJ',
+    customerZipCode: '23520-660', customerCnh: '7601971200', customerCnhCategory: 'A',
+    customerEmergencyContact: 'ESPOSA: (21) 96683-1232 | MÃE: (21) 97876-1439',
+    motorcycle_id: '2', motorcycle_plate: 'KYN9J41', motorcycleModel: 'YAMAHA/YS150 FAZER SED',
+    motorcycleBrand: 'YAMAHA', motorcycleYear: '23/24', motorcycleColor: 'CINZA',
+    start_date: '2025-10-23', end_date: '2027-10-23',
+    biweekly_rate: 630, status: 'active', signed: true,
+    observations: 'Moto será transferida ao final do contrato.',
     created_at: '2025-10-23T10:00:00Z', updated_at: '2025-10-23T10:00:00Z',
-  },
-  {
-    id: '3', tipo: 1,
-    cliente_id: '4', cliente_nome: 'ALEXANDRE DANTAS DAS SILVA', cliente_cpf: '099.762.467-14',
-    cliente_telefone: '21 98116-5350', cliente_rg: '12488178', cliente_uf: 'RJ',
-    cliente_endereco: 'CAMINHO DE TUTOIA 1SN QD 120 FUNDOS - COSMOS - RIO DE JANEIRO - RJ',
-    cliente_cep: '23060-275', cliente_cnh: '9225925768', cliente_cnh_categoria: 'A',
-    cliente_contato_emergencia: '(21) 98116-5350',
-    moto_id: '1', moto_placa: 'SYF1C42', moto_modelo: 'HONDA/CG 160 START',
-    moto_marca: 'HONDA', moto_ano: '21/22', moto_cor: 'VERMELHO',
-    data_inicio: '2026-03-09', data_fim: '2026-06-07',
-    valor_periodo: 350, status: 'ativo',
-    observacoes: '', created_at: '2026-03-09T10:00:00Z', updated_at: '2026-03-09T10:00:00Z',
-  },
-  {
-    id: '4', tipo: 1,
-    cliente_id: '3', cliente_nome: 'FLAVIO SILVA COUTINHO', cliente_cpf: '054.666.677-41',
-    cliente_telefone: '21 96445-2588', cliente_rg: '8466667741', cliente_uf: 'RJ',
-    cliente_endereco: 'RUA ITAMBARACA SN CASA 2 LT 11 QD 124 - COSMOS - RIO DE JANEIRO - RJ',
-    cliente_cep: '23060-070', cliente_cnh: '4201494036', cliente_cnh_categoria: 'A',
-    cliente_contato_emergencia: 'GUILHERME (filho): (21) 95947-8641 | MARIANA (filha): (21) 95904-1370',
-    moto_id: '3', moto_placa: 'RIW4J89', moto_modelo: 'HONDA/CG 160 CARGO',
-    moto_marca: 'HONDA', moto_ano: '23/24', moto_cor: 'BRANCO',
-    data_inicio: '2026-01-10', data_fim: '2026-04-10',
-    valor_periodo: 350, status: 'ativo',
-    observacoes: '', created_at: '2026-01-10T10:00:00Z', updated_at: '2026-01-10T10:00:00Z',
   },
 ]
 
-// ——— Helpers ———
-function getSemanas(data_fim: string): number {
-  const diff = new Date(data_fim + 'T12:00:00').getTime() - new Date().getTime()
+/* 
+ * FUNÇÕES UTILITÁRIAS DE CÁLCULO E FORMATAÇÃO
+ */
+
+/**
+ * Calcula quantas semanas faltam para o término do contrato.
+ * Utilizado para gerar alertas visuais de proximidade de encerramento.
+ */
+function getWeeksRemaining(endDate: string): number {
+  const diff = new Date(endDate + 'T12:00:00').getTime() - new Date().getTime()
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24 * 7)))
 }
 
-function getValorMensal(tipo: ContratoTipo, valor: number): number {
-  if (tipo === 2) return (valor * 26) / 12  // 26 quinzenas/ano
-  return (valor * 52) / 12                  // 52 semanas/ano
+/**
+ * Converte o valor do período (semanal ou quinzenal) em uma média mensal estimada.
+ * Baseia-se em 52 semanas/ano ou 26 quinzenas/ano dividido por 12 meses.
+ */
+function getMonthlyValue(type: ContractType, value: number): number {
+  if (type === 2) return (value * 26) / 12  // Projeção mensal para plano quinzenal
+  return (value * 52) / 12                  // Projeção mensal para plano semanal
 }
 
-function fmt(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+/**
+ * Formata números para o padrão de moeda Real Brasileiro (R$).
+ */
+function formatLocalCurrency(value: number) {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtDate(d: string) {
-  return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR')
+/**
+ * Formata strings de data YYYY-MM-DD para o padrão brasileiro DD/MM/YYYY.
+ */
+function formatLocalDate(dateStr: string) {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR')
 }
 
-// ——— Badges ———
-function TipoBadge({ tipo }: { tipo: ContratoTipo }) {
+/**
+ * COMPONENTE: TypeBadge
+ * 
+ * Exibe visualmente o tipo do contrato com cores semânticas.
+ */
+function TypeBadge({ type }: { type: ContractType }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-semibold ${TIPO_COLORS[tipo]}`}>
-      T{tipo} · {TIPO_INFO[tipo].label}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider ${TYPE_COLORS[type]}`}>
+      PLANO T{type} • {TYPE_INFO[type].label}
     </span>
   )
 }
 
-function StatusBadge({ status }: { status: ContratoStatus }) {
+/**
+ * COMPONENTE: StatusBadge
+ * 
+ * Exibe visualmente o estado atual do contrato.
+ */
+function StatusBadge({ status }: { status: ContractStatus }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${STATUS_COLORS[status]}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-tight ${STATUS_COLORS[status]}`}>
       {STATUS_LABELS[status]}
     </span>
   )
 }
 
-// ——— Modal PDF ———
-function PDFModal({ contrato, onClose, onUpdate }: {
-  contrato: Contrato
+/**
+ * MODAL: PDFModal
+ * 
+ * Gerencia o ciclo de vida do documento digitalizado do contrato.
+ */
+function PDFModal({ contract, onClose, onUpdate }: {
+  contract: Contract
   onClose: () => void
   onUpdate: (id: string, url: string) => void
 }) {
-  const fileRef = useRef<HTMLInputElement>(null)
+  // Referência ao input de arquivo para acionamento via botão estilizado
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  /**
+   * Processa a seleção do arquivo PDF e gera uma URL de visualização.
+   */
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    onUpdate(contrato.id, URL.createObjectURL(file))
-    if (fileRef.current) fileRef.current.value = ''
+    // Em produção, aqui ocorreria o upload para Supabase Storage
+    onUpdate(contract.id, URL.createObjectURL(file))
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
-    <Modal open onClose={onClose} title="Contrato Assinado" size="md">
-      <div className="space-y-4">
-        <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-          <p className="text-xs text-[#A0A0A0]">Contrato</p>
-          <p className="font-semibold text-white">{contrato.cliente_nome}</p>
-          <p className="text-xs text-[#A0A0A0]">{contrato.moto_placa} · {contrato.moto_modelo}</p>
+    <Modal open onClose={onClose} title="Arquivo Digital do Contrato" size="md">
+      <div className="space-y-5">
+        {/* Identificação do Contrato no Modal */}
+        <div className="p-4 rounded-xl bg-[#2a2a2a]/50 border border-[#333333]">
+          <p className="text-[10px] text-[#606060] font-black uppercase mb-1">Locatário Responsável</p>
+          <p className="font-bold text-white text-base">{contract.customerName}</p>
+          <p className="text-xs text-[#A0A0A0] mt-1 font-medium">{contract.motorcycle_plate} — {contract.motorcycleModel}</p>
         </div>
 
-        {contrato.pdf_url ? (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-[#2a2a2a] border border-[#333333]">
-            <FileText className="w-5 h-5 text-red-400 flex-shrink-0" />
+        {/* Verificação de existência do arquivo */}
+        {contract.pdf_url ? (
+          /* Estado: Arquivo Carregado */
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-400">
+               <FileText className="w-6 h-6" />
+            </div>
             <div className="flex-1">
-              <p className="text-sm text-white">Contrato assinado</p>
-              <p className="text-xs text-[#A0A0A0]">PDF disponível</p>
+              <p className="text-sm font-bold text-white uppercase tracking-tight">Documento Armazenado</p>
+              <p className="text-[11px] text-green-400/70 font-medium">O contrato assinado está disponível para auditoria.</p>
             </div>
             <a
-              href={contrato.pdf_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#BAFF1A] hover:bg-[#BAFF1A]/10 border border-[#BAFF1A]/30 transition-colors"
+              href={contract.pdf_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-[#BAFF1A] text-black hover:scale-105 transition-all shadow-lg shadow-[#BAFF1A]/20"
             >
-              <ExternalLink className="w-3.5 h-3.5" /> Visualizar
+              <ExternalLink className="w-4 h-4" /> VER PDF
             </a>
           </div>
         ) : (
-          <div className="text-center py-8 border border-dashed border-[#333333] rounded-xl">
-            <FileText className="w-8 h-8 text-[#888888] mx-auto mb-2" />
-            <p className="text-sm text-[#A0A0A0]">Nenhum contrato enviado ainda</p>
+          /* Estado: Aguardando Documento */
+          <div className="text-center py-12 border-2 border-dashed border-[#333333] rounded-2xl bg-black/10">
+            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-[#444444] mx-auto mb-4">
+               <Upload className="w-8 h-8" />
+            </div>
+            <p className="text-sm text-[#A0A0A0] font-medium italic">Nenhum scan ou PDF foi vinculado a este contrato.</p>
           </div>
         )}
 
-        <input ref={fileRef} type="file" className="hidden" accept=".pdf" onChange={handleFile} />
-        <div className="flex justify-between pt-1">
-          <Button variant="secondary" onClick={() => fileRef.current?.click()}>
-            <Upload className="w-4 h-4" /> {contrato.pdf_url ? 'Substituir PDF' : 'Enviar PDF'}
+        {/* Input Oculto */}
+        <input ref={fileInputRef} type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+        
+        {/* Ações de Rodapé */}
+        <div className="flex justify-between items-center pt-2">
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="px-6 font-bold">
+            <Upload className="w-4 h-4" /> {contract.pdf_url ? 'SUBSTITUIR ARQUIVO' : 'CARREGAR CONTRATO ASSINADO'}
           </Button>
-          <Button variant="ghost" onClick={onClose}>Fechar</Button>
+          <Button variant="ghost" onClick={onClose} className="px-8 uppercase font-black text-[10px] tracking-widest text-[#606060]">FECHAR</Button>
         </div>
       </div>
     </Modal>
   )
 }
 
-// ——— Modal Detalhes ———
-function DetalhesModal({ contrato, onClose }: { contrato: Contrato; onClose: () => void }) {
-  const valorMensal = getValorMensal(contrato.tipo, contrato.valor_periodo)
-  const semanas = getSemanas(contrato.data_fim)
-  const info = TIPO_INFO[contrato.tipo]
+/**
+ * MODAL: DetailsModal
+ * 
+ * Visão holística de todos os termos e dados técnicos de um contrato específico.
+ */
+function DetailsModal({ contract, onClose }: { contract: Contract; onClose: () => void }) {
+  // Cálculos financeiros e temporais para exibição
+  const periodValue = contract.type === 2 ? contract.biweekly_rate || 0 : contract.weekly_rate || 0;
+  const monthlyValue = getMonthlyValue(contract.type, periodValue)
+  const weeksLeft = getWeeksRemaining(contract.end_date)
+  const info = TYPE_INFO[contract.type]
 
-  function DR({ label, value }: { label: string; value?: string }) {
+  /**
+   * Helper visual para renderizar pares de chave/valor com consistência.
+   */
+  function DetailRow({ label, value, mono = true }: { label: string; value?: string; mono?: boolean }) {
     return (
-      <div>
-        <p className="text-xs text-[#A0A0A0]">{label}</p>
-        <p className="text-sm text-white font-mono">{value || '—'}</p>
+      <div className="space-y-1">
+        <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest">{label}</p>
+        <p className={`text-sm text-white font-bold ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
       </div>
     )
   }
 
   return (
-    <Modal open onClose={onClose} title="Detalhes do Contrato" size="lg">
-      <div className="space-y-5 max-h-[72vh] overflow-y-auto pr-1">
+    <Modal open onClose={onClose} title="Dossiê Completo do Contrato" size="lg">
+      <div className="space-y-8 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 pb-3 border-b border-[#333333]">
+        {/* Cabeçalho do Detalhamento: Status e Projeção Financeira */}
+        <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#333333]">
           <div>
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <TipoBadge tipo={contrato.tipo} />
-              <StatusBadge status={contrato.status} />
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
+              <TypeBadge type={contract.type} />
+              <StatusBadge status={contract.status} />
             </div>
-            <p className="text-xs text-[#A0A0A0]">
-              {info.freq} · {info.duracao}
-              {info.aquisicao && ' · Moto transferida no final'}
+            <p className="text-sm text-[#A0A0A0] font-medium leading-relaxed italic">
+              Ciclo de Cobrança {info.frequency} • Vigência de {info.duration}
+              {info.acquisition && <span className="block text-[#BAFF1A] not-italic font-bold mt-1 uppercase text-[10px]">✓ Veículo com Promessa de Transferência</span>}
             </p>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-xs text-[#A0A0A0]">Média mensal</p>
-            <p className="text-xl font-bold text-[#BAFF1A]">{fmt(valorMensal)}</p>
+          <div className="text-right flex-shrink-0 bg-[#BAFF1A]/5 p-4 rounded-2xl border border-[#BAFF1A]/10">
+            <p className="text-[10px] text-[#BAFF1A] font-black uppercase tracking-widest mb-1">Média de Faturamento Mensal</p>
+            <p className="text-2xl font-black text-white tracking-tight">{formatLocalCurrency(monthlyValue)}</p>
           </div>
         </div>
 
-        {/* Dados do contrato */}
-        <div>
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Contrato</p>
-          <div className="grid grid-cols-2 gap-3">
-            <DR label="Data início" value={fmtDate(contrato.data_inicio)} />
-            <DR label="Data fim" value={fmtDate(contrato.data_fim)} />
-            <DR label={`Valor por ${contrato.tipo === 2 ? 'quinzena' : 'semana'}`} value={fmt(contrato.valor_periodo)} />
-            <DR label="Semanas restantes" value={contrato.status === 'ativo' ? `${semanas} sem.` : '—'} />
+        {/* SEÇÃO: CRONOGRAMA E VALORES */}
+        <section>
+          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-5 ml-1">Vigência & Compromisso Financeiro</h5>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-[#1a1a1a] p-5 rounded-2xl border border-white/5">
+            <DetailRow label="Data de Ativação" value={formatLocalDate(contract.start_date)} />
+            <DetailRow label="Data de Término" value={formatLocalDate(contract.end_date)} />
+            <DetailRow label={`Valor por ${contract.type === 2 ? 'Quinzena' : 'Semana'}`} value={formatLocalCurrency(periodValue)} />
+            <DetailRow label="Tempo Restante" value={contract.status === 'active' ? `${weeksLeft} Semanas` : 'CONTRATO FINALIZADO'} />
           </div>
-        </div>
+        </section>
 
-        {/* Regras */}
-        <div className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a]">
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Regras</p>
-          <ul className="space-y-1 text-xs text-[#A0A0A0]">
-            <li>• Pagamento {info.freq.toLowerCase()} toda quarta-feira</li>
-            <li>• Juros de atraso: 10% sobre o valor da parcela</li>
-            <li>• Manutenção: {info.manutencao}</li>
-            <li>• Documentação e seguro: responsabilidade da empresa</li>
-            {info.aquisicao && <li>• Moto transferida para o cliente na última parcela</li>}
+        {/* SEÇÃO: REGRAS E CLAUSULAS (Informativo para o gestor) */}
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-[#202020] to-[#151515] border border-[#2a2a2a] shadow-inner">
+          <h5 className="text-[10px] text-[#BAFF1A] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" /> Resumo das Condições Pactuadas
+          </h5>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 text-[11px] text-[#A0A0A0] font-medium">
+            <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Vencimento recorrente toda quarta-feira</li>
+            <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Multa por atraso fixa de 10% do valor da parcela</li>
+            <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Manutenção: {info.maintenance}</li>
+            {info.acquisition && <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Transferência do bem condicionada à quitação integral</li>}
           </ul>
         </div>
 
-        {/* Cliente */}
-        <div>
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Cliente</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <p className="text-xs text-[#A0A0A0]">Nome</p>
-              <p className="text-sm text-white">{contrato.cliente_nome}</p>
+        {/* SEÇÃO: DADOS DO LOCATÁRIO (SNAPSHOTTED) */}
+        <section>
+          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-5 ml-1">Identificação do Locatário na Assinatura</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 bg-white/[0.01] p-6 rounded-2xl border border-white/5">
+            <div className="md:col-span-2">
+              <p className="text-[10px] text-[#606060] font-black uppercase mb-1">Nome Completo</p>
+              <p className="text-base text-white font-black uppercase italic tracking-tight">{contract.customerName}</p>
             </div>
-            <DR label="CPF" value={contrato.cliente_cpf} />
-            <DR label="RG" value={contrato.cliente_rg} />
-            <DR label="Telefone" value={contrato.cliente_telefone} />
-            <DR label="UF" value={contrato.cliente_uf} />
-            <div className="col-span-2">
-              <p className="text-xs text-[#A0A0A0]">Endereço</p>
-              <p className="text-sm text-[#A0A0A0]">{contrato.cliente_endereco || '—'}</p>
+            <DetailRow label="Documento CPF" value={contract.customerCpf} />
+            <DetailRow label="WhatsApp de Contato" value={contract.customerPhone} />
+            <div className="md:col-span-2">
+              <p className="text-[10px] text-[#606060] font-black uppercase mb-1">Endereço Residencial Declarado</p>
+              <p className="text-sm text-[#A0A0A0] font-medium leading-relaxed italic">{contract.customerAddress || '—'}</p>
             </div>
-            <DR label="CEP" value={contrato.cliente_cep} />
-            <DR label="CNH" value={contrato.cliente_cnh} />
-            <DR label="Categoria CNH" value={contrato.cliente_cnh_categoria} />
-            {contrato.cliente_contato_emergencia && (
-              <div className="col-span-2">
-                <p className="text-xs text-[#A0A0A0]">Contato de Emergência</p>
-                <p className="text-sm text-[#A0A0A0]">{contrato.cliente_contato_emergencia}</p>
-              </div>
+            <DetailRow label="Nº de Registro CNH" value={contract.customerCnh} />
+            <DetailRow label="Categoria de Habilitação" value={contract.customerCnhCategory} />
+          </div>
+        </section>
+
+        {/* SEÇÃO: DADOS DO VEÍCULO (SNAPSHOTTED) */}
+        <section>
+          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-5 ml-1">Características do Objeto Locado</h5>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-[#1a1a1a] p-5 rounded-2xl border border-white/5">
+            <DetailRow label="Placa de Identificação" value={contract.motorcycle_plate} />
+            <DetailRow label="Modelo Comercial" value={contract.motorcycleModel} />
+            <DetailRow label="Marca/Fabricante" value={contract.motorcycleBrand} />
+            <DetailRow label="Ano de Fabricação" value={contract.motorcycleYear} />
+          </div>
+        </section>
+
+        {/* SEÇÃO: HISTÓRICO DE ENCERRAMENTO E NOTAS */}
+        {(contract.observations || contract.closureReason) && (
+          <div className="space-y-6">
+            {contract.observations && (
+              <section>
+                <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-3 ml-1">Observações Administrativas</h5>
+                <div className="p-4 rounded-xl bg-[#2a2a2a]/30 border border-[#333333]">
+                   <p className="text-sm text-[#A0A0A0] leading-relaxed italic">{contract.observations}</p>
+                </div>
+              </section>
+            )}
+
+            {contract.closureReason && (
+              <section>
+                <h5 className="text-[10px] text-red-400 font-black uppercase tracking-[0.2em] mb-3 ml-1">Laudo de Encerramento do Contrato</h5>
+                <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                   <p className="text-sm text-red-200/70 leading-relaxed font-medium italic">
+                     <span className="not-italic font-black text-red-400 mr-2 uppercase text-[10px]">Justificativa:</span>
+                     {contract.closureReason}
+                   </p>
+                </div>
+              </section>
             )}
           </div>
-        </div>
-
-        {/* Moto */}
-        <div>
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Moto</p>
-          <div className="grid grid-cols-2 gap-3">
-            <DR label="Placa" value={contrato.moto_placa} />
-            <DR label="Modelo" value={contrato.moto_modelo} />
-            <DR label="Marca" value={contrato.moto_marca} />
-            <DR label="Ano" value={contrato.moto_ano} />
-            <DR label="Cor" value={contrato.moto_cor} />
-            {contrato.moto_renavam && <DR label="RENAVAM" value={contrato.moto_renavam} />}
-            {contrato.moto_chassi && <DR label="Chassi" value={contrato.moto_chassi} />}
-          </div>
-        </div>
-
-        {contrato.observacoes && (
-          <div>
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Observações</p>
-            <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3">{contrato.observacoes}</p>
-          </div>
         )}
 
-        {contrato.motivo_encerramento && (
-          <div>
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Motivo do Encerramento</p>
-            <p className="text-sm text-[#A0A0A0] bg-[#2a2a2a] rounded-lg p-3">{contrato.motivo_encerramento}</p>
-          </div>
-        )}
-
-        <div className="flex justify-end pt-2 border-t border-[#333333]">
-          <Button variant="ghost" onClick={onClose}>Fechar</Button>
+        {/* Ações do Modal */}
+        <div className="flex justify-end pt-4 border-t border-[#333333]">
+          <Button variant="ghost" onClick={onClose} className="px-12 font-black uppercase text-xs tracking-widest text-[#606060]">FECHAR DETALHES</Button>
         </div>
       </div>
     </Modal>
   )
 }
 
-// ——— Card de contrato ———
-function ContratoCard({ contrato, dim, onDetalhes, onPDF, onEncerrar }: {
-  contrato: Contrato
-  dim?: boolean
-  onDetalhes: (c: Contrato) => void
-  onPDF: (c: Contrato) => void
-  onEncerrar?: (c: Contrato) => void
+/**
+ * COMPONENTE: ContractCard
+ * 
+ * Representação visual resumida do contrato para as listagens.
+ */
+function ContractCard({ contract, dim, onDetails, onPDF, onTerminate }: {
+  contract: Contract
+  dim?: boolean                      // Se verdadeiro, reduz opacidade (histórico)
+  onDetails: (c: Contract) => void   // Gatilho para abrir detalhes
+  onPDF: (c: Contract) => void       // Gatilho para gerir PDF
+  onTerminate?: (c: Contract) => void // Gatilho para encerrar contrato
 }) {
-  const semanas = getSemanas(contrato.data_fim)
-  const valorMensal = getValorMensal(contrato.tipo, contrato.valor_periodo)
-  const periodoLabel = contrato.tipo === 2 ? 'quinzena' : 'semana'
-  const alertaSemanas = contrato.status === 'ativo' && semanas <= 2
-  const avisaSemanas  = contrato.status === 'ativo' && semanas > 2 && semanas <= 4
-  const semPDF = contrato.status === 'ativo' && !contrato.pdf_url
+  // Dados calculados para o card
+  const weeksLeft = getWeeksRemaining(contract.end_date)
+  const periodValue = contract.type === 2 ? contract.biweekly_rate || 0 : contract.weekly_rate || 0;
+  const monthlyValue = getMonthlyValue(contract.type, periodValue)
+  const periodLabel = contract.type === 2 ? 'QUINZENA' : 'SEMANA'
+  
+  // Lógica de criticidade de prazo
+  const isCritical = contract.status === 'active' && weeksLeft <= 2
+  const isWarning  = contract.status === 'active' && weeksLeft > 2 && weeksLeft <= 4
+  // Lógica de alerta de assinatura pendente
+  const noSignedPdf = contract.status === 'active' && !contract.pdf_url && !contract.signed
 
   return (
-    <div className={`bg-[#202020] border rounded-xl p-4 transition-all ${
-      dim       ? 'border-[#2a2a2a] opacity-60'
-      : semPDF  ? 'border-red-500/50 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]'
-      : 'border-[#333333] hover:border-[#444444]'
+    <div className={`group bg-[#202020] border rounded-2xl p-5 transition-all duration-300 ${
+      dim           ? 'border-[#2a2a2a] opacity-65 grayscale hover:opacity-100 hover:grayscale-0'
+      : noSignedPdf  ? 'border-red-500/40 shadow-lg shadow-red-500/5'
+      : 'border-[#333333] hover:border-[#555555] hover:shadow-2xl hover:shadow-black/40'
     }`}>
-      {/* Header: badges + ações */}
-      <div className="flex items-start justify-between gap-3 mb-3">
+      
+      {/* Cabeçalho do Card: Status e Badges de Alerta */}
+      <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-2 flex-wrap">
-          <TipoBadge tipo={contrato.tipo} />
-          <StatusBadge status={contrato.status} />
-          {semPDF && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/40 text-red-400 text-xs font-bold">
-              Sem contrato assinado
+          <TypeBadge type={contract.type} />
+          <StatusBadge status={contract.status} />
+          
+          {/* ALERTA: FALTA DE PDF ASSINADO */}
+          {noSignedPdf && (
+            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-black uppercase italic animate-pulse">
+              <AlertCircle className="w-3 h-3" /> AGUARDANDO SCAN
             </span>
           )}
-          {TIPO_INFO[contrato.tipo].aquisicao && (
-            <span className="px-2 py-0.5 rounded-full bg-[#BAFF1A]/5 border border-[#BAFF1A]/15 text-[#BAFF1A]/60 text-xs">
-              Moto inclusa
-            </span>
-          )}
-          {contrato.status === 'ativo' && (alertaSemanas || avisaSemanas) && (
-            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${
-              alertaSemanas
-                ? 'bg-red-500/15 border-red-500/30 text-red-400'
-                : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+          
+          {/* ALERTA: PROXIMIDADE DO FIM */}
+          {contract.status === 'active' && (isCritical || isWarning) && (
+            <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase ${
+              isCritical ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
             }`}>
-              <Clock className="w-3 h-3" /> {semanas} sem. restantes
-            </span>
-          )}
-          {contrato.status === 'ativo' && semanas === 0 && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 border-red-500/30 text-red-400 text-xs font-medium">
-              <Clock className="w-3 h-3" /> Vencido
+              <Clock className="w-3 h-3" /> {weeksLeft} SEMANAS RESTANTES
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+
+        {/* Ações Rápidas no Card */}
+        <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Botão PDF */}
           <button
-            onClick={() => onPDF(contrato)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              contrato.pdf_url
-                ? 'text-green-400 hover:bg-green-500/10'
-                : semPDF
-                ? 'text-red-400 hover:bg-red-500/10 animate-pulse'
-                : 'text-[#888888] hover:text-red-400 hover:bg-red-500/5'
+            onClick={() => onPDF(contract)}
+            className={`p-2 rounded-xl transition-all border border-transparent ${
+              contract.pdf_url || contract.signed
+                ? 'text-green-400 hover:bg-green-500/10 hover:border-green-500/20' 
+                : noSignedPdf ? 'text-red-400 bg-red-500/5 border-red-500/20' : 'text-[#606060]'
             }`}
-            title={contrato.pdf_url ? 'Ver contrato assinado' : 'PENDENTE: Enviar contrato assinado'}
+            title="Gerenciar Documento PDF"
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-4.5 h-4.5" />
           </button>
-          <button
-            onClick={() => onDetalhes(contrato)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
-            title="Ver detalhes"
+          {/* Botão Detalhes */}
+          <button 
+            onClick={() => onDetails(contract)} 
+            className="p-2 rounded-xl text-[#606060] hover:text-white hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
+            title="Ver Ficha Completa"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-4.5 h-4.5" />
           </button>
-          {onEncerrar && contrato.status === 'ativo' && (
-            <button
-              onClick={() => onEncerrar(contrato)}
-              className="p-1.5 rounded-lg text-[#888888] hover:text-amber-400 hover:bg-amber-500/5 transition-colors"
-              title="Encerrar contrato"
+          {/* Botão Encerrar (Apenas Ativos) */}
+          {onTerminate && contract.status === 'active' && (
+            <button 
+              onClick={() => onTerminate(contract)} 
+              className="p-2 rounded-xl text-[#606060] hover:text-amber-400 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20" 
+              title="Baixar Contrato / Encerrar"
             >
-              <XCircle className="w-4 h-4" />
+              <XCircle className="w-4.5 h-4.5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Cliente + Moto */}
-      <div className="grid grid-cols-2 gap-4 mb-3">
-        <div className="flex items-start gap-2">
-          <User className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
+      {/* Grid Central: Informação das Partes e Objeto */}
+      <div className="grid grid-cols-2 gap-6 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#606060] flex-shrink-0">
+             <User className="w-4 h-4" />
+          </div>
           <div className="min-w-0">
-            <p className="text-xs text-[#A0A0A0]">Cliente</p>
-            <p className="text-sm text-white font-medium leading-tight truncate">{contrato.cliente_nome}</p>
-            <p className="text-xs text-[#A0A0A0]">{contrato.cliente_telefone}</p>
+            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest mb-0.5">Locatário</p>
+            <p className="text-sm text-white font-bold truncate uppercase italic group-hover:text-[#BAFF1A] transition-colors">{contract.customerName}</p>
           </div>
         </div>
-        <div className="flex items-start gap-2">
-          <Bike className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-xs text-[#A0A0A0]">Moto</p>
-            <p className="text-sm text-white font-mono font-medium">{contrato.moto_placa}</p>
-            <p className="text-xs text-[#A0A0A0]">{contrato.moto_modelo}</p>
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#606060] flex-shrink-0">
+             <Bike className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest mb-0.5">Veículo</p>
+            <p className="text-sm text-white font-mono font-black tracking-tighter uppercase">{contract.motorcycle_plate}</p>
           </div>
         </div>
       </div>
 
-      {/* Linha de dados */}
-      <div className="grid grid-cols-4 gap-3 pt-3 border-t border-[#2a2a2a]">
+      {/* Rodapé do Card: Datas e Valores de Cobrança */}
+      <div className="grid grid-cols-4 gap-4 pt-4 border-t border-[#2a2a2a] bg-black/10 -mx-5 px-5 pb-0">
         <div>
-          <p className="text-xs text-[#A0A0A0]">Início</p>
-          <p className="text-xs text-white">{fmtDate(contrato.data_inicio)}</p>
+          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">ATIVAÇÃO</p>
+          <p className="text-[11px] text-[#A0A0A0] font-bold">{formatLocalDate(contract.start_date)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#A0A0A0]">Fim</p>
-          <p className={`text-xs font-medium ${alertaSemanas ? 'text-red-400' : 'text-white'}`}>
-            {fmtDate(contrato.data_fim)}
-          </p>
+          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">VENCIMENTO</p>
+          <p className={`text-[11px] font-bold ${isCritical ? 'text-red-400' : 'text-[#A0A0A0]'}`}>{formatLocalDate(contract.end_date)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#A0A0A0]">Por {periodoLabel}</p>
-          <p className="text-xs text-white font-semibold">{fmt(contrato.valor_periodo)}</p>
+          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">PARCELA/{periodLabel}</p>
+          <p className="text-[11px] text-white font-black">{formatLocalCurrency(periodValue)}</p>
         </div>
-        <div>
-          <p className="text-xs text-[#A0A0A0]">Média/mês</p>
-          <p className="text-xs text-[#BAFF1A] font-semibold">{fmt(valorMensal)}</p>
+        <div className="text-right">
+          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">MÉD. MENSAL</p>
+          <p className="text-[11px] text-[#BAFF1A] font-black">{formatLocalCurrency(monthlyValue)}</p>
         </div>
       </div>
-
-      {/* Semanas restantes — só ativos sem alerta */}
-      {contrato.status === 'ativo' && semanas > 4 && (
-        <p className="text-xs text-[#888888] mt-2">{semanas} semanas restantes</p>
-      )}
-
-      {/* Motivo encerramento */}
-      {contrato.motivo_encerramento && (
-        <div className="mt-3 pt-3 border-t border-[#2a2a2a]">
-          <p className="text-xs text-[#A0A0A0] mb-1">Motivo do encerramento</p>
-          <p className="text-xs text-[#888888]">{contrato.motivo_encerramento}</p>
-        </div>
-      )}
     </div>
   )
 }
 
-// ——— Componente principal ———
-export default function ContratosPage() {
-  const [contratos, setContratos] = useState<Contrato[]>(mockContratos)
-  const [showHistorico, setShowHistorico] = useState(false)
-  const [filtroTipo, setFiltroTipo] = useState('todos')
-  const [busca, setBusca] = useState('')
+/**
+ * COMPONENTE PRINCIPAL: ContractsPage
+ * 
+ * Gerencia a lógica de negócio, filtros e criação de novos contratos.
+ */
+export default function ContractsPage() {
+  /* 
+   * ESTADOS DE DADOS E VISUALIZAÇÃO 
+   */
+  // Lista mestre de contratos do sistema
+  const [contracts, setContracts] = useState<Contract[]>(mockContracts)
+  // Controla se a seção de histórico está aberta
+  const [showHistory, setShowHistory] = useState(false)
+  // Valor do filtro de modalidade (Todos, T1, T2, T3)
+  const [typeFilter, setTypeFilter] = useState('todos')
+  // Termo de pesquisa global
+  const [search, setSearch] = useState('')
+  
+  /* ESTADOS DE MODAIS */
   const [addModalOpen, setAddModalOpen] = useState(false)
-  const [detalhesContrato, setDetalhesContrato] = useState<Contrato | null>(null)
-  const [pdfContrato, setPdfContrato] = useState<Contrato | null>(null)
-  const [encerrarContrato, setEncerrarContrato] = useState<Contrato | null>(null)
-  const [encerrarForm, setEncerrarForm] = useState<{ status: ContratoStatus; motivo: string }>({ status: 'encerrado', motivo: '' })
-
+  const [contractDetails, setContractDetails] = useState<Contract | null>(null)
+  const [contractPdf, setContractPdf] = useState<Contract | null>(null)
+  const [terminatingContract, setTerminatingContract] = useState<Contract | null>(null)
+  
+  /* ESTADOS DE FORMULÁRIOS */
+  const [terminationForm, setTerminationForm] = useState<{ status: ContractStatus; reason: string }>({ 
+    status: 'closed', 
+    reason: '' 
+  })
   const [form, setForm] = useState({
-    tipo: '1', cliente_nome: '', cliente_cpf: '', cliente_telefone: '',
-    moto_placa: '', moto_modelo: '', moto_marca: '', moto_ano: '', moto_cor: '',
-    moto_renavam: '', moto_chassi: '', data_inicio: '', valor_periodo: '', observacoes: '',
+    type: '1', customerName: '', customerCpf: '', customerPhone: '',
+    motorcycle_plate: '', motorcycleModel: '', motorcycleBrand: '', motorcycleYear: '', motorcycleColor: '',
+    motorcycleRenavam: '', motorcycleChassis: '', start_date: '', periodValue: '', observations: '',
   })
 
-  // Carrega contratos criados via Alocar na fila
+  /**
+   * EFEITO: Sincronização com LocalStorage (Integração com a Fila de Locadores)
+   * 
+   * Verifica se existem contratos recém-gerados por outras telas (ex: Fila) e os importa.
+   */
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_NEW_CONTRACTS)
       if (!raw) return
-      const pending: Contrato[] = JSON.parse(raw)
+      const pending: Contract[] = JSON.parse(raw)
       if (pending.length > 0) {
-        setContratos((prev) => {
-          const ids = new Set(prev.map((c) => c.id))
-          return [...pending.filter((c) => !ids.has(c.id)), ...prev]
+        setContracts((prev) => {
+          // Evita duplicidade baseada no ID
+          const existingIds = new Set(prev.map((c) => c.id))
+          const uniqueNew = pending.filter((c) => !existingIds.has(c.id))
+          return [...uniqueNew, ...prev]
         })
+        // Limpa a fila após importar com sucesso
         localStorage.removeItem(LS_NEW_CONTRACTS)
       }
-    } catch { /* ignora erros de parse */ }
+    } catch (e) {
+      console.error("Falha ao sincronizar novos contratos:", e)
+    }
   }, [])
 
-  // Persiste motos alocadas → fila de locadores lê isso para mostrar só disponíveis
-  // TODO Supabase: remover quando moto.status vier direto do banco
-  useEffect(() => {
-    const ativas = contratos.filter((c) => c.status === 'ativo' || c.assinatura_pendente)
-    localStorage.setItem(LS_MOTOS_ALOCADAS, JSON.stringify(ativas.map((c) => c.moto_id)))
-  }, [contratos])
-
-  const tabsTipo = [
-    { label: 'Todos', value: 'todos' },
-    { label: 'Tipo 1 — Locação', value: '1' },
-    { label: 'Tipo 2 — Fidelidade Quinzenal', value: '2' },
-    { label: 'Tipo 3 — Fidelidade Semanal', value: '3' },
-  ]
-
-  function filtrarContratos(lista: Contrato[]) {
-    return lista.filter((c) => {
-      const passaTipo = filtroTipo === 'todos' || String(c.tipo) === filtroTipo
-      const passaBusca = !busca || [c.cliente_nome, c.moto_placa, c.moto_modelo].some(
-        (v) => v?.toLowerCase().includes(busca.toLowerCase())
+  /**
+   * FUNÇÃO: filterContracts
+   * 
+   * Filtra uma lista de contratos baseada nos critérios de UI (Tipo e Busca).
+   */
+  function filterContracts(list: Contract[]) {
+    return list.filter((c) => {
+      // Filtro por categoria técnica
+      const passesType = typeFilter === 'todos' || String(c.type) === typeFilter
+      // Filtro por busca textual (Nome ou Placa)
+      const passesSearch = !search || [c.customerName, c.motorcycle_plate, c.motorcycleModel].some(
+        (v) => v?.toLowerCase().includes(search.toLowerCase())
       )
-      return passaTipo && passaBusca
+      return passesType && passesSearch
     })
   }
 
-  const pendentes = contratos.filter((c) => c.assinatura_pendente)
-  const ativos    = filtrarContratos(contratos.filter((c) => c.status === 'ativo' && !c.assinatura_pendente))
-  const historico = filtrarContratos(contratos.filter((c) => c.status !== 'ativo'))
+  /* 
+   * SEPARAÇÃO LÓGICA DAS LISTAS PARA RENDERIZAÇÃO 
+   */
+  // Contratos marcados como pendentes de assinatura (Críticos)
+  const pending = contracts.filter((c) => c.signed === false && !c.pdf_url)
+  // Contratos ativos e já assinados (Operação normal)
+  const active  = filterContracts(contracts.filter((c) => c.status === 'active' && (c.signed !== false || c.pdf_url)))
+  // Contratos encerrados ou quebrados (Histórico)
+  const history = filterContracts(contracts.filter((c) => c.status !== 'active'))
 
-  const porTipo = ([1, 2, 3] as ContratoTipo[]).map((t) => ({
-    tipo: t,
-    count: ativos.filter((c) => c.tipo === t).length,
-  })).filter((x) => x.count > 0)
-
-  const encerrados = historico.filter((c) => c.status === 'encerrado').length
-  const cancelados = historico.filter((c) => c.status === 'cancelado').length
-  const quebrados  = historico.filter((c) => c.status === 'quebrado').length
-
+  /**
+   * HANDLER: handleUpdatePDF
+   * 
+   * Atualiza a URL do PDF e retira o contrato do estado de pendência de assinatura.
+   */
   function handleUpdatePDF(id: string, url: string) {
-    setContratos((prev) => prev.map((c) => c.id === id ? { ...c, pdf_url: url, assinatura_pendente: false } : c))
-    setPdfContrato((prev) => prev && prev.id === id ? { ...prev, pdf_url: url, assinatura_pendente: false } : prev)
+    setContracts((prev) => prev.map((c) => c.id === id ? { ...c, pdf_url: url, signed: true } : c))
+    // Sincroniza o modal se estiver aberto
+    setContractPdf((prev) => prev && prev.id === id ? { ...prev, pdf_url: url, signed: true } : prev)
   }
 
-  function handleEncerrar() {
-    if (!encerrarContrato) return
-    setContratos((prev) => prev.map((c) => c.id === encerrarContrato.id
+  /**
+   * HANDLER: handleTerminateContract
+   * 
+   * Executa a lógica de baixa de um contrato ativo.
+   */
+  function handleTerminateContract() {
+    if (!terminatingContract) return
+    setContracts((prev) => prev.map((c) => c.id === terminatingContract.id
       ? {
           ...c,
-          status: encerrarForm.status,
-          motivo_encerramento: encerrarForm.motivo,
-          data_fim: new Date().toISOString().split('T')[0],
+          status: terminationForm.status,
+          closureReason: terminationForm.reason,
+          closing_date: new Date().toISOString().split('T')[0],
+          end_date: new Date().toISOString().split('T')[0], // Força a data final para hoje
           updated_at: new Date().toISOString(),
         }
       : c
     ))
-    setEncerrarContrato(null)
-    setEncerrarForm({ status: 'encerrado', motivo: '' })
+    setTerminatingContract(null)
+    setTerminationForm({ status: 'closed', reason: '' })
   }
 
-  function handleAdd(e: React.FormEvent) {
+  /**
+   * HANDLER: handleCreateContract
+   * 
+   * Consolida o formulário manual em um novo objeto Contract.
+   */
+  function handleCreateContract(e: React.FormEvent) {
     e.preventDefault()
-    const tipo = parseInt(form.tipo) as ContratoTipo
-    const inicio = new Date(form.data_inicio + 'T12:00:00')
-    const fim = new Date(inicio)
-    if (tipo === 1) fim.setDate(fim.getDate() + 90)
-    else fim.setFullYear(fim.getFullYear() + 2)
+    const type = parseInt(form.type) as ContractType
+    const start = new Date(form.start_date + 'T12:00:00')
+    const end = new Date(start)
+    
+    // Regra automática de duração baseada no tipo
+    if (type === 1) end.setDate(end.getDate() + 90) // 90 dias para locação
+    else end.setFullYear(end.getFullYear() + 2)    // 24 meses para fidelidade
 
-    setContratos((prev) => [{
+    const newContract: Contract = {
       id: String(Date.now()),
-      tipo,
-      cliente_id: String(Date.now()),
-      cliente_nome: form.cliente_nome.toUpperCase(),
-      cliente_cpf: form.cliente_cpf,
-      cliente_telefone: form.cliente_telefone,
-      moto_id: String(Date.now() + 1),
-      moto_placa: form.moto_placa.toUpperCase(),
-      moto_modelo: form.moto_modelo.toUpperCase(),
-      moto_marca: form.moto_marca.toUpperCase(),
-      moto_ano: form.moto_ano,
-      moto_cor: form.moto_cor.toUpperCase(),
-      moto_renavam: form.moto_renavam || undefined,
-      moto_chassi: form.moto_chassi || undefined,
-      data_inicio: form.data_inicio,
-      data_fim: fim.toISOString().split('T')[0],
-      valor_periodo: parseFloat(form.valor_periodo),
-      status: 'ativo',
-      observacoes: form.observacoes,
+      type,
+      customer_id: String(Date.now()),
+      customerName: form.customerName.toUpperCase(),
+      customerCpf: form.customerCpf,
+      customerPhone: form.customerPhone,
+      motorcycle_id: String(Date.now() + 1),
+      motorcycle_plate: form.motorcycle_plate.toUpperCase(),
+      motorcycleModel: form.motorcycleModel.toUpperCase(),
+      motorcycleBrand: form.motorcycleBrand.toUpperCase(),
+      motorcycleYear: form.motorcycleYear,
+      motorcycleColor: form.motorcycleColor.toUpperCase(),
+      motorcycleRenavam: form.motorcycleRenavam || undefined,
+      motorcycleChassis: form.motorcycleChassis || undefined,
+      start_date: form.start_date,
+      end_date: end.toISOString().split('T')[0],
+      weekly_rate: type === 1 || type === 3 ? parseFloat(form.periodValue) : undefined,
+      biweekly_rate: type === 2 ? parseFloat(form.periodValue) : undefined,
+      status: 'active',
+      signed: false,
+      observations: form.observations,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }, ...prev])
+    }
 
-    setForm({ tipo: '1', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', moto_placa: '', moto_modelo: '', moto_marca: '', moto_ano: '', moto_cor: '', moto_renavam: '', moto_chassi: '', data_inicio: '', valor_periodo: '', observacoes: '' })
+    setContracts((prev) => [newContract, ...prev])
     setAddModalOpen(false)
+    // Reseta o estado do formulário para o próximo uso
+    setForm({ type: '1', customerName: '', customerCpf: '', customerPhone: '', motorcycle_plate: '', motorcycleModel: '', motorcycleBrand: '', motorcycleYear: '', motorcycleColor: '', motorcycleRenavam: '', motorcycleChassis: '', start_date: '', periodValue: '', observations: '' })
   }
 
-  const tipoOptions = [
-    { value: '1', label: 'Tipo 1 — Locação (semanal · 90 dias renovável)' },
-    { value: '2', label: 'Tipo 2 — Fidelidade Quinzenal (quinzenal · 24 meses)' },
-    { value: '3', label: 'Tipo 3 — Fidelidade Semanal (semanal · 24 meses)' },
-  ]
-
-  const statusEncerrarOptions = [
-    { value: 'encerrado', label: 'Encerrado (término natural)' },
-    { value: 'cancelado', label: 'Cancelado (por acordo)' },
-    { value: 'quebrado',  label: 'Quebrado (inadimplência / problema)' },
-  ]
-
-  const tipoFormInfo = TIPO_INFO[parseInt(form.tipo) as ContratoTipo]
-  const valorPreview = form.valor_periodo && !isNaN(parseFloat(form.valor_periodo))
-    ? getValorMensal(parseInt(form.tipo) as ContratoTipo, parseFloat(form.valor_periodo))
-    : null
-
+  /**
+   * RENDERIZAÇÃO DA PÁGINA: ContractsPage
+   */
   return (
     <div className="flex flex-col min-h-full">
+      {/* 
+        * CABEÇALHO DA PÁGINA
+        * Controla a ação primária de abertura do formulário de novo contrato.
+        */}
       <Header
-        title="Contratos"
-        subtitle={`${ativos.length + pendentes.length} ativo${ativos.length + pendentes.length !== 1 ? 's' : ''}${pendentes.length > 0 ? ` · ${pendentes.length} aguardando assinatura` : ''}`}
+        title="Gestão de Contratos"
+        subtitle={`${active.length + pending.length} contratos vigentes na base de dados`}
         actions={
-          <Button onClick={() => setAddModalOpen(true)}>
-            <Plus className="w-4 h-4" /> Novo Contrato
+          <Button onClick={() => setAddModalOpen(true)} className="shadow-lg shadow-[#BAFF1A]/10">
+            <Plus className="w-4 h-4" /> NOVO CONTRATO
           </Button>
         }
       />
 
-      <div className="p-6 space-y-5">
-
-        {/* Filtros rápidos + Busca */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex gap-2 flex-wrap">
-            {tabsTipo.map((tab) => (
+      <div className="p-6 space-y-6">
+        
+        {/* BARRA DE FERRAMENTAS: Filtros por Tipo e Busca Global */}
+        <div className="flex items-center gap-4 flex-wrap">
+          
+          {/* BOTÕES DE FILTRO DE TIPO */}
+          <div className="flex gap-2 flex-wrap bg-[#1a1a1a] p-1 rounded-xl border border-[#333333]">
+            {['todos', '1', '2', '3'].map((val) => (
               <button
-                key={tab.value}
-                onClick={() => setFiltroTipo(tab.value)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  filtroTipo === tab.value
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                key={val}
+                onClick={() => setTypeFilter(val)}
+                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                  typeFilter === val 
+                    ? 'bg-[#BAFF1A] text-[#121212] shadow-inner' 
+                    : 'text-[#606060] hover:text-white hover:bg-white/5'
                 }`}
               >
-                {tab.label}
-                {tab.value !== 'todos' && (
-                  <span className="ml-1.5 opacity-70">
-                    ({contratos.filter((c) => String(c.tipo) === tab.value && c.status === 'ativo').length})
-                  </span>
-                )}
+                {val === 'todos' ? 'TODOS OS PLANOS' : `TIPO ${val}`}
               </button>
             ))}
           </div>
-          <div className="ml-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+
+          {/* CAMPO DE BUSCA DINÂMICA */}
+          <div className="ml-auto relative min-w-[300px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444444]" />
             <input
-              type="text"
-              placeholder="Buscar por cliente ou placa..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-64"
+              type="text" 
+              placeholder="Pesquisar por Locatário ou Placa..."
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#BAFF1A]/40 transition-all"
             />
           </div>
         </div>
 
-        {/* ——— Cards de resumo ——— */}
+        {/* RESUMO ESTATÍSTICO RÁPIDO */}
         <div className="grid grid-cols-2 gap-4">
-
-          {/* Ativos */}
-          <Card>
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Contratos Ativos</p>
-                <p className="text-3xl font-bold text-white mt-0.5">{ativos.length}</p>
-              </div>
-              <CheckCircle className="w-5 h-5 text-green-400 mt-1" />
-            </div>
-            {porTipo.length > 0 ? (
-              <div className="space-y-2 pt-3 border-t border-[#2a2a2a]">
-                {porTipo.map(({ tipo, count }) => (
-                  <div key={tipo} className="flex items-center justify-between">
-                    <TipoBadge tipo={tipo} />
-                    <span className="text-sm font-bold text-white">{count}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-[#888888] pt-3 border-t border-[#2a2a2a]">Nenhum ativo</p>
-            )}
+          <Card className="border-green-500/10 bg-green-500/[0.02]">
+            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest">Contratos em Vigência</p>
+            <p className="text-4xl font-black text-white mt-2 tracking-tighter">{active.length}</p>
           </Card>
-
-          {/* Histórico */}
-          <Card>
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Histórico</p>
-                <p className="text-3xl font-bold text-white mt-0.5">{historico.length}</p>
-              </div>
-              <History className="w-5 h-5 text-[#A0A0A0] mt-1" />
-            </div>
-            <div className="space-y-2 pt-3 border-t border-[#2a2a2a]">
-              {encerrados > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#888888]">Encerrados</span>
-                  <span className="text-sm font-bold text-[#888888]">{encerrados}</span>
-                </div>
-              )}
-              {cancelados > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-amber-400/70">Cancelados</span>
-                  <span className="text-sm font-bold text-amber-400">{cancelados}</span>
-                </div>
-              )}
-              {quebrados > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-red-400/70">Quebrados</span>
-                  <span className="text-sm font-bold text-red-400">{quebrados}</span>
-                </div>
-              )}
-              {historico.length === 0 && (
-                <p className="text-xs text-[#888888]">Nenhum histórico</p>
-              )}
-            </div>
+          <Card className="border-white/5 bg-white/[0.01]">
+            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest">Arquivo Morto (Histórico)</p>
+            <p className="text-4xl font-black text-[#444444] mt-2 tracking-tighter">{history.length}</p>
           </Card>
         </div>
 
-        {/* ——— Contratos novos aguardando assinatura (criados via Fila) ——— */}
-        {pendentes.length > 0 && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-              <p className="text-sm font-bold text-red-400">
-                {pendentes.length} contrato{pendentes.length > 1 ? 's' : ''} aguardando assinatura — anexar PDF urgente
-              </p>
+        {/* SEÇÃO CRÍTICA: CONTRATOS SEM ASSINATURA CARREGADA */}
+        {pending.length > 0 && (
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-5 space-y-4">
+            <div className="flex items-center gap-2 text-red-400 font-black uppercase text-[11px] tracking-[0.2em] mb-2">
+               <AlertCircle className="w-4 h-4" /> ALERTA DE COMPLIANCE: AGUARDANDO ASSINATURA ({pending.length})
             </div>
-            {pendentes.map((c) => (
-              <ContratoCard
-                key={c.id} contrato={c}
-                onDetalhes={setDetalhesContrato}
-                onPDF={setPdfContrato}
-                onEncerrar={setEncerrarContrato}
-              />
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pending.map((c) => (
+                <ContractCard key={c.id} contract={c} onDetails={setContractDetails} onPDF={setContractPdf} onTerminate={setTerminatingContract} />
+              ))}
+            </div>
           </div>
         )}
 
-        {/* ——— Lista de contratos ativos ——— */}
-        {ativos.length === 0 ? (
-          <div className="text-center py-16">
-            <FileText className="w-10 h-10 text-[#888888] mx-auto mb-3" />
-            <p className="text-[#A0A0A0] text-sm">Nenhum contrato ativo</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {ativos.map((c) => (
-              <ContratoCard
-                key={c.id} contrato={c}
-                onDetalhes={setDetalhesContrato}
-                onPDF={setPdfContrato}
-                onEncerrar={setEncerrarContrato}
-              />
+        {/* LISTAGEM PRINCIPAL: CONTRATOS ATIVOS */}
+        <div className="space-y-4">
+          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] ml-1">Contratos Operacionais</h5>
+          <div className="grid grid-cols-1 gap-4">
+            {active.map((c) => (
+              <ContractCard key={c.id} contract={c} onDetails={setContractDetails} onPDF={setContractPdf} onTerminate={setTerminatingContract} />
             ))}
+            
+            {/* Estado Vazio para Contratos Ativos */}
+            {active.length === 0 && pending.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 bg-[#1a1a1a]/50 rounded-2xl border border-dashed border-[#252525]">
+                <FileText className="w-12 h-12 text-[#333333] mb-4" />
+                <p className="text-sm text-[#555555] font-medium italic">Nenhum contrato ativo corresponde aos filtros aplicados.</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* ——— Toggle histórico ——— */}
-        {historico.length > 0 && (
-          <>
-            <button
-              onClick={() => setShowHistorico((v) => !v)}
-              className="flex items-center gap-2 text-xs text-[#A0A0A0] hover:text-[#A0A0A0] transition-colors pt-1"
+        {/* SEÇÃO: HISTÓRICO EXPANSÍVEL (Contratos Encerrados) */}
+        {history.length > 0 && (
+          <div className="pt-4">
+            <button 
+              onClick={() => setShowHistory(!showHistory)} 
+              className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#606060] hover:text-white transition-all w-full justify-center py-4 border border-white/5 rounded-2xl hover:bg-white/[0.02]"
             >
-              <History className="w-3.5 h-3.5" />
-              {showHistorico ? 'Ocultar histórico' : `Ver histórico (${historico.length})`}
-              {showHistorico ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              <History className="w-4 h-4 group-hover:rotate-[-45deg] transition-transform" />
+              {showHistory ? 'OCULTAR ARQUIVO DE CONTRATOS' : `EXIBIR HISTÓRICO DE CONTRATOS ENCERRADOS (${history.length})`}
+              {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
-            {showHistorico && (
-              <div className="space-y-3 pt-1">
-                {historico.map((c) => (
-                  <ContratoCard
-                    key={c.id} contrato={c} dim
-                    onDetalhes={setDetalhesContrato}
-                    onPDF={setPdfContrato}
-                  />
+            
+            {showHistory && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 animate-in slide-in-from-top-4 duration-500">
+                {history.map((c) => (
+                  <ContractCard key={c.id} contract={c} dim onDetails={setContractDetails} onPDF={setContractPdf} />
                 ))}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
-      {/* ——— Modais ——— */}
-
-      {detalhesContrato && (
-        <DetalhesModal
-          contrato={contratos.find((c) => c.id === detalhesContrato.id) ?? detalhesContrato}
-          onClose={() => setDetalhesContrato(null)}
-        />
-      )}
-
-      {pdfContrato && (
-        <PDFModal
-          contrato={contratos.find((c) => c.id === pdfContrato.id) ?? pdfContrato}
-          onClose={() => setPdfContrato(null)}
-          onUpdate={handleUpdatePDF}
-        />
-      )}
-
-      {/* Encerrar contrato */}
-      {encerrarContrato && (
-        <Modal open onClose={() => setEncerrarContrato(null)} title="Encerrar Contrato" size="sm">
-          <div className="space-y-4">
-            <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-              <p className="text-xs text-[#A0A0A0]">Contrato</p>
-              <p className="font-semibold text-white">{encerrarContrato.cliente_nome}</p>
-              <p className="text-xs text-[#A0A0A0]">{encerrarContrato.moto_placa} · {encerrarContrato.moto_modelo}</p>
-            </div>
-            <Select
-              label="Tipo de encerramento"
-              options={statusEncerrarOptions}
-              value={encerrarForm.status}
-              onChange={(e) => setEncerrarForm({ ...encerrarForm, status: e.target.value as ContratoStatus })}
-            />
-            <Textarea
-              label="Motivo / Observação"
-              placeholder="Descreva o motivo do encerramento..."
-              rows={3}
-              value={encerrarForm.motivo}
-              onChange={(e) => setEncerrarForm({ ...encerrarForm, motivo: e.target.value })}
-            />
-            <div className="flex gap-3 justify-end pt-2">
-              <Button variant="ghost" onClick={() => setEncerrarContrato(null)}>Cancelar</Button>
-              <Button variant="danger" onClick={handleEncerrar}>
-                <XCircle className="w-4 h-4" /> Confirmar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Novo Contrato */}
-      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Novo Contrato" size="lg">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <Select
-            label="Tipo de Contrato"
-            options={tipoOptions}
-            value={form.tipo}
-            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+      {/* 
+        * MODAL: CRIAÇÃO MANUAL DE CONTRATO 
+        * Utilizado em casos de exceção onde o contrato não vem da fila automática.
+        */}
+      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Formalizar Novo Contrato Manual" size="lg">
+        <form onSubmit={handleCreateContract} className="space-y-6 p-1">
+          {/* Seleção de Modalidade */}
+          <Select 
+            label="Modalidade de Plano" 
+            value={form.type} 
+            onChange={(e) => setForm({ ...form, type: e.target.value })} 
+            options={[
+              { value: '1', label: 'TIPO 1 — Locação (90 dias renováveis)' },
+              { value: '2', label: 'TIPO 2 — Fidelidade Quinzenal (24 meses)' },
+              { value: '3', label: 'TIPO 3 — Fidelidade Semanal (24 meses)' },
+            ]}
           />
-
-          {/* Resumo das regras do tipo selecionado */}
-          <div className="p-3 rounded-lg bg-white/[0.02] border border-[#2a2a2a] text-xs text-[#A0A0A0] space-y-1">
-            <p>• Pagamento {tipoFormInfo.freq.toLowerCase()} toda quarta-feira</p>
-            <p>• Duração: {tipoFormInfo.duracao}</p>
-            <p>• Manutenção: {tipoFormInfo.manutencao}</p>
-            <p>• Documentação e seguro: responsabilidade da empresa</p>
-            {tipoFormInfo.aquisicao && <p>• Moto transferida para o cliente na última parcela</p>}
+          
+          {/* Dados Resumidos das Partes */}
+          <div className="grid grid-cols-2 gap-5">
+            <Input label="Nome do Locatário" placeholder="EX: JOÃO DA SILVA" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} required />
+            <Input label="Placa da Moto" placeholder="EX: ABC1D23" value={form.motorcycle_plate} onChange={(e) => setForm({ ...form, motorcycle_plate: e.target.value })} required />
+            <Input label="Início da Vigência" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
+            <Input label="Valor da Parcela (R$)" type="number" step="0.01" placeholder="0.00" value={form.periodValue} onChange={(e) => setForm({ ...form, periodValue: e.target.value })} required />
           </div>
 
-          {/* Cliente */}
-          <div className="border-t border-[#333333] pt-3">
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Cliente</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Nome completo" placeholder="NOME COMPLETO" value={form.cliente_nome}
-                onChange={(e) => setForm({ ...form, cliente_nome: e.target.value })} required />
-              <Input label="CPF" placeholder="000.000.000-00" value={form.cliente_cpf}
-                onChange={(e) => setForm({ ...form, cliente_cpf: e.target.value })} required />
-              <Input label="Telefone" placeholder="21 99999-0000" value={form.cliente_telefone}
-                onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} required />
-            </div>
-          </div>
-
-          {/* Moto */}
-          <div className="border-t border-[#333333] pt-3">
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Moto</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Placa" placeholder="AAA0A00" value={form.moto_placa}
-                onChange={(e) => setForm({ ...form, moto_placa: e.target.value })} required />
-              <Input label="Modelo" placeholder="HONDA/CG 160 START" value={form.moto_modelo}
-                onChange={(e) => setForm({ ...form, moto_modelo: e.target.value })} required />
-              <Input label="Marca" placeholder="HONDA" value={form.moto_marca}
-                onChange={(e) => setForm({ ...form, moto_marca: e.target.value })} />
-              <Input label="Ano" placeholder="24/25" value={form.moto_ano}
-                onChange={(e) => setForm({ ...form, moto_ano: e.target.value })} />
-              <Input label="Cor" placeholder="PRETO" value={form.moto_cor}
-                onChange={(e) => setForm({ ...form, moto_cor: e.target.value })} />
-              <Input label="RENAVAM" placeholder="00000000000" value={form.moto_renavam}
-                onChange={(e) => setForm({ ...form, moto_renavam: e.target.value })} />
-              <div className="col-span-2">
-                <Input label="Chassi" placeholder="9C2JC3110RR000000" value={form.moto_chassi}
-                  onChange={(e) => setForm({ ...form, moto_chassi: e.target.value })} />
-              </div>
-            </div>
-          </div>
-
-          {/* Datas e valores */}
-          <div className="border-t border-[#333333] pt-3">
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">Valores e Datas</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Data de Início" type="date" value={form.data_inicio}
-                onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} required />
-              <Input
-                label={`Valor por ${form.tipo === '2' ? 'quinzena' : 'semana'} (R$)`}
-                type="number" step="0.01" placeholder="350.00"
-                value={form.valor_periodo}
-                onChange={(e) => setForm({ ...form, valor_periodo: e.target.value })} required
-              />
-            </div>
-            {valorPreview !== null && (
-              <p className="text-xs text-[#A0A0A0] mt-2">
-                Valor mensal médio estimado:{' '}
-                <span className="text-[#BAFF1A] font-semibold">{fmt(valorPreview)}</span>
-              </p>
-            )}
-          </div>
-
-          <Textarea label="Observações" placeholder="Condições especiais, notas do contrato..." rows={2}
-            value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setAddModalOpen(false)}>Cancelar</Button>
-            <Button type="submit"><FileText className="w-4 h-4" /> Criar Contrato</Button>
+          {/* Campo de Notas */}
+          <Textarea label="Notas Administrativas" placeholder="Observações sobre o fechamento..." rows={3} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} />
+          
+          {/* Ações do Form */}
+          <div className="flex justify-end gap-4 pt-4 border-t border-white/5">
+            <Button type="button" variant="ghost" onClick={() => setAddModalOpen(false)} className="px-8 font-black text-[10px] tracking-widest text-[#606060]">CANCELAR</Button>
+            <Button type="submit" className="px-12 shadow-lg shadow-[#BAFF1A]/20 font-black">GERAR REGISTRO</Button>
           </div>
         </form>
       </Modal>
+
+      {/* 
+        * MODAIS CONDICIONAIS (DETALHES E PDF) 
+        */}
+      {contractDetails && <DetailsModal contract={contractDetails} onClose={() => setContractDetails(null)} />}
+      
+      {contractPdf && <PDFModal contract={contractPdf} onClose={() => setContractPdf(null)} onUpdate={handleUpdatePDF} />}
+
+      {/* 
+        * MODAL: ENCERRAMENTO (BAIXA DE CONTRATO)
+        * Define o destino final do veículo e do histórico do cliente.
+        */}
+      {terminatingContract && (
+        <Modal open onClose={() => setTerminatingContract(null)} title="Encerramento de Vigência" size="sm">
+          <div className="space-y-6">
+            <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
+               <p className="text-xs text-amber-200/70 font-medium leading-relaxed italic text-center">
+                 Você está finalizando o contrato de <br />
+                 <strong className="text-white font-black not-italic text-sm">{terminatingContract.customerName}</strong>.
+               </p>
+            </div>
+
+            <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleTerminateContract(); }}>
+              <Select 
+                label="Qual o status final do acordo?" 
+                value={terminationForm.status} 
+                onChange={(e) => setTerminationForm({ ...terminationForm, status: e.target.value as ContractStatus })}
+                options={[
+                  { value: 'closed', label: 'ENCERRADO (Fim de prazo / Quitado)' },
+                  { value: 'cancelled', label: 'CANCELADO (Devolução amigável)' },
+                  { value: 'broken',  label: 'QUEBRADO (Inadimplência / Sinistro)' },
+                ]}
+              />
+              <Textarea 
+                label="Descreva o motivo do fechamento" 
+                placeholder="Ex: Cliente atingiu os 24 meses / Cliente devolveu por falta de demanda..." 
+                rows={4} 
+                value={terminationForm.reason} 
+                onChange={(e) => setTerminationForm({ ...terminationForm, reason: e.target.value })} 
+                required
+              />
+              <div className="flex gap-3">
+                <Button type="button" variant="ghost" onClick={() => setTerminatingContract(null)} className="flex-1 font-black text-[10px] tracking-widest text-[#606060]">VOLTAR</Button>
+                <Button type="submit" variant="danger" className="flex-1 font-black shadow-lg shadow-red-500/20">CONFIRMAR BAIXA</Button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
+
+/**
+ * NOTAS DE EVOLUÇÃO TÉCNICA:
+ * - Implementar integração com Docusign/Clicksign para assinaturas digitais nativas.
+ * - Gerar avisos automáticos via WhatsApp quando o contrato estiver a 4 semanas do fim.
+ * - Adicionar upload de fotos da moto no momento da devolução (Check-out) no Modal de Encerramento.
+ */
