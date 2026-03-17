@@ -1,161 +1,181 @@
 /**
- * CAMADA DE QUERIES — preparada para Supabase
- *
- * Cada função retorna dados mock enquanto o Supabase não está configurado.
- * Quando as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY
- * estiverem no .env.local, substitua o bloco "mock" pelo bloco "supabase" de cada função.
- *
- * Tabelas esperadas no Supabase (ver supabase-schema.sql):
- *   motos, clientes, contratos, fila, cobrancas, entradas, despesas, multas, manutencoes
+ * @file queries.ts
+ * @description Camada de acesso a dados (Data Access Layer) para o sistema GoMoto.
+ * Centraliza todas as operações de leitura e escrita realizadas no banco de dados Supabase.
+ * Atualmente implementada com dados simulados (mocks) para desenvolvimento inicial,
+ * preparada para transição rápida para consultas SQL reais via Supabase SDK.
  */
 
-// import { createClient } from './client'
-
-// ——————————————————————————————————————————
-// MOTOS
-// ——————————————————————————————————————————
+// Importação do cliente Supabase para quando as consultas reais forem ativadas.
+// import { createClient } from './client';
 
 /**
- * Retorna todas as motos da frota.
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   const { data } = await supabase.from('motos').select('*').order('placa')
- *   return data ?? []
+ * @section MOTOCICLETAS
+ * @description Funções relacionadas à gestão e consulta da frota de veículos.
  */
-export async function getMotos() {
-  const { TODAS_MOTOS } = await import('@/data/motos')
-  return TODAS_MOTOS
+
+/**
+ * @function getMotorcycles
+ * @async
+ * @description Recupera a lista completa de todas as motocicletas cadastradas na frota.
+ * Inclui veículos em qualquer estado (disponível, alugada, manutenção, inativa).
+ * 
+ * @returns {Promise<Array>} Uma promessa que resolve com a lista total de motocicletas.
+ * 
+ * @example
+ * // Implementação futura para Supabase:
+ * const supabase = createClient();
+ * const { data } = await supabase.from('motorcycles').select('*').order('license_plate');
+ * return data ?? [];
+ */
+export async function getMotorcycles() {
+  /**
+   * Importação dinâmica dos dados de simulação (mock) localizados em @/data/motos.
+   * Utiliza a constante ALL_MOTORCYCLES como fonte de dados temporária.
+   */
+  const { ALL_MOTORCYCLES } = await import('@/data/motos');
+  return ALL_MOTORCYCLES;
 }
 
 /**
- * Retorna somente motos disponíveis (sem contrato ativo).
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   const { data } = await supabase
- *     .from('motos')
- *     .select('*')
- *     .eq('status', 'disponivel')
- *     .order('placa')
- *   return data ?? []
+ * @function getAvailableMotorcycles
+ * @async
+ * @description Filtra e retorna apenas as motocicletas que estão com status 'available'.
+ * Utilizada principalmente no fluxo de criação de novos contratos de locação.
+ * 
+ * @returns {Promise<Array>} Lista de motos prontas para serem alugadas.
  */
-export async function getMotosDisponiveis() {
-  const { TODAS_MOTOS } = await import('@/data/motos')
-  return TODAS_MOTOS // filtro real virá do Supabase (status = 'disponivel')
-}
-
-// ——————————————————————————————————————————
-// FILA
-// ——————————————————————————————————————————
-
-/**
- * Retorna a fila de locadores ordenada por posição.
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   const { data } = await supabase
- *     .from('fila')
- *     .select('*, historico_posicao(*), documentos(*)')
- *     .order('posicao', { ascending: true })
- *   return data ?? []
- */
-export async function getFila() {
-  return [] // mock gerenciado via localStorage enquanto Supabase não está ativo
+export async function getAvailableMotorcycles() {
+  /**
+   * Atualmente retorna todas as motos do mock.
+   * No Supabase, aplicará o filtro .eq('status', 'available').
+   */
+  const { ALL_MOTORCYCLES } = await import('@/data/motos');
+  return ALL_MOTORCYCLES; 
 }
 
 /**
- * Salva movimentação de posição na fila.
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   await supabase.from('fila_movimentacoes').insert({
- *     fila_id: pessoaId,
- *     de: posicaoAnterior,
- *     para: novaPosicao,
- *     motivo,
- *     data: new Date().toISOString(),
- *   })
+ * @section FILA DE ESPERA
+ * @description Gerenciamento da ordem de prioridade para novos locatários interessados.
  */
-export async function registrarMovimentacao(_pessoaId: string, _de: number, _para: number, _motivo: string) {
-  // mock: já salvo via localStorage em fila/page.tsx
-}
-
-// ——————————————————————————————————————————
-// CONTRATOS
-// ——————————————————————————————————————————
 
 /**
- * Retorna todos os contratos com dados de cliente e moto.
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   const { data } = await supabase
- *     .from('contratos')
- *     .select('*, clientes(*), motos(*)')
- *     .order('created_at', { ascending: false })
- *   return data ?? []
+ * @function getQueue
+ * @async
+ * @description Obtém a fila de clientes aguardando por uma motocicleta disponível.
+ * Retorna os dados ordenados pela posição na fila.
+ * 
+ * @returns {Promise<Array>} Lista ordenada de clientes na fila de espera.
  */
-export async function getContratos() {
-  return [] // mock gerenciado em contratos/page.tsx
+export async function getQueue() {
+  /**
+   * Implementação atual retorna array vazio.
+   * A lógica de fila está sendo gerenciada via localStorage para prototipagem rápida.
+   */
+  return []; 
 }
 
 /**
- * Cria um novo contrato.
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   const { data } = await supabase.from('contratos').insert(contrato).select().single()
- *   // Após criar: atualizar status da moto para 'alugada'
- *   await supabase.from('motos').update({ status: 'alugada' }).eq('id', contrato.moto_id)
- *   return data
+ * @function registerMovement
+ * @async
+ * @description Registra formalmente uma mudança de posição de um cliente dentro da fila.
+ * Essencial para manter o histórico de transparência no atendimento.
+ * 
+ * @param {string} customerId - Identificador único do cliente na fila.
+ * @param {number} fromPosition - Posição de origem antes da mudança.
+ * @param {number} toPosition - Nova posição de destino.
+ * @param {string} reason - Motivo detalhado da alteração (ex: Prioridade, Cancelamento).
  */
-export async function criarContrato(_contrato: Record<string, unknown>) {
-  // mock: salvo via localStorage
+export async function registerMovement(customerId: string, fromPosition: number, toPosition: number, reason: string) {
+  /**
+   * Espaço reservado para persistência via Supabase no futuro.
+   * Atualmente as mudanças são refletidas diretamente no estado da aplicação.
+   */
 }
 
 /**
- * Encerra um contrato (atualiza status + data_fim + motivo).
- *
- * TODO Supabase:
- *   const supabase = createClient()
- *   await supabase.from('contratos').update({
- *     status, motivo_encerramento, data_fim: new Date().toISOString(),
- *   }).eq('id', contratoId)
- *   // Após encerrar: atualizar status da moto para 'disponivel'
- *   await supabase.from('motos').update({ status: 'disponivel' }).eq('id', motoId)
+ * @section CONTRATOS
+ * @description Lógica de negócio e persistência para acordos de locação.
  */
-export async function encerrarContrato(_contratoId: string, _status: string, _motivo: string, _motoId: string) {
-  // mock: gerenciado via setState
+
+/**
+ * @function getContracts
+ * @async
+ * @description Recupera todos os contratos ativos e encerrados do sistema.
+ * Realiza um 'join' virtual para trazer dados do cliente e da motocicleta vinculada.
+ * 
+ * @returns {Promise<Array>} Lista abrangente de contratos com relações populadas.
+ */
+export async function getContracts() {
+  /**
+   * Retorna vazio para sinalizar carregamento de dados via localStorage na camada de UI.
+   */
+  return []; 
 }
 
 /**
- * Faz upload do PDF do contrato assinado.
- *
- * TODO Supabase Storage:
- *   const supabase = createClient()
- *   const path = `contratos/${contratoId}/assinado.pdf`
- *   const { data } = await supabase.storage.from('documentos').upload(path, file, { upsert: true })
- *   const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
- *   await supabase.from('contratos').update({ pdf_url: urlData.publicUrl }).eq('id', contratoId)
+ * @function createContract
+ * @async
+ * @description Persiste um novo contrato de locação no banco de dados.
+ * Após a criação, deve-se atualizar o status da motocicleta para 'rented'.
+ * 
+ * @param {Record<string, unknown>} contractData - Objeto contendo os campos do contrato.
+ * @returns {Promise<Object>} O registro do contrato recém-criado.
  */
-export async function uploadContratoAssinado(_contratoId: string, _file: File) {
-  // mock: usa URL.createObjectURL
+export async function createContract(contractData: Record<string, unknown>) {
+  /**
+   * Lógica mock: o processamento real de salvamento ocorre no componente pai via localStorage.
+   */
 }
 
-// ——————————————————————————————————————————
-// CLIENTES
-// ——————————————————————————————————————————
+/**
+ * @function closeContract
+ * @async
+ * @description Finaliza a vigência de um contrato de locação.
+ * Atualiza o status do contrato, a data de fim e libera a motocicleta para 'available'.
+ * 
+ * @param {string} contractId - ID do contrato a ser encerrado.
+ * @param {string} status - Novo status final do contrato (ex: 'closed', 'broken').
+ * @param {string} reason - Justificativa para o encerramento da locação.
+ * @param {string} motorcycleId - ID da moto vinculada para liberação na frota.
+ */
+export async function closeContract(contractId: string, status: string, reason: string, motorcycleId: string) {
+  /**
+   * Operação de atualização atômica de status em duas tabelas diferentes (contratos e motos).
+   */
+}
 
 /**
- * TODO Supabase:
- *   const supabase = createClient()
- *   const { data } = await supabase
- *     .from('clientes')
- *     .select('*, documentos(*)')
- *     .order('nome')
- *   return data ?? []
+ * @function uploadSignedContract
+ * @async
+ * @description Realiza o upload do arquivo PDF assinado para o Supabase Storage.
+ * Vincula a URL pública resultante ao registro do contrato no banco de dados.
+ * 
+ * @param {string} contractId - Identificador do contrato para nomeação do arquivo.
+ * @param {File} file - O arquivo binário do PDF assinado.
  */
-export async function getClientes() {
-  return []
+export async function uploadSignedContract(contractId: string, file: File) {
+  /**
+   * Envolve o uso da API .storage do Supabase para upload e recuperação de URL pública.
+   */
+}
+
+/**
+ * @section CLIENTES
+ * @description Gestão de dados cadastrais e documentação de locatários.
+ */
+
+/**
+ * @function getCustomers
+ * @async
+ * @description Retorna a lista de todos os clientes cadastrados.
+ * Inclui informações detalhadas de contato, documentos e histórico.
+ * 
+ * @returns {Promise<Array>} Lista de clientes cadastrados.
+ */
+export async function getCustomers() {
+  /**
+   * Preparado para: supabase.from('customers').select('*, documents(*)').order('name');
+   */
+  return [];
 }

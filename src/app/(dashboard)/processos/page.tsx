@@ -1,3 +1,11 @@
+/**
+ * ARQUIVO: src/app/(dashboard)/processos/page.tsx
+ * DESCRIÇÃO: Página de Gestão de Processos da GoMoto.
+ *            Funciona como uma base de conhecimento (FAQ) para os funcionários, 
+ *            centralizando regras de locação, cobrança, manutenção e documentação.
+ *            Permite a criação, edição e exclusão de processos internos.
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -8,114 +16,124 @@ import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import type { Processo } from '@/types'
+import type { Process } from '@/types'
 
-const categorias = ['Locação', 'Cobrança', 'Manutenção', 'Documentação', 'Geral']
+/**
+ * Lista fixa de categorias disponíveis para classificar os processos da empresa.
+ */
+const categories = ['Locação', 'Cobrança', 'Manutenção', 'Documentação', 'Geral']
 
-const mockProcessos: Processo[] = [
+/**
+ * Dados iniciais para simulação de processos cadastrados.
+ * Cada processo possui uma pergunta, uma resposta detalhada e uma categoria.
+ */
+const mockProcesses: Process[] = [
   {
     id: '1',
-    pergunta: 'Quais documentos são necessários para alugar uma moto?',
-    resposta:
+    question: 'Quais documentos são necessários para alugar uma moto?',
+    answer:
       'Para alugar uma moto, o cliente precisa apresentar: RG ou CNH válida, CPF, comprovante de residência recente (últimos 3 meses), e CNH na categoria A com no mínimo 2 anos de habilitação. Também é exigido um comprovante de renda ou referência de trabalho.',
-    categoria: 'Locação',
-    ordem: 1,
+    category: 'Locação',
+    order: 1,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '2',
-    pergunta: 'Como funciona o pagamento do aluguel?',
-    resposta:
+    question: 'Como funciona o pagamento do aluguel?',
+    answer:
       'O pagamento é mensal e deve ser realizado até o dia acordado em contrato. Aceitamos PIX, transferência bancária ou dinheiro. O não pagamento até o vencimento pode gerar cobrança de juros de 2% ao mês mais multa de 5% sobre o valor.',
-    categoria: 'Cobrança',
-    ordem: 2,
+    category: 'Cobrança',
+    order: 2,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '3',
-    pergunta: 'O cliente é responsável por multas de trânsito?',
-    resposta:
+    question: 'O cliente é responsável por multas de trânsito?',
+    answer:
       'Sim. Todas as multas geradas durante o período de locação são de responsabilidade do locatário, exceto aquelas originadas por problemas de documentação da moto (como IPVA ou licenciamento atrasado), que são responsabilidade da empresa.',
-    categoria: 'Locação',
-    ordem: 3,
+    category: 'Locação',
+    order: 3,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '4',
-    pergunta: 'Como solicitar manutenção da moto?',
-    resposta:
+    question: 'Como solicitar manutenção da moto?',
+    answer:
       'O cliente deve entrar em contato com a empresa assim que identificar qualquer problema mecânico na moto. Não é permitido ao locatário realizar reparos sem autorização prévia. A empresa agendará a manutenção com uma oficina parceira e arcará com os custos de desgaste natural.',
-    categoria: 'Manutenção',
-    ordem: 4,
+    category: 'Manutenção',
+    order: 4,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '5',
-    pergunta: 'O que acontece se a moto sofrer um acidente?',
-    resposta:
+    question: 'O que acontece se a moto sofrer um acidente?',
+    answer:
       'Em caso de acidente, o locatário deve acionar imediatamente a empresa e o seguro, registrar Boletim de Ocorrência quando houver terceiros envolvidos, e não movimentar a moto sem orientação. Os custos de reparo por culpa do locatário são de sua responsabilidade.',
-    categoria: 'Locação',
-    ordem: 5,
+    category: 'Locação',
+    order: 5,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '6',
-    pergunta: 'Qual o prazo para devolução da moto?',
-    resposta:
+    question: 'Qual o prazo para devolução da moto?',
+    answer:
       'O cliente deve comunicar a intenção de encerrar o contrato com no mínimo 15 dias de antecedência. A devolução deve ser feita no endereço da empresa, com a moto limpa e no mesmo estado em que foi entregue, acompanhada de toda a documentação.',
-    categoria: 'Documentação',
-    ordem: 6,
+    category: 'Documentação',
+    order: 6,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '7',
-    pergunta: 'Existe carência antes de cobrar juros por atraso?',
-    resposta:
+    question: 'Existe carência antes de cobrar juros por atraso?',
+    answer:
       'Há uma carência de 3 dias úteis após o vencimento antes de iniciar a cobrança de juros e multa. Após esse prazo, incidirá juros de 2% ao mês (pro-rata) e multa fixa de 5% sobre o valor em aberto.',
-    categoria: 'Cobrança',
-    ordem: 7,
+    category: 'Cobrança',
+    order: 7,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '8',
-    pergunta: 'Como funciona a caução?',
-    resposta:
+    question: 'Como funciona a caução?',
+    answer:
       'É cobrada uma caução equivalente a um mês de aluguel no início do contrato. O valor é devolvido integralmente ao encerramento, desde que a moto seja devolvida sem danos e sem débitos pendentes.',
-    categoria: 'Geral',
-    ordem: 8,
+    category: 'Geral',
+    order: 8,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '9',
-    pergunta: 'Com que frequência deve ser feita a revisão da moto?',
-    resposta:
+    question: 'Com que frequência deve ser feita a revisão da moto?',
+    answer:
       'A moto deve passar por revisão a cada 3 meses ou 5.000 km rodados, o que ocorrer primeiro. A empresa agenda e cobre os custos da revisão preventiva. O locatário deve estar disponível para deixar a moto por até 1 dia útil para a revisão.',
-    categoria: 'Manutenção',
-    ordem: 9,
+    category: 'Manutenção',
+    order: 9,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
   {
     id: '10',
-    pergunta: 'Posso transferir o contrato para outra pessoa?',
-    resposta:
+    question: 'Posso transferir o contrato para outra pessoa?',
+    answer:
       'Não é permitida a transferência de contrato sem autorização expressa da empresa. O locatário também não pode ceder ou sublocar a moto a terceiros. Qualquer violação dessa cláusula poderá resultar no encerramento imediato do contrato.',
-    categoria: 'Documentação',
-    ordem: 10,
+    category: 'Documentação',
+    order: 10,
     created_at: '2024-01-01T10:00:00Z',
     updated_at: '2024-01-01T10:00:00Z',
   },
 ]
 
-const categoriaBadgeVariant: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger'> = {
+/**
+ * Mapeamento de estilos visuais (variantes do componente Badge) para cada categoria.
+ */
+const categoryBadgeVariant: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger'> = {
   Locação: 'brand',
   Cobrança: 'warning',
   Manutenção: 'info',
@@ -123,79 +141,127 @@ const categoriaBadgeVariant: Record<string, 'success' | 'info' | 'warning' | 'mu
   Geral: 'muted',
 }
 
-const categoriaFilterOptions = [
-  { value: '', label: 'Todas as categorias' },
-  ...categorias.map((c) => ({ value: c, label: c })),
-]
+/**
+ * Estado inicial para o formulário de criação/edição de processos.
+ */
+const defaultForm = { question: '', answer: '', category: 'Geral' }
 
-const defaultForm = { pergunta: '', resposta: '', categoria: 'Geral' }
-
-export default function ProcessosPage() {
-  const [processos, setProcessos] = useState<Processo[]>(mockProcessos)
+/**
+ * COMPONENTE PRINCIPAL: ProcessesPage
+ * Renderiza uma lista sanfonada (accordion) de processos agrupados por categoria.
+ */
+export default function ProcessesPage() {
+  /**
+   * ESTADO: Lista de processos atualmente exibida.
+   */
+  const [processes, setProcesses] = useState<Process[]>(mockProcesses)
+  /**
+   * ESTADO: ID do processo que está com a resposta visível (expandido).
+   */
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [filtroCategoria, setFiltroCategoria] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editando, setEditando] = useState<Processo | null>(null)
+  /**
+   * ESTADO: Valor do filtro de categoria selecionado pelo usuário.
+   */
+  const [categoryFilter, setCategoryFilter] = useState('')
+  /**
+   * ESTADO: Controla a visibilidade do modal de cadastro/edição.
+   */
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  /**
+   * ESTADO: Armazena o objeto do processo que está sendo editado, ou null para novo.
+   */
+  const [editingProcess, setEditingProcess] = useState<Process | null>(null)
+  /**
+   * ESTADO: Dados temporários do formulário no modal.
+   */
   const [form, setForm] = useState(defaultForm)
 
-  const filtered = filtroCategoria
-    ? processos.filter((p) => p.categoria === filtroCategoria)
-    : processos
+  /**
+   * CONSTANTE: filteredProcesses
+   * Aplica o filtro de categoria selecionado sobre a lista total de processos.
+   */
+  const filteredProcesses = categoryFilter
+    ? processes.filter((p) => p.category === categoryFilter)
+    : processes
 
-  const grouped = categorias.reduce<Record<string, Processo[]>>((acc, cat) => {
-    const items = filtered.filter((p) => p.categoria === cat)
+  /**
+   * CONSTANTE: groupedProcesses
+   * Organiza os processos filtrados em um objeto onde a chave é a categoria.
+   * Facilita a renderização de grupos visualmente separados.
+   */
+  const groupedProcesses = categories.reduce<Record<string, Process[]>>((acc, cat) => {
+    const items = filteredProcesses.filter((p) => p.category === cat)
     if (items.length > 0) acc[cat] = items
     return acc
   }, {})
 
+  /**
+   * FUNÇÃO: handleSubmit
+   * Processa o envio do formulário para salvar um novo processo ou atualizar um existente.
+   */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (editando) {
-      setProcessos((prev) =>
+    if (editingProcess) {
+      // Lógica de Atualização
+      setProcesses((prev) =>
         prev.map((p) =>
-          p.id === editando.id
-            ? { ...p, pergunta: form.pergunta, resposta: form.resposta, categoria: form.categoria }
+          p.id === editingProcess.id
+            ? { ...p, question: form.question, answer: form.answer, category: form.category }
             : p
         )
       )
     } else {
-      const novo: Processo = {
+      // Lógica de Inserção de Novo Processo
+      const newProcess: Process = {
         id: String(Date.now()),
-        pergunta: form.pergunta,
-        resposta: form.resposta,
-        categoria: form.categoria,
-        ordem: processos.length + 1,
+        question: form.question,
+        answer: form.answer,
+        category: form.category,
+        order: processes.length + 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      setProcessos((prev) => [...prev, novo])
+      setProcesses((prev) => [...prev, newProcess])
     }
+    // Reseta o estado e fecha o modal
     setForm(defaultForm)
-    setEditando(null)
-    setModalOpen(false)
+    setEditingProcess(null)
+    setIsModalOpen(false)
   }
 
-  function handleEditar(processo: Processo) {
-    setEditando(processo)
-    setForm({ pergunta: processo.pergunta, resposta: processo.resposta, categoria: processo.categoria })
-    setModalOpen(true)
+  /**
+   * FUNÇÃO: handleEdit
+   * Prepara o modal para edição de um processo específico carregando seus dados atuais.
+   */
+  function handleEdit(process: Process) {
+    setEditingProcess(process)
+    setForm({ question: process.question, answer: process.answer, category: process.category })
+    setIsModalOpen(true)
   }
 
-  function handleExcluir(id: string) {
-    setProcessos((prev) => prev.filter((p) => p.id !== id))
+  /**
+   * FUNÇÃO: handleDelete
+   * Remove um processo da lista baseada no seu identificador.
+   */
+  function handleDelete(id: string) {
+    setProcesses((prev) => prev.filter((p) => p.id !== id))
   }
 
+  /**
+   * FUNÇÃO: handleOpenModal
+   * Abre o modal limpo para a criação de um novo processo.
+   */
   function handleOpenModal() {
-    setEditando(null)
+    setEditingProcess(null)
     setForm(defaultForm)
-    setModalOpen(true)
+    setIsModalOpen(true)
   }
 
   return (
     <div className="flex flex-col min-h-full">
       <Header
         title="Processos da Empresa"
-        subtitle={`${processos.length} processos cadastrados`}
+        subtitle={`${processes.length} processos cadastrados`}
         actions={
           <Button onClick={handleOpenModal}>
             <Plus className="w-4 h-4" />
@@ -205,17 +271,18 @@ export default function ProcessosPage() {
       />
 
       <div className="p-6 space-y-4">
-        {/* Filter */}
+        {/* SEÇÃO DE FILTROS: Permite filtrar os processos por categoria */}
         <div className="flex items-center gap-3 flex-wrap">
           <BookOpen className="w-4 h-4 text-[#A0A0A0]" />
           <div className="flex gap-2 flex-wrap">
-            {[{ value: '', label: 'Todas' }, ...categorias.map((c) => ({ value: c, label: c }))].map(
+            {/* Botões de filtro rápido */}
+            {[{ value: '', label: 'Todas' }, ...categories.map((c) => ({ value: c, label: c }))].map(
               (opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => setFiltroCategoria(opt.value)}
+                  onClick={() => setCategoryFilter(opt.value)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-150 ${
-                    filtroCategoria === opt.value
+                    categoryFilter === opt.value
                       ? 'bg-[#BAFF1A] text-[#121212]'
                       : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
                   }`}
@@ -227,49 +294,57 @@ export default function ProcessosPage() {
           </div>
         </div>
 
-        {/* Accordion grouped by category */}
-        {Object.entries(grouped).map(([categoria, items]) => (
-          <div key={categoria} className="space-y-2">
+        {/* LISTAGEM AGRUPADA: Itera sobre as categorias que possuem itens */}
+        {Object.entries(groupedProcesses).map(([category, items]) => (
+          <div key={category} className="space-y-2">
+            {/* Cabeçalho da Categoria */}
             <div className="flex items-center gap-2 py-1">
-              <Badge variant={categoriaBadgeVariant[categoria] ?? 'muted'}>{categoria}</Badge>
+              <Badge variant={categoryBadgeVariant[category] ?? 'muted'}>{category}</Badge>
               <span className="text-xs text-[#A0A0A0]">{items.length} processo(s)</span>
             </div>
 
+            {/* Itens da Categoria em formato de Acordeão */}
             <div className="space-y-1">
-              {items.map((processo) => (
+              {items.map((process) => (
                 <div
-                  key={processo.id}
+                  key={process.id}
                   className="bg-[#202020] border border-[#333333] rounded-xl overflow-hidden transition-colors hover:border-[#444444]"
                 >
+                  {/* Botão de Expansão (Pergunta) */}
                   <button
                     className="w-full flex items-center justify-between gap-4 p-4 text-left"
                     onClick={() =>
-                      setExpandedId((prev) => (prev === processo.id ? null : processo.id))
+                      setExpandedId((prev) => (prev === process.id ? null : process.id))
                     }
                   >
                     <p className="font-medium text-white text-sm leading-relaxed">
-                      {processo.pergunta}
+                      {process.question}
                     </p>
+                    
+                    {/* Ações e Indicador de Status do Acordeão */}
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Botão Editar */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleEditar(processo)
+                          handleEdit(process)
                         }}
                         className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
+                      {/* Botão Excluir */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleExcluir(processo.id)
+                          handleDelete(process.id)
                         }}
                         className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      {expandedId === processo.id ? (
+                      {/* Ícone de Seta (Cima/Baixo) */}
+                      {expandedId === process.id ? (
                         <ChevronUp className="w-4 h-4 text-[#A0A0A0]" />
                       ) : (
                         <ChevronDown className="w-4 h-4 text-[#A0A0A0]" />
@@ -277,9 +352,10 @@ export default function ProcessosPage() {
                     </div>
                   </button>
 
-                  {expandedId === processo.id && (
+                  {/* Conteúdo Expansível (Resposta) */}
+                  {expandedId === process.id && (
                     <div className="px-4 pb-4 border-t border-[#2a2a2a] pt-3">
-                      <p className="text-sm text-[#A0A0A0] leading-relaxed">{processo.resposta}</p>
+                      <p className="text-sm text-[#A0A0A0] leading-relaxed">{process.answer}</p>
                     </div>
                   )}
                 </div>
@@ -288,7 +364,8 @@ export default function ProcessosPage() {
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {/* FEEDBACK: Exibido quando nenhum processo corresponde ao filtro ou a lista está vazia */}
+        {filteredProcesses.length === 0 && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <BookOpen className="w-12 h-12 text-[#888888] mx-auto mb-3" />
@@ -298,41 +375,46 @@ export default function ProcessosPage() {
         )}
       </div>
 
-      {/* Modal Adicionar/Editar Processo */}
+      {/* MODAL: Interface para Adicionar ou Editar um Processo */}
       <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editando ? 'Editar Processo' : 'Adicionar Processo'}
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingProcess ? 'Editar Processo' : 'Adicionar Processo'}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Seletor de Categoria */}
           <Select
             label="Categoria"
-            options={categorias.map((c) => ({ value: c, label: c }))}
-            value={form.categoria}
-            onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+            options={categories.map((c) => ({ value: c, label: c }))}
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
           />
+          {/* Campo da Pergunta */}
           <Input
             label="Pergunta"
             placeholder="Como funciona o processo de locação?"
-            value={form.pergunta}
-            onChange={(e) => setForm({ ...form, pergunta: e.target.value })}
+            value={form.question}
+            onChange={(e) => setForm({ ...form, question: e.target.value })}
             required
           />
+          {/* Campo da Resposta Detalhada */}
           <Textarea
             label="Resposta"
             placeholder="Descreva o processo de forma clara e objetiva..."
             rows={5}
-            value={form.resposta}
-            onChange={(e) => setForm({ ...form, resposta: e.target.value })}
+            value={form.answer}
+            onChange={(e) => setForm({ ...form, answer: e.target.value })}
             required
           />
+          
+          {/* Ações do Modal */}
           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit">
-              {editando ? (
+              {editingProcess ? (
                 <>
                   <Edit2 className="w-4 h-4" />
                   Salvar Alterações

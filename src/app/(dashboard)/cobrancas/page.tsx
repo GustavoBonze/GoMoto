@@ -1,3 +1,22 @@
+/**
+ * @file page.tsx
+ * @description Página de Gerenciamento de Cobranças do Sistema GoMoto.
+ * 
+ * Este arquivo é responsável por renderizar a interface de controle financeiro de recebíveis.
+ * Ele permite visualizar, criar, editar, excluir e gerenciar o status de cobranças
+ * vinculadas aos contratos de locação de motocicletas.
+ * 
+ * Funcionalidades principais:
+ * - Listagem de cobranças com filtros por status (Pendente, Pago, Vencido, Prejuízo).
+ * - Busca textual por cliente, placa ou descrição.
+ * - Painel de métricas financeiras (Total Recebido, A Receber, Inadimplência, etc.).
+ * - Gestão de status: marcação de pagamentos e contabilização de perdas (prejuízo).
+ * - Integração visual preparada para futura conexão com o gateway InfinitePay.
+ * 
+ * O código segue o padrão internacional com identificadores em Inglês,
+ * enquanto a interface e os comentários são em Português Brasil.
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -10,317 +29,335 @@ import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Cobranca, CobrancaStatus } from '@/types'
+import type { Charge, ChargeStatus } from '@/types'
 
-type CobrancaComRelacoes = Cobranca & {
-  cliente_nome: string
-  moto_placa: string
+/**
+ * @interface ChargeWithRelations
+ * @description Extensão da interface Charge para incluir dados relacionais
+ * necessários para a exibição na tabela (nome do cliente e placa da moto).
+ */
+type ChargeWithRelations = Charge & {
+  customer_name: string
+  motorcycle_plate: string
 }
 
-const mockCobrancas: CobrancaComRelacoes[] = [
+/**
+ * @constant mockCharges
+ * @description Conjunto de dados fictícios para simular a resposta de uma API.
+ * Contém o histórico de cobranças de diversos clientes com diferentes estados.
+ */
+const mockCharges: ChargeWithRelations[] = [
   {
     id: '141',
-    contrato_id: 'AAA0A00',
-    cliente_id: 'alexandre',
-    descricao: 'Proporcional — 09/03 a 10/03 (AAA0A00)',
-    valor: 150.00,
-    vencimento: '2026-03-11',
-    status: 'pago',
-    data_pagamento: '2026-03-11',
+    contract_id: 'AAA0A00',
+    customer_id: 'alexandre',
+    description: 'Proporcional — 09/03 a 10/03 (AAA0A00)',
+    amount: 150.00,
+    due_date: '2026-03-11',
+    status: 'paid',
+    payment_date: '2026-03-11',
     created_at: '2026-03-11T10:00:00Z',
     updated_at: '2026-03-11T10:00:00Z',
-    cliente_nome: 'ALEXANDRE DANTAS DAS SILVA',
-    moto_placa: 'AAA0A00',
+    customer_name: 'ALEXANDRE DANTAS DAS SILVA',
+    motorcycle_plate: 'AAA0A00',
   },
   {
     id: '142',
-    contrato_id: 'AAA0A00',
-    cliente_id: 'alexandre',
-    descricao: 'Caução — Entrada do contrato (AAA0A00)',
-    valor: 500.00,
-    vencimento: '2026-03-09',
-    status: 'pago',
-    data_pagamento: '2026-03-09',
+    contract_id: 'AAA0A00',
+    customer_id: 'alexandre',
+    description: 'Caução — Entrada do contrato (AAA0A00)',
+    amount: 500.00,
+    due_date: '2026-03-09',
+    status: 'paid',
+    payment_date: '2026-03-09',
     created_at: '2026-03-09T10:00:00Z',
     updated_at: '2026-03-09T10:00:00Z',
-    cliente_nome: 'ALEXANDRE DANTAS DAS SILVA',
-    moto_placa: 'AAA0A00',
+    customer_name: 'ALEXANDRE DANTAS DAS SILVA',
+    motorcycle_plate: 'AAA0A00',
   },
   {
     id: '140',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 04/03 a 10/03 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-03-11',
-    status: 'pago',
-    data_pagamento: '2026-03-11',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 04/03 a 10/03 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-03-11',
+    status: 'paid',
+    payment_date: '2026-03-11',
     created_at: '2026-03-11T10:00:00Z',
     updated_at: '2026-03-11T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: '139',
-    contrato_id: 'DDD3D33',
-    cliente_id: 'flavio',
-    descricao: 'Semanal — 04/03 a 10/03 (DDD3D33)',
-    valor: 337.50,
-    vencimento: '2026-03-11',
-    status: 'pago',
-    data_pagamento: '2026-03-11',
+    contract_id: 'DDD3D33',
+    customer_id: 'flavio',
+    description: 'Semanal — 04/03 a 10/03 (DDD3D33)',
+    amount: 337.50,
+    due_date: '2026-03-11',
+    status: 'paid',
+    payment_date: '2026-03-11',
     created_at: '2026-03-11T10:00:00Z',
     updated_at: '2026-03-11T10:00:00Z',
-    cliente_nome: 'FLAVIO SILVA COUTINHO',
-    moto_placa: 'DDD3D33',
+    customer_name: 'FLAVIO SILVA COUTINHO',
+    motorcycle_plate: 'DDD3D33',
   },
   {
     id: '138',
-    contrato_id: 'DDD3D33',
-    cliente_id: 'flavio',
-    descricao: 'Semanal — 25/02 a 03/03 (DDD3D33)',
-    valor: 304.25,
-    vencimento: '2026-03-04',
-    status: 'pago',
-    data_pagamento: '2026-03-04',
+    contract_id: 'DDD3D33',
+    customer_id: 'flavio',
+    description: 'Semanal — 25/02 a 03/03 (DDD3D33)',
+    amount: 304.25,
+    due_date: '2026-03-04',
+    status: 'paid',
+    payment_date: '2026-03-04',
     created_at: '2026-03-04T10:00:00Z',
     updated_at: '2026-03-04T10:00:00Z',
-    cliente_nome: 'FLAVIO SILVA COUTINHO',
-    moto_placa: 'DDD3D33',
+    customer_name: 'FLAVIO SILVA COUTINHO',
+    motorcycle_plate: 'DDD3D33',
   },
   {
     id: '137',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 25/02 a 03/03 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-03-04',
-    status: 'pago',
-    data_pagamento: '2026-03-04',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 25/02 a 03/03 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-03-04',
+    status: 'paid',
+    payment_date: '2026-03-04',
     created_at: '2026-03-04T10:00:00Z',
     updated_at: '2026-03-04T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: '136',
-    contrato_id: 'DDD3D33',
-    cliente_id: 'flavio',
-    descricao: 'Semanal — 18/02 a 24/02 (DDD3D33)',
-    valor: 335.55,
-    vencimento: '2026-02-25',
-    status: 'pago',
-    data_pagamento: '2026-02-25',
+    contract_id: 'DDD3D33',
+    customer_id: 'flavio',
+    description: 'Semanal — 18/02 a 24/02 (DDD3D33)',
+    amount: 335.55,
+    due_date: '2026-02-25',
+    status: 'paid',
+    payment_date: '2026-02-25',
     created_at: '2026-02-25T10:00:00Z',
     updated_at: '2026-02-25T10:00:00Z',
-    cliente_nome: 'FLAVIO SILVA COUTINHO',
-    moto_placa: 'DDD3D33',
+    customer_name: 'FLAVIO SILVA COUTINHO',
+    motorcycle_plate: 'DDD3D33',
   },
   {
     id: '135',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 18/02 a 24/02 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-02-25',
-    status: 'pago',
-    data_pagamento: '2026-02-25',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 18/02 a 24/02 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-02-25',
+    status: 'paid',
+    payment_date: '2026-02-25',
     created_at: '2026-02-25T10:00:00Z',
     updated_at: '2026-02-25T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: '134',
-    contrato_id: 'DDD3D33',
-    cliente_id: 'flavio',
-    descricao: 'Semanal — 11/02 a 17/02 (DDD3D33)',
-    valor: 330.00,
-    vencimento: '2026-02-18',
-    status: 'pago',
-    data_pagamento: '2026-02-18',
+    contract_id: 'DDD3D33',
+    customer_id: 'flavio',
+    description: 'Semanal — 11/02 a 17/02 (DDD3D33)',
+    amount: 330.00,
+    due_date: '2026-02-18',
+    status: 'paid',
+    payment_date: '2026-02-18',
     created_at: '2026-02-18T10:00:00Z',
     updated_at: '2026-02-18T10:00:00Z',
-    cliente_nome: 'FLAVIO SILVA COUTINHO',
-    moto_placa: 'DDD3D33',
+    customer_name: 'FLAVIO SILVA COUTINHO',
+    motorcycle_plate: 'DDD3D33',
   },
   {
     id: '133',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 11/02 a 17/02 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-02-18',
-    status: 'pago',
-    data_pagamento: '2026-02-18',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 11/02 a 17/02 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-02-18',
+    status: 'paid',
+    payment_date: '2026-02-18',
     created_at: '2026-02-18T10:00:00Z',
     updated_at: '2026-02-18T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: '132',
-    contrato_id: 'BBB1B11',
-    cliente_id: 'douglas',
-    descricao: 'Quinzenal — 01/02 a 15/02 (BBB1B11)',
-    valor: 630.00,
-    vencimento: '2026-02-16',
-    status: 'pago',
-    data_pagamento: '2026-02-16',
+    contract_id: 'BBB1B11',
+    customer_id: 'douglas',
+    description: 'Quinzenal — 01/02 a 15/02 (BBB1B11)',
+    amount: 630.00,
+    due_date: '2026-02-16',
+    status: 'paid',
+    payment_date: '2026-02-16',
     created_at: '2026-02-16T10:00:00Z',
     updated_at: '2026-02-16T10:00:00Z',
-    cliente_nome: 'DOUGLAS DOS SANTOS SIMÕES',
-    moto_placa: 'BBB1B11',
+    customer_name: 'DOUGLAS DOS SANTOS SIMÕES',
+    motorcycle_plate: 'BBB1B11',
   },
   {
     id: '131',
-    contrato_id: 'DDD3D33',
-    cliente_id: 'flavio',
-    descricao: 'Proporcional — 06/02 a 10/02 (DDD3D33)',
-    valor: 173.00,
-    vencimento: '2026-02-11',
-    status: 'pago',
-    data_pagamento: '2026-02-11',
+    contract_id: 'DDD3D33',
+    customer_id: 'flavio',
+    description: 'Proporcional — 06/02 a 10/02 (DDD3D33)',
+    amount: 173.00,
+    due_date: '2026-02-11',
+    status: 'paid',
+    payment_date: '2026-02-11',
     created_at: '2026-02-11T10:00:00Z',
     updated_at: '2026-02-11T10:00:00Z',
-    cliente_nome: 'FLAVIO SILVA COUTINHO',
-    moto_placa: 'DDD3D33',
+    customer_name: 'FLAVIO SILVA COUTINHO',
+    motorcycle_plate: 'DDD3D33',
   },
   {
     id: '130',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 04/02 a 10/02 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-02-11',
-    status: 'pago',
-    data_pagamento: '2026-02-11',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 04/02 a 10/02 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-02-11',
+    status: 'paid',
+    payment_date: '2026-02-11',
     created_at: '2026-02-11T10:00:00Z',
     updated_at: '2026-02-11T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: '129',
-    contrato_id: 'DDD3D33',
-    cliente_id: 'flavio',
-    descricao: 'Caução — Entrada do contrato (DDD3D33)',
-    valor: 500.00,
-    vencimento: '2026-02-06',
-    status: 'pago',
-    data_pagamento: '2026-02-06',
+    contract_id: 'DDD3D33',
+    customer_id: 'flavio',
+    description: 'Caução — Entrada do contrato (DDD3D33)',
+    amount: 500.00,
+    due_date: '2026-02-06',
+    status: 'paid',
+    payment_date: '2026-02-06',
     created_at: '2026-02-06T10:00:00Z',
     updated_at: '2026-02-06T10:00:00Z',
-    cliente_nome: 'FLAVIO SILVA COUTINHO',
-    moto_placa: 'DDD3D33',
+    customer_name: 'FLAVIO SILVA COUTINHO',
+    motorcycle_plate: 'DDD3D33',
   },
   {
     id: '128',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 28/01 a 03/02 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-02-04',
-    status: 'pago',
-    data_pagamento: '2026-02-04',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 28/01 a 03/02 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-02-04',
+    status: 'paid',
+    payment_date: '2026-02-04',
     created_at: '2026-02-04T10:00:00Z',
     updated_at: '2026-02-04T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: '127',
-    contrato_id: 'AAA0A00',
-    cliente_id: 'thiago',
-    descricao: 'Semanal — 28/01 a 03/02 (AAA0A00)',
-    valor: 350.00,
-    vencimento: '2026-02-04',
-    status: 'pago',
-    data_pagamento: '2026-02-04',
+    contract_id: 'AAA0A00',
+    customer_id: 'thiago',
+    description: 'Semanal — 28/01 a 03/02 (AAA0A00)',
+    amount: 350.00,
+    due_date: '2026-02-04',
+    status: 'paid',
+    payment_date: '2026-02-04',
     created_at: '2026-02-04T10:00:00Z',
     updated_at: '2026-02-04T10:00:00Z',
-    cliente_nome: 'THIAGO ALVES CARLOS',
-    moto_placa: 'AAA0A00',
+    customer_name: 'THIAGO ALVES CARLOS',
+    motorcycle_plate: 'AAA0A00',
   },
   {
     id: '126',
-    contrato_id: 'BBB1B11',
-    cliente_id: 'douglas',
-    descricao: 'Quinzenal — 16/01 a 31/01 (BBB1B11)',
-    valor: 630.00,
-    vencimento: '2026-01-31',
-    status: 'pago',
-    data_pagamento: '2026-01-31',
+    contract_id: 'BBB1B11',
+    customer_id: 'douglas',
+    description: 'Quinzenal — 16/01 a 31/01 (BBB1B11)',
+    amount: 630.00,
+    due_date: '2026-01-31',
+    status: 'paid',
+    payment_date: '2026-01-31',
     created_at: '2026-01-31T10:00:00Z',
     updated_at: '2026-01-31T10:00:00Z',
-    cliente_nome: 'DOUGLAS DOS SANTOS SIMÕES',
-    moto_placa: 'BBB1B11',
+    customer_name: 'DOUGLAS DOS SANTOS SIMÕES',
+    motorcycle_plate: 'BBB1B11',
   },
   {
     id: '23',
-    contrato_id: 'AAA0A00',
-    cliente_id: 'marcos',
-    descricao: 'Pagamento de Multa — Parcela 2/3 (AAA0A00)',
-    valor: 100.00,
-    vencimento: '2025-05-07',
-    status: 'pago',
-    data_pagamento: '2025-05-07',
+    contract_id: 'AAA0A00',
+    customer_id: 'marcos',
+    description: 'Pagamento de Multa — Parcela 2/3 (AAA0A00)',
+    amount: 100.00,
+    due_date: '2025-05-07',
+    status: 'paid',
+    payment_date: '2025-05-07',
     created_at: '2025-05-07T10:00:00Z',
     updated_at: '2025-05-07T10:00:00Z',
-    cliente_nome: 'MARCOS FELIPE NEVES LOUREIRO',
-    moto_placa: 'AAA0A00',
+    customer_name: 'MARCOS FELIPE NEVES LOUREIRO',
+    motorcycle_plate: 'AAA0A00',
   },
   {
     id: '19',
-    contrato_id: 'AAA0A00',
-    cliente_id: 'marcos',
-    descricao: 'Pagamento de Multa — Parcela 1/3 (AAA0A00)',
-    valor: 100.00,
-    vencimento: '2025-05-04',
-    status: 'pago',
-    data_pagamento: '2025-05-04',
+    contract_id: 'AAA0A00',
+    customer_id: 'marcos',
+    description: 'Pagamento de Multa — Parcela 1/3 (AAA0A00)',
+    amount: 100.00,
+    due_date: '2025-05-04',
+    status: 'paid',
+    payment_date: '2025-05-04',
     created_at: '2025-05-04T10:00:00Z',
     updated_at: '2025-05-04T10:00:00Z',
-    cliente_nome: 'MARCOS FELIPE NEVES LOUREIRO',
-    moto_placa: 'AAA0A00',
+    customer_name: 'MARCOS FELIPE NEVES LOUREIRO',
+    motorcycle_plate: 'AAA0A00',
   },
   {
     id: '143',
-    contrato_id: 'CCC2C22',
-    cliente_id: 'fabricio',
-    descricao: 'Semanal — 11/03 a 17/03 (CCC2C22)',
-    valor: 350.00,
-    vencimento: '2026-03-18',
-    status: 'pendente',
+    contract_id: 'CCC2C22',
+    customer_id: 'fabricio',
+    description: 'Semanal — 11/03 a 17/03 (CCC2C22)',
+    amount: 350.00,
+    due_date: '2026-03-18',
+    status: 'pending',
     created_at: '2026-03-18T10:00:00Z',
     updated_at: '2026-03-18T10:00:00Z',
-    cliente_nome: 'FABRICIO DO VALE NEPOMUCENO',
-    moto_placa: 'CCC2C22',
+    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
+    motorcycle_plate: 'CCC2C22',
   },
   {
     id: 'test-prejuizo',
-    contrato_id: 'TESTE',
-    cliente_id: 'johnny',
-    descricao: 'Aluguel — Janeiro/2026 (TESTE)',
-    valor: 800.00,
-    vencimento: '2026-01-15',
-    status: 'prejuizo',
+    contract_id: 'TESTE',
+    customer_id: 'johnny',
+    description: 'Aluguel — Janeiro/2026 (TESTE)',
+    amount: 800.00,
+    due_date: '2026-01-15',
+    status: 'loss',
     created_at: '2026-01-01T10:00:00Z',
     updated_at: '2026-01-15T10:00:00Z',
-    cliente_nome: 'JOHNNY TESTE',
-    moto_placa: '—',
+    customer_name: 'JOHNNY TESTE',
+    motorcycle_plate: '—',
   },
 ]
 
+/**
+ * @constant tabs
+ * @description Opções de filtragem por status para os botões de aba (tabs).
+ */
 const tabs = [
-  { label: 'Todas', value: 'todas' },
-  { label: 'Pendentes', value: 'pendente' },
-  { label: 'Vencidas', value: 'vencido' },
-  { label: 'Pagas', value: 'pago' },
-  { label: 'Prejuízo', value: 'prejuizo' },
+  { label: 'Todas', value: 'all' },
+  { label: 'Pendentes', value: 'pending' },
+  { label: 'Vencidas', value: 'overdue' },
+  { label: 'Pagas', value: 'paid' },
+  { label: 'Prejuízo', value: 'loss' },
 ]
 
-const clienteOptions = [
+/**
+ * @constant customerOptions
+ * @description Lista de clientes para seleção no formulário de criação/edição.
+ */
+const customerOptions = [
   { value: '', label: 'Selecione um cliente' },
   { value: 'alexandre', label: 'ALEXANDRE DANTAS DAS SILVA' },
   { value: 'fabricio', label: 'FABRICIO DO VALE NEPOMUCENO' },
@@ -330,7 +367,11 @@ const clienteOptions = [
   { value: 'marcos', label: 'MARCOS FELIPE NEVES LOUREIRO' },
 ]
 
-const contratoOptions = [
+/**
+ * @constant contractOptions
+ * @description Lista de contratos e veículos vinculados para seleção.
+ */
+const contractOptions = [
   { value: '', label: 'Selecione um contrato / veículo' },
   { value: 'BBB1B11', label: 'BBB1B11 — Douglas' },
   { value: 'AAA0A00', label: 'AAA0A00 — Alexandre / Thiago / Marcos' },
@@ -338,240 +379,322 @@ const contratoOptions = [
   { value: 'DDD3D33', label: 'DDD3D33 — Flávio' },
 ]
 
+/**
+ * @constant defaultForm
+ * @description Estado inicial limpo para o formulário de cobrança.
+ */
 const defaultForm = {
-  cliente_id: '',
-  contrato_id: '',
-  descricao: '',
-  valor: '',
-  vencimento: '',
-  observacoes: '',
+  customer_id: '',
+  contract_id: '',
+  description: '',
+  amount: '',
+  due_date: '',
+  notes: '',
 }
 
-export default function CobrancasPage() {
-  const [cobrancas, setCobrancas] = useState<CobrancaComRelacoes[]>(mockCobrancas)
-  const [activeTab, setActiveTab] = useState('todas')
+/**
+ * @component ChargesPage
+ * @description Componente principal da página de cobranças.
+ * Gerencia todo o estado da interface, desde dados da tabela até modais de confirmação.
+ */
+export default function ChargesPage() {
+  /** @state charges - Lista principal de cobranças gerenciada no estado local. */
+  const [charges, setCharges] = useState<ChargeWithRelations[]>(mockCharges)
+  /** @state activeTab - Status de filtro selecionado nas abas. */
+  const [activeTab, setActiveTab] = useState('all')
+  /** @state modalOpen - Controla a visibilidade do modal de criação/edição. */
   const [modalOpen, setModalOpen] = useState(false)
-  const [editandoId, setEditandoId] = useState<string | null>(null)
+  /** @state editingId - Armazena o ID da cobrança que está sendo editada (null se for nova). */
+  const [editingId, setEditingId] = useState<string | null>(null)
+  /** @state form - Dados capturados pelos campos do formulário. */
   const [form, setForm] = useState(defaultForm)
-  const [excluindo, setExcluindo] = useState<CobrancaComRelacoes | null>(null)
-  const [confirmandoPago, setConfirmandoPago] = useState<CobrancaComRelacoes | null>(null)
-  const [confirmandoPrejuizo, setConfirmandoPrejuizo] = useState<CobrancaComRelacoes | null>(null)
-  const [busca, setBusca] = useState('')
+  /** @state deleting - Objeto da cobrança selecionada para exclusão. */
+  const [deleting, setDeleting] = useState<ChargeWithRelations | null>(null)
+  /** @state confirmingPaid - Objeto da cobrança selecionada para confirmar pagamento. */
+  const [confirmingPaid, setConfirmingPaid] = useState<ChargeWithRelations | null>(null)
+  /** @state confirmingLoss - Objeto da cobrança selecionada para marcar como prejuízo. */
+  const [confirmingLoss, setConfirmingLoss] = useState<ChargeWithRelations | null>(null)
+  /** @state search - Termo de busca digitado pelo usuário. */
+  const [search, setSearch] = useState('')
 
-  const filtered = cobrancas
-    .filter((c) => activeTab === 'todas' || c.status === activeTab)
+  /**
+   * @variable filtered
+   * @description Processa a lista de cobranças aplicando filtros de aba e de busca textual.
+   */
+  const filtered = charges
+    .filter((c) => activeTab === 'all' || c.status === activeTab)
     .filter((c) => {
-      if (!busca) return true
-      const q = busca.toLowerCase()
+      if (!search) return true
+      const q = search.toLowerCase()
       return (
-        c.cliente_nome.toLowerCase().includes(q) ||
-        c.moto_placa.toLowerCase().includes(q) ||
-        c.descricao.toLowerCase().includes(q)
+        c.customer_name.toLowerCase().includes(q) ||
+        c.motorcycle_plate.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q)
       )
     })
 
-  function abrirNova() {
-    setEditandoId(null)
+  /**
+   * @function openNew
+   * @description Reseta o formulário e abre o modal para criação de uma nova cobrança.
+   */
+  function openNew() {
+    setEditingId(null)
     setForm(defaultForm)
     setModalOpen(true)
   }
 
-  function abrirEdicao(row: CobrancaComRelacoes) {
-    setEditandoId(row.id)
+  /**
+   * @function openEdit
+   * @description Preenche o formulário com dados existentes e abre o modal para edição.
+   * @param row - Objeto da cobrança a ser editada.
+   */
+  function openEdit(row: ChargeWithRelations) {
+    setEditingId(row.id)
     setForm({
-      cliente_id: row.cliente_id,
-      contrato_id: row.contrato_id,
-      descricao: row.descricao,
-      valor: String(row.valor),
-      vencimento: row.vencimento,
-      observacoes: row.observacoes ?? '',
+      customer_id: row.customer_id,
+      contract_id: row.contract_id,
+      description: row.description,
+      amount: String(row.amount),
+      due_date: row.due_date,
+      notes: row.observations ?? '',
     })
     setModalOpen(true)
   }
 
-  function confirmarPago() {
-    if (!confirmandoPago) return
-    setCobrancas((prev) =>
+  /**
+   * @function confirmPaid
+   * @description Atualiza o status da cobrança selecionada para 'paid' e define a data de pagamento como hoje.
+   */
+  function confirmPaid() {
+    if (!confirmingPaid) return
+    setCharges((prev) =>
       prev.map((c) =>
-        c.id === confirmandoPago.id
-          ? { ...c, status: 'pago' as CobrancaStatus, data_pagamento: new Date().toISOString().split('T')[0] }
+        c.id === confirmingPaid.id
+          ? { ...c, status: 'paid' as ChargeStatus, payment_date: new Date().toISOString().split('T')[0] }
           : c
       )
     )
-    setConfirmandoPago(null)
+    setConfirmingPaid(null)
   }
 
-  function confirmarPrejuizo() {
-    if (!confirmandoPrejuizo) return
-    setCobrancas((prev) =>
+  /**
+   * @function confirmLoss
+   * @description Atualiza o status da cobrança selecionada para 'loss' (prejuízo/perda).
+   */
+  function confirmLoss() {
+    if (!confirmingLoss) return
+    setCharges((prev) =>
       prev.map((c) =>
-        c.id === confirmandoPrejuizo.id ? { ...c, status: 'prejuizo' as CobrancaStatus } : c
+        c.id === confirmingLoss.id ? { ...c, status: 'loss' as ChargeStatus } : c
       )
     )
-    setConfirmandoPrejuizo(null)
+    setConfirmingLoss(null)
   }
 
+  /**
+   * @function handleSubmit
+   * @description Processa o envio do formulário, criando ou atualizando um registro no estado.
+   * @param e - Evento de submissão do formulário React.
+   */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const clienteLabel = clienteOptions.find((o) => o.value === form.cliente_id)?.label ?? ''
+    /** @variable customerLabel - Localiza o nome legível do cliente baseado no ID selecionado. */
+    const customerLabel = customerOptions.find((o) => o.value === form.customer_id)?.label ?? ''
 
-    if (editandoId) {
-      setCobrancas((prev) =>
+    if (editingId) {
+      /** Lógica de atualização de registro existente */
+      setCharges((prev) =>
         prev.map((c) =>
-          c.id === editandoId
+          c.id === editingId
             ? {
                 ...c,
-                cliente_id: form.cliente_id,
-                contrato_id: form.contrato_id,
-                descricao: form.descricao,
-                valor: parseFloat(form.valor),
-                vencimento: form.vencimento,
-                observacoes: form.observacoes,
-                cliente_nome: clienteLabel,
-                moto_placa: form.contrato_id || c.moto_placa,
+                customer_id: form.customer_id,
+                contract_id: form.contract_id,
+                description: form.description,
+                amount: parseFloat(form.amount),
+                due_date: form.due_date,
+                observations: form.notes,
+                customer_name: customerLabel,
+                motorcycle_plate: form.contract_id || c.motorcycle_plate,
                 updated_at: new Date().toISOString(),
               }
             : c
         )
       )
     } else {
-      const novaCobranca: CobrancaComRelacoes = {
+      /** Lógica de criação de novo registro */
+      const newCharge: ChargeWithRelations = {
         id: String(Date.now()),
-        contrato_id: form.contrato_id,
-        cliente_id: form.cliente_id,
-        descricao: form.descricao,
-        valor: parseFloat(form.valor),
-        vencimento: form.vencimento,
-        status: 'pendente',
+        contract_id: form.contract_id,
+        customer_id: form.customer_id,
+        description: form.description,
+        amount: parseFloat(form.amount),
+        due_date: form.due_date,
+        status: 'pending',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        cliente_nome: clienteLabel,
-        moto_placa: form.contrato_id || '—',
+        customer_name: customerLabel,
+        motorcycle_plate: form.contract_id || '—',
       }
-      setCobrancas((prev) => [novaCobranca, ...prev])
+      setCharges((prev) => [newCharge, ...prev])
     }
 
     setForm(defaultForm)
     setModalOpen(false)
   }
 
-  function confirmarExclusao() {
-    if (!excluindo) return
-    setCobrancas((prev) => prev.filter((c) => c.id !== excluindo.id))
-    setExcluindo(null)
+  /**
+   * @function confirmDeletion
+   * @description Remove permanentemente uma cobrança da lista do estado local.
+   */
+  function confirmDeletion() {
+    if (!deleting) return
+    setCharges((prev) => prev.filter((c) => c.id !== deleting.id))
+    setDeleting(null)
   }
 
-  const totalPago = cobrancas.filter((c) => c.status === 'pago').reduce((sum, c) => sum + c.valor, 0)
-  const totalPendente = cobrancas.filter((c) => c.status === 'pendente').reduce((sum, c) => sum + c.valor, 0)
-  const totalVencido = cobrancas.filter((c) => c.status === 'vencido').reduce((sum, c) => sum + c.valor, 0)
-  const totalPrejuizo = cobrancas.filter((c) => c.status === 'prejuizo').reduce((sum, c) => sum + c.valor, 0)
-  const totalNaoPago = totalPendente + totalVencido
+  /** CÁLCULOS FINANCEIROS E MÉTRICAS */
 
-  const qtdInadimplentes = cobrancas.filter((c) => c.status === 'vencido' || c.status === 'prejuizo').length
-  const pctInadimplencia = cobrancas.length > 0 ? (qtdInadimplentes / cobrancas.length) * 100 : 0
+  /** @variable totalPaid - Soma de todos os valores das cobranças com status 'paid'. */
+  const totalPaid = charges.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
+  /** @variable totalPending - Soma de valores 'pending'. */
+  const totalPending = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+  /** @variable totalOverdue - Soma de valores 'overdue'. */
+  const totalOverdue = charges.filter((c) => c.status === 'overdue').reduce((sum, c) => sum + c.amount, 0)
+  /** @variable totalLoss - Soma de valores 'loss'. */
+  const totalLoss = charges.filter((c) => c.status === 'loss').reduce((sum, c) => sum + c.amount, 0)
+  /** @variable totalUnpaid - Total que deveria ter sido recebido mas não foi (Pendente + Vencido). */
+  const totalUnpaid = totalPending + totalOverdue
 
-  const pagas = cobrancas.filter((c) => c.status === 'pago')
-  const ticketMedio = pagas.length > 0 ? totalPago / pagas.length : 0
+  /** @variable defaultersCount - Quantidade de itens em atraso ou perdidos. */
+  const defaultersCount = charges.filter((c) => c.status === 'overdue' || c.status === 'loss').length
+  /** @variable defaultRate - Percentual de inadimplência sobre o volume total de registros. */
+  const defaultRate = charges.length > 0 ? (defaultersCount / charges.length) * 100 : 0
 
-  const hoje = new Date()
-  const em30dias = new Date(hoje); em30dias.setDate(hoje.getDate() + 30)
-  const projecao30 = cobrancas
-    .filter((c) => c.status === 'pendente' && new Date(c.vencimento) <= em30dias)
-    .reduce((sum, c) => sum + c.valor, 0)
+  /** @variable paidCharges - Lista filtrada de itens já liquidados. */
+  const paidCharges = charges.filter((c) => c.status === 'paid')
+  /** @variable averageTicket - Média de valor por cobrança paga. */
+  const averageTicket = paidCharges.length > 0 ? totalPaid / paidCharges.length : 0
 
-  const vencidasOrdenadas = cobrancas
-    .filter((c) => c.status === 'vencido')
-    .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())
-  const maisAntiga = vencidasOrdenadas[0]
-  const diasAtraso = maisAntiga
-    ? Math.floor((hoje.getTime() - new Date(maisAntiga.vencimento).getTime()) / 86400000)
+  /** @variable today - Referência de data atual para cálculos de projeção. */
+  const today = new Date()
+  /** @variable in30Days - Data limite para a projeção de fluxo de caixa futuro. */
+  const in30Days = new Date(today); in30Days.setDate(today.getDate() + 30)
+  /** @variable projection30Days - Valor total de cobranças pendentes que vencem nos próximos 30 dias. */
+  const projection30Days = charges
+    .filter((c) => c.status === 'pending' && new Date(c.due_date) <= in30Days)
+    .reduce((sum, c) => sum + c.amount, 0)
+
+  /** @variable sortedOverdue - Cobranças vencidas ordenadas da mais antiga para a mais recente. */
+  const sortedOverdue = charges
+    .filter((c) => c.status === 'overdue')
+    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+  /** @variable oldestCharge - O registro que está há mais tempo em atraso. */
+  const oldestCharge = sortedOverdue[0]
+  /** @variable daysOverdue - Cálculo de quantos dias o registro mais antigo está vencido. */
+  const daysOverdue = oldestCharge
+    ? Math.floor((today.getTime() - new Date(oldestCharge.due_date).getTime()) / 86400000)
     : 0
 
-  const pagaramNoPrazo = pagas.filter((c) => c.data_pagamento && c.data_pagamento <= c.vencimento).length
-  const taxaPontualidade = pagas.length > 0 ? (pagaramNoPrazo / pagas.length) * 100 : 0
+  /** @variable paidOnTime - Contagem de cobranças pagas na data de vencimento ou antes. */
+  const paidOnTime = paidCharges.filter((c) => c.payment_date && c.payment_date <= c.due_date).length
+  /** @variable punctualityRate - Índice percentual de clientes que pagam no prazo. */
+  const punctualityRate = paidCharges.length > 0 ? (paidOnTime / paidCharges.length) * 100 : 0
 
-  const tempoMedio = pagas.length > 0
-    ? pagas.reduce((sum, c) => {
-        const dias = c.data_pagamento
-          ? Math.floor((new Date(c.data_pagamento).getTime() - new Date(c.vencimento).getTime()) / 86400000)
+  /** @variable averageTime - Tempo médio (em dias) decorrido entre o vencimento e o pagamento efetivo. */
+  const averageTime = paidCharges.length > 0
+    ? paidCharges.reduce((sum, c) => {
+        const days = c.payment_date
+          ? Math.floor((new Date(c.payment_date).getTime() - new Date(c.due_date).getTime()) / 86400000)
           : 0
-        return sum + dias
-      }, 0) / pagas.length
+        return sum + days
+      }, 0) / paidCharges.length
     : 0
 
-  const devedores: Record<string, number> = {}
-  cobrancas
-    .filter((c) => c.status === 'vencido' || c.status === 'pendente')
-    .forEach((c) => { devedores[c.cliente_nome] = (devedores[c.cliente_nome] ?? 0) + c.valor })
-  const topDevedor = Object.entries(devedores).sort((a, b) => b[1] - a[1])[0]
+  /** @variable debtors - Agrupamento de valores devidos por nome de cliente. */
+  const debtors: Record<string, number> = {}
+  charges
+    .filter((c) => c.status === 'overdue' || c.status === 'pending')
+    .forEach((c) => { debtors[c.customer_name] = (debtors[c.customer_name] ?? 0) + c.amount })
+  /** @variable topDebtor - O cliente com maior montante acumulado a pagar. */
+  const topDebtor = Object.entries(debtors).sort((a, b) => b[1] - a[1])[0]
 
-  const prejuizoPorCliente: Record<string, number> = {}
-  cobrancas
-    .filter((c) => c.status === 'prejuizo')
-    .forEach((c) => { prejuizoPorCliente[c.cliente_nome] = (prejuizoPorCliente[c.cliente_nome] ?? 0) + c.valor })
-  const topPrejuizo = Object.entries(prejuizoPorCliente).sort((a, b) => b[1] - a[1])[0]
+  /** @variable lossByCustomer - Agrupamento de prejuízos contabilizados por cliente. */
+  const lossByCustomer: Record<string, number> = {}
+  charges
+    .filter((c) => c.status === 'loss')
+    .forEach((c) => { lossByCustomer[c.customer_name] = (lossByCustomer[c.customer_name] ?? 0) + c.amount })
+  /** @variable topLoss - O cliente que gerou o maior prejuízo individual até o momento. */
+  const topLoss = Object.entries(lossByCustomer).sort((a, b) => b[1] - a[1])[0]
 
+  /**
+   * @constant columns
+   * @description Definição estrutural das colunas da tabela de cobranças.
+   * Cada objeto mapeia uma chave do dado para um cabeçalho e uma função de renderização JSX personalizada.
+   */
   const columns = [
     {
-      key: 'cliente_nome',
+      key: 'customer_name',
       header: 'Cliente',
-      render: (row: CobrancaComRelacoes) => (
-        <span className="font-medium text-white">{row.cliente_nome}</span>
+      render: (row: ChargeWithRelations) => (
+        <span className="font-medium text-white">{row.customer_name}</span>
       ),
     },
     {
-      key: 'moto_placa',
+      key: 'motorcycle_plate',
       header: 'Placa',
-      render: (row: CobrancaComRelacoes) => (
-        <span className="font-mono text-sm text-[#A0A0A0]">{row.moto_placa}</span>
+      render: (row: ChargeWithRelations) => (
+        <span className="font-mono text-sm text-[#A0A0A0]">{row.motorcycle_plate}</span>
       ),
     },
     {
-      key: 'descricao',
+      key: 'description',
       header: 'Descrição',
-      render: (row: CobrancaComRelacoes) => <span>{row.descricao}</span>,
+      render: (row: ChargeWithRelations) => <span>{row.description}</span>,
     },
     {
-      key: 'valor',
+      key: 'amount',
       header: 'Valor',
-      render: (row: CobrancaComRelacoes) => (
-        <span className="font-semibold text-white">{formatCurrency(row.valor)}</span>
+      render: (row: ChargeWithRelations) => (
+        <span className="font-semibold text-white">{formatCurrency(row.amount)}</span>
       ),
     },
     {
-      key: 'vencimento',
+      key: 'due_date',
       header: 'Vencimento',
-      render: (row: CobrancaComRelacoes) => <span>{formatDate(row.vencimento)}</span>,
+      render: (row: ChargeWithRelations) => <span>{formatDate(row.due_date)}</span>,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (row: CobrancaComRelacoes) => <StatusBadge status={row.status} />,
+      render: (row: ChargeWithRelations) => <StatusBadge status={row.status} />,
     },
     {
-      key: 'data_pagamento',
+      key: 'payment_date',
       header: 'Dt. Pagamento',
-      render: (row: CobrancaComRelacoes) => (
-        <span>{row.data_pagamento ? formatDate(row.data_pagamento) : '—'}</span>
+      render: (row: ChargeWithRelations) => (
+        <span>{row.payment_date ? formatDate(row.payment_date) : '—'}</span>
       ),
     },
     {
-      key: 'acoes',
+      key: 'actions',
       header: 'Ações',
-      render: (row: CobrancaComRelacoes) => (
+      render: (row: ChargeWithRelations) => (
         <div className="flex items-center gap-1">
-          {(row.status === 'pendente' || row.status === 'vencido') && (
+          {/* Botão de confirmação de pagamento: visível apenas para pendentes ou vencidas */}
+          {(row.status === 'pending' || row.status === 'overdue') && (
             <button
-              onClick={() => setConfirmandoPago(row)}
+              onClick={() => setConfirmingPaid(row)}
               title="Marcar como pago"
               className="p-1.5 rounded-lg text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors"
             >
               <CheckCircle className="w-4 h-4" />
             </button>
           )}
-          {(row.status === 'pendente' || row.status === 'vencido') && (
+          {/* Botão de marcação de prejuízo: permite dar baixa contábil em dívidas irrecuperáveis */}
+          {(row.status === 'pending' || row.status === 'overdue') && (
             <button
-              onClick={() => setConfirmandoPrejuizo(row)}
+              onClick={() => setConfirmingLoss(row)}
               title="Contabilizar como prejuízo"
               className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors"
             >
@@ -579,15 +702,17 @@ export default function CobrancasPage() {
               Prejuízo
             </button>
           )}
+          {/* Botão de edição de dados */}
           <button
-            onClick={() => abrirEdicao(row)}
+            onClick={() => openEdit(row)}
             className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
             title="Editar"
           >
             <Edit2 className="w-4 h-4" />
           </button>
+          {/* Botão de exclusão definitiva */}
           <button
-            onClick={() => setExcluindo(row)}
+            onClick={() => setDeleting(row)}
             className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
             title="Excluir"
           >
@@ -600,11 +725,12 @@ export default function CobrancasPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {/* Cabeçalho superior com título e ação global de nova cobrança */}
       <Header
         title="Cobranças"
         subtitle="Controle de recebimentos"
         actions={
-          <Button onClick={abrirNova}>
+          <Button onClick={openNew}>
             <Plus className="w-4 h-4" />
             Nova Cobrança
           </Button>
@@ -613,7 +739,7 @@ export default function CobrancasPage() {
 
       <div className="p-6 space-y-4">
 
-        {/* Banner de integração futura */}
+        {/* Banner Informativo sobre Integrações Futuras */}
         <div className="rounded-xl border border-[#BAFF1A]/30 bg-[#BAFF1A]/5 px-4 py-4 space-y-3">
           <div className="flex items-start gap-3">
             <Zap className="w-5 h-5 text-[#BAFF1A] mt-0.5 shrink-0" />
@@ -632,6 +758,7 @@ export default function CobrancasPage() {
             </span>
           </div>
 
+          {/* Lista de benefícios da futura integração */}
           <div className="border-t border-[#BAFF1A]/15 pt-3">
             <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">O que esta tela irá apresentar após a integração</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
@@ -652,49 +779,49 @@ export default function CobrancasPage() {
           </div>
         </div>
 
-        {/* Cards — 2 linhas de 3 */}
+        {/* Grid de Cards de Métricas — Fornece visão rápida da saúde financeira */}
         <div className="grid grid-cols-3 gap-4">
 
-          {/* 1. Total Recebido + ticket médio */}
+          {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total Recebido</p>
-              <p className="text-2xl font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPago)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">{pagas.length} cobranças pagas</p>
+              <p className="text-2xl font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
+              <p className="text-xs text-[#A0A0A0] mt-0.5">{paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-xs text-[#A0A0A0]">Ticket médio</span>
-              <span className="text-xs font-semibold text-white">{formatCurrency(ticketMedio)}</span>
+              <span className="text-xs font-semibold text-white">{formatCurrency(averageTicket)}</span>
             </div>
           </Card>
 
-          {/* 2. A Receber + projeção 30 dias */}
+          {/* Card 2: Montante A Receber e Projeção Próximos 30 dias */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">A Receber</p>
-              <p className="text-2xl font-bold text-amber-400 mt-1">{formatCurrency(totalPendente)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">{cobrancas.filter((c) => c.status === 'pendente').length} em aberto</p>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{formatCurrency(totalPending)}</p>
+              <p className="text-xs text-[#A0A0A0] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-xs text-[#A0A0A0]">Vencem em 30 dias</span>
-              <span className="text-xs font-semibold text-amber-400">{formatCurrency(projecao30)}</span>
+              <span className="text-xs font-semibold text-amber-400">{formatCurrency(projection30Days)}</span>
             </div>
           </Card>
 
-          {/* 3. Vencidas + mais antiga */}
+          {/* Card 3: Valor Total Vencido e Destaque da Cobrança Mais Atrasada */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Vencidas</p>
-              <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalVencido)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">{cobrancas.filter((c) => c.status === 'vencido').length} cobranças</p>
+              <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalOverdue)}</p>
+              <p className="text-xs text-[#A0A0A0] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
             <div className="px-4 py-3">
-              {maisAntiga ? (
+              {oldestCharge ? (
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-[#A0A0A0] truncate max-w-[130px]" title={maisAntiga.cliente_nome}>
-                    {maisAntiga.cliente_nome.split(' ')[0]}
+                  <span className="text-xs text-[#A0A0A0] truncate max-w-[130px]" title={oldestCharge.customer_name}>
+                    {oldestCharge.customer_name.split(' ')[0]}
                   </span>
-                  <span className="text-xs font-semibold text-red-400 shrink-0">{diasAtraso}d atraso</span>
+                  <span className="text-xs font-semibold text-red-400 shrink-0">{daysOverdue}d atraso</span>
                 </div>
               ) : (
                 <span className="text-xs text-green-400">Nenhuma em atraso</span>
@@ -702,77 +829,77 @@ export default function CobrancasPage() {
             </div>
           </Card>
 
-          {/* 4. % Inadimplência + pontualidade */}
+          {/* Card 4: Taxa de Inadimplência e Índice de Pontualidade */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Inadimplência</p>
-              <p className={`text-2xl font-bold mt-1 ${pctInadimplencia > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                {pctInadimplencia.toFixed(1)}%
+              <p className={`text-2xl font-bold mt-1 ${defaultRate > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                {defaultRate.toFixed(1)}%
               </p>
               <p className="text-xs text-[#A0A0A0] mt-0.5">
-                {qtdInadimplentes} cobrança(s) vencida(s) ou perdida(s) do total de {cobrancas.length}
+                {defaultersCount} cobrança(s) vencida(s) ou perdida(s) do total de {charges.length}
               </p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-xs text-[#A0A0A0]">Pontualidade</p>
-                <p className="text-xs text-[#888888] mt-0.5">das {pagas.length} pagas</p>
+                <p className="text-xs text-[#888888] mt-0.5">das {paidCharges.length} pagas</p>
               </div>
-              <span className={`text-sm font-semibold ${taxaPontualidade >= 80 ? 'text-green-400' : taxaPontualidade >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
-                {taxaPontualidade.toFixed(1)}%
+              <span className={`text-sm font-semibold ${punctualityRate >= 80 ? 'text-green-400' : punctualityRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                {punctualityRate.toFixed(1)}%
               </span>
             </div>
           </Card>
 
-          {/* 5. Não pagos + tempo médio */}
+          {/* Card 5: Valores Totais Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
             <div className="p-4 border-b border-[#2a2a2a]">
               <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Valores Não Pagos</p>
-              <p className={`text-2xl font-bold mt-1 ${totalNaoPago > 0 ? 'text-amber-400' : 'text-green-400'}`}>
-                {formatCurrency(totalNaoPago)}
+              <p className={`text-2xl font-bold mt-1 ${totalUnpaid > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                {formatCurrency(totalUnpaid)}
               </p>
               <p className="text-xs text-[#A0A0A0] mt-0.5">Pendentes + vencidas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-xs text-[#A0A0A0]">Tempo médio de receb.</span>
               <span className="text-xs font-semibold text-white">
-                {tempoMedio === 0 ? 'No prazo' : tempoMedio > 0 ? `${tempoMedio.toFixed(0)}d após venc.` : `${Math.abs(tempoMedio).toFixed(0)}d antecipado`}
+                {averageTime === 0 ? 'No prazo' : averageTime > 0 ? `${averageTime.toFixed(0)}d após venc.` : `${Math.abs(averageTime).toFixed(0)}d antecipado`}
               </span>
             </div>
           </Card>
 
-          {/* 6. Prejuízos + top devedor */}
-          <Card padding="none" className={totalPrejuizo > 0 ? 'border-red-500/40 bg-red-500/5' : ''}>
-            <div className={`p-4 border-b ${totalPrejuizo > 0 ? 'border-red-500/20' : 'border-[#2a2a2a]'}`}>
+          {/* Card 6: Prejuízos Contabilizados e Destaque de Maior Inadimplente */}
+          <Card padding="none" className={totalLoss > 0 ? 'border-red-500/40 bg-red-500/5' : ''}>
+            <div className={`p-4 border-b ${totalLoss > 0 ? 'border-red-500/20' : 'border-[#2a2a2a]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-xs uppercase tracking-wider ${totalPrejuizo > 0 ? 'text-red-400' : 'text-[#A0A0A0]'}`}>
+                <p className={`text-xs uppercase tracking-wider ${totalLoss > 0 ? 'text-red-400' : 'text-[#A0A0A0]'}`}>
                   Prejuízos Contabilizados
                 </p>
-                {totalPrejuizo > 0 && (
+                {totalLoss > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-2 py-0.5 text-xs font-medium text-red-400">
                     Atenção
                   </span>
                 )}
               </div>
-              <p className={`text-2xl font-bold mt-1 ${totalPrejuizo > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                {formatCurrency(totalPrejuizo)}
+              <p className={`text-2xl font-bold mt-1 ${totalLoss > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                {formatCurrency(totalLoss)}
               </p>
-              <p className={`text-xs mt-0.5 ${totalPrejuizo > 0 ? 'text-red-400/70' : 'text-[#A0A0A0]'}`}>
-                {cobrancas.filter((c) => c.status === 'prejuizo').length === 0
+              <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-red-400/70' : 'text-[#A0A0A0]'}`}>
+                {charges.filter((c) => c.status === 'loss').length === 0
                   ? 'Nenhum prejuízo registrado'
-                  : `${cobrancas.filter((c) => c.status === 'prejuizo').length} cobrança(s) irrecuperável(is)`}
+                  : `${charges.filter((c) => c.status === 'loss').length} cobrança(s) irrecuperável(is)`}
               </p>
             </div>
-            <div className={`px-4 py-3 ${totalPrejuizo > 0 ? 'bg-red-500/5' : ''}`}>
-              {topPrejuizo ? (
+            <div className={`px-4 py-3 ${totalLoss > 0 ? 'bg-red-500/5' : ''}`}>
+              {topLoss ? (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-[#A0A0A0]">Maior prejuízo</p>
-                    <p className="text-xs font-medium text-white truncate max-w-[130px]" title={topPrejuizo[0]}>
-                      {topPrejuizo[0].split(' ')[0]}
+                    <p className="text-xs font-medium text-white truncate max-w-[130px]" title={topLoss[0]}>
+                      {topLoss[0].split(' ')[0]}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-red-400 shrink-0">{formatCurrency(topPrejuizo[1])}</span>
+                  <span className="text-sm font-bold text-red-400 shrink-0">{formatCurrency(topLoss[1])}</span>
                 </div>
               ) : (
                 <span className="text-xs text-green-400">Nenhum prejuízo registrado</span>
@@ -782,7 +909,7 @@ export default function CobrancasPage() {
 
         </div>
 
-        {/* Filter Tabs + Busca */}
+        {/* Barra de Ações: Filtros por status e campo de busca global */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-2 flex-wrap">
             {tabs.map((tab) => (
@@ -796,9 +923,9 @@ export default function CobrancasPage() {
                 }`}
               >
                 {tab.label}
-                {tab.value !== 'todas' && (
+                {tab.value !== 'all' && (
                   <span className="ml-1.5 opacity-70">
-                    ({cobrancas.filter((c) => c.status === tab.value).length})
+                    ({charges.filter((c) => c.status === tab.value).length})
                   </span>
                 )}
               </button>
@@ -809,14 +936,14 @@ export default function CobrancasPage() {
             <input
               type="text"
               placeholder="Buscar por cliente, placa ou descrição..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
             />
           </div>
         </div>
 
-        {/* Table */}
+        {/* Tabela de Dados: Renderiza a lista filtrada de cobranças */}
         <Card padding="none">
           <Table
             columns={columns}
@@ -827,32 +954,32 @@ export default function CobrancasPage() {
         </Card>
       </div>
 
-      {/* Modal Nova / Editar Cobrança */}
+      {/* Modal: Formulário para criação ou edição de cobrança */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editandoId ? 'Editar Cobrança' : 'Nova Cobrança'}
+        title={editingId ? 'Editar Cobrança' : 'Nova Cobrança'}
         size="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Cliente"
-            options={clienteOptions}
-            value={form.cliente_id}
-            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            options={customerOptions}
+            value={form.customer_id}
+            onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
             required
           />
           <Select
             label="Contrato / Placa"
-            options={contratoOptions}
-            value={form.contrato_id}
-            onChange={(e) => setForm({ ...form, contrato_id: e.target.value })}
+            options={contractOptions}
+            value={form.contract_id}
+            onChange={(e) => setForm({ ...form, contract_id: e.target.value })}
           />
           <Input
             label="Descrição"
             placeholder="Aluguel — Abril/2024"
-            value={form.descricao}
-            onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
             required
           />
           <div className="grid grid-cols-2 gap-4">
@@ -861,15 +988,15 @@ export default function CobrancasPage() {
               type="number"
               step="0.01"
               placeholder="1200.00"
-              value={form.valor}
-              onChange={(e) => setForm({ ...form, valor: e.target.value })}
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
               required
             />
             <Input
               label="Vencimento"
               type="date"
-              value={form.vencimento}
-              onChange={(e) => setForm({ ...form, vencimento: e.target.value })}
+              value={form.due_date}
+              onChange={(e) => setForm({ ...form, due_date: e.target.value })}
               required
             />
           </div>
@@ -877,8 +1004,8 @@ export default function CobrancasPage() {
             label="Observações"
             placeholder="Informações adicionais..."
             rows={2}
-            value={form.observacoes}
-            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
@@ -886,29 +1013,29 @@ export default function CobrancasPage() {
             </Button>
             <Button type="submit">
               <DollarSign className="w-4 h-4" />
-              {editandoId ? 'Salvar Alterações' : 'Criar Cobrança'}
+              {editingId ? 'Salvar Alterações' : 'Criar Cobrança'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal Confirmar Pago */}
-      <Modal open={!!confirmandoPago} onClose={() => setConfirmandoPago(null)} title="Confirmar Pagamento" size="sm">
+      {/* Modal de Confirmação: Registro de pagamento recebido */}
+      <Modal open={!!confirmingPaid} onClose={() => setConfirmingPaid(null)} title="Confirmar Pagamento" size="sm">
         <div className="space-y-4">
           <div className="p-4 bg-green-500/8 border border-green-500/20 rounded-lg space-y-2">
             <p className="text-sm text-white font-medium">Confirmar recebimento desta cobrança?</p>
-            {confirmandoPago && (
+            {confirmingPaid && (
               <div className="space-y-0.5">
-                <p className="text-xs text-[#A0A0A0]">{confirmandoPago.cliente_nome}</p>
-                <p className="text-xs text-[#A0A0A0]">{confirmandoPago.descricao}</p>
-                <p className="text-sm font-semibold text-green-400">{formatCurrency(confirmandoPago.valor)}</p>
+                <p className="text-xs text-[#A0A0A0]">{confirmingPaid.customer_name}</p>
+                <p className="text-xs text-[#A0A0A0]">{confirmingPaid.description}</p>
+                <p className="text-sm font-semibold text-green-400">{formatCurrency(confirmingPaid.amount)}</p>
               </div>
             )}
           </div>
           <p className="text-xs text-[#A0A0A0]">A data de pagamento será registrada como hoje.</p>
           <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setConfirmandoPago(null)}>Cancelar</Button>
-            <Button onClick={confirmarPago}>
+            <Button variant="ghost" onClick={() => setConfirmingPaid(null)}>Cancelar</Button>
+            <Button onClick={confirmPaid}>
               <CheckCircle className="w-4 h-4" />
               Confirmar Pagamento
             </Button>
@@ -916,23 +1043,23 @@ export default function CobrancasPage() {
         </div>
       </Modal>
 
-      {/* Modal Confirmar Prejuízo */}
-      <Modal open={!!confirmandoPrejuizo} onClose={() => setConfirmandoPrejuizo(null)} title="Registrar como Prejuízo" size="sm">
+      {/* Modal de Confirmação: Registro de perda (prejuízo) irremediável */}
+      <Modal open={!!confirmingLoss} onClose={() => setConfirmingLoss(null)} title="Registrar como Prejuízo" size="sm">
         <div className="space-y-4">
           <div className="p-4 bg-red-500/8 border border-red-500/20 rounded-lg space-y-2">
             <p className="text-sm text-white font-medium">Tem certeza que deseja contabilizar esta cobrança como prejuízo?</p>
-            {confirmandoPrejuizo && (
+            {confirmingLoss && (
               <div className="space-y-0.5">
-                <p className="text-xs text-[#A0A0A0]">{confirmandoPrejuizo.cliente_nome}</p>
-                <p className="text-xs text-[#A0A0A0]">{confirmandoPrejuizo.descricao}</p>
-                <p className="text-sm font-semibold text-red-400">{formatCurrency(confirmandoPrejuizo.valor)}</p>
+                <p className="text-xs text-[#A0A0A0]">{confirmingLoss.customer_name}</p>
+                <p className="text-xs text-[#A0A0A0]">{confirmingLoss.description}</p>
+                <p className="text-sm font-semibold text-red-400">{formatCurrency(confirmingLoss.amount)}</p>
               </div>
             )}
           </div>
           <p className="text-xs text-red-400/80">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
           <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setConfirmandoPrejuizo(null)}>Cancelar</Button>
-            <Button variant="danger" onClick={confirmarPrejuizo}>
+            <Button variant="ghost" onClick={() => setConfirmingLoss(null)}>Cancelar</Button>
+            <Button variant="danger" onClick={confirmLoss}>
               <AlertTriangle className="w-4 h-4" />
               Confirmar Prejuízo
             </Button>
@@ -940,19 +1067,19 @@ export default function CobrancasPage() {
         </div>
       </Modal>
 
-      {/* Modal Confirmar Exclusão */}
-      <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir Cobrança" size="sm">
+      {/* Modal de Confirmação: Exclusão lógica/física do registro */}
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Cobrança" size="sm">
         <div className="space-y-4">
           <p className="text-[#A0A0A0] text-sm">
             Tem certeza que deseja excluir a cobrança{' '}
-            <span className="text-white font-medium">{excluindo?.descricao}</span>?
+            <span className="text-white font-medium">{deleting?.description}</span>?
             Esta ação não poderá ser desfeita.
           </p>
           <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setExcluindo(null)}>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
               Cancelar
             </Button>
-            <Button variant="danger" onClick={confirmarExclusao}>
+            <Button variant="danger" onClick={confirmDeletion}>
               <Trash2 className="w-4 h-4" />
               Excluir
             </Button>
