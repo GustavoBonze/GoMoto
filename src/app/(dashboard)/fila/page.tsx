@@ -1,8 +1,21 @@
 /**
- * ARQUIVO: src/app/(dashboard)/fila/page.tsx
- * DESCRIÇÃO: This component manages the waiting list for new renters of the GoMoto system.
- *            It allows viewing, adding, moving, and allocating people from the Queue to available motorcycles.
- *            It also handles the management of documents required for registration approval.
+ * @file src/app/(dashboard)/fila/page.tsx
+ * @description Componente de gerenciamento da fila de espera para novos locatários do sistema GoMoto.
+ * 
+ * @summary
+ * Esta página é o centro de controle para a captação de novos clientes. Ela permite visualizar,
+ * adicionar, reordenar e, mais importante, alocar pessoas da Fila para motocicletas disponíveis,
+ * oficializando o início de um novo contrato. Também lida com a gestão de documentos
+ * necessários para a aprovação do cadastro.
+ * 
+ * @funcionalidades
+ * 1.  **Visualização da Fila**: Apresenta os candidatos em ordem de posição.
+ * 2.  **CRUD de Candidatos**: Permite adicionar novos interessados, editar seus dados e removê-los.
+ * 3.  **Reordenação**: Oferece a funcionalidade de mover candidatos para cima ou para baixo na fila.
+ * 4.  **Alocação de Veículo**: Abre um fluxo para vincular um candidato a uma moto, gerando um novo contrato.
+ * 5.  **Gestão de Documentos**: Interface para upload e verificação de documentos (CNH, Comprovante de Residência).
+ * 6.  **Histórico e Alertas**: Mantém um histórico de movimentações e alerta sobre candidatos com
+ *     histórico negativo (calote, fraude) ou com cadastro expirado.
  */
 
 'use client'
@@ -19,91 +32,101 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import type { Document, DocumentType, QueueMovement } from '@/types'
-import { ALL_MOTORCYCLES as ALL_BIKES, LS_ALLOCATED_MOTORCYCLES as LS_ALLOCATED_BIKES, LS_QUEUE, LS_NEW_CONTRACTS } from '@/data/motos'
+import { ALL_MOTORCYCLES, LS_ALLOCATED_MOTORCYCLES, LS_QUEUE, LS_NEW_CONTRACTS } from '@/data/motos'
 
 /**
- * Type that defines possible alerts for a candidate in the Queue.
- * 'defaulting' indicates a history of non-payment.
- * 'fraud' indicates attempted fraud or false data.
+ * @type AlertType
+ * @description Define os tipos de alertas de segurança possíveis para um candidato na Fila.
+ * 'calote': Indica um histórico de inadimplência em contratos anteriores.
+ * 'fraude': Indica tentativa de fraude ou fornecimento de dados falsos.
  */
 type AlertType = 'calote' | 'fraude'
 
 /**
- * Interface representing the prior rental history of a candidate.
- * Used to identify former clients and their past behavior.
+ * @interface RentalHistory
+ * @description Representa o histórico de locações prévias de um candidato.
+ * O "porquê": Essencial para identificar ex-clientes e seu comportamento passado,
+ * como inadimplência ou histórico de bom pagador.
  */
 interface RentalHistory {
-  startDate: string      // Start date of the previous contract
-  endDate?: string        // End date (if applicable)
-  bikePlate?: string     // Motorcycle license plate used
-  bikeModel?: string     // Motorcycle model used
-  exitReason: string     // Reason why the contract was terminated
-  amountDue?: number     // Amount the client owed, if any
+  startDate: string      // Data de início do contrato anterior.
+  endDate?: string        // Data de término (se aplicável).
+  bikePlate?: string     // Placa da moto utilizada.
+  bikeModel?: string     // Modelo da moto utilizada.
+  exitReason: string     // Motivo pelo qual o contrato foi encerrado.
+  amountDue?: number     // Valor que o cliente ficou devendo, se houver.
 }
 
 /**
- * Interface that stores the history of the candidate's passages through the Queue.
- * Helps identify recurring withdrawals or returns.
+ * @interface QueueHistory
+ * @description Armazena o histórico de passagens do candidato pela Fila.
+ * O "porquê": Ajuda a identificar desistências recorrentes ou retornos de um mesmo
+ * candidato, o que pode ser um indicador de seu nível de comprometimento.
  */
 interface QueueHistory {
-  entryDate: string      // Entry date into the Queue
-  exitDate?: string       // Exit date from the Queue
-  exitReason?: string     // Reason for exit (e.g., allocated, gave up)
+  entryDate: string      // Data de entrada na Fila.
+  exitDate?: string       // Data de saída da Fila.
+  exitReason?: string     // Motivo da saída (ex: alocado, desistiu).
 }
 
 /**
- * Main interface for a candidate in the Queue (PersonInQueue).
- * Contains personal data, documents, current position, and histories.
+ * @interface PersonInQueue
+ * @description Interface principal para um candidato na Fila de Espera.
+ * Agrega dados pessoais, documentos, posição atual e históricos de locação e da própria fila.
  */
 interface PersonInQueue {
-  id: string              // Unique identifier (UUID or Timestamp)
-  position: number        // Current numerical position in the waiting list
-  name: string            // Full name of the candidate
-  taxId?: string          // CPF of the candidate
-  phone: string           // Contact phone (WhatsApp)
-  address?: string        // Informed residential address
-  identification?: string // ID or other identification document
-  objective?: string      // Rental objective (e.g., work, leisure)
-  progress?: string       // Notes on conversation/analysis progress
-  social?: string         // Link to social media profile (Instagram/FB)
-  joinedAt: string        // Date when last entered the Queue
-  alert?: AlertType       // Security alert, if any
-  isExClient?: boolean    // Flag indicating if already a client previously
-  rentalHistory?: RentalHistory[] // List of past rentals
-  queueHistory?: QueueHistory[]   // List of previous entries into the Queue
-  documents: Document[]           // List of attached files/documents
-  positionHistory: QueueMovement[] // Log of position changes in the Queue
+  id: string              // Identificador único (UUID ou Timestamp).
+  position: number        // Posição numérica atual na lista de espera.
+  name: string            // Nome completo do candidato.
+  taxId?: string          // CPF do candidato para verificação.
+  phone: string           // Telefone de contato (preferencialmente WhatsApp).
+  address?: string        // Endereço residencial informado.
+  identification?: string // RG ou outro documento de identificação.
+  objective?: string      // Objetivo da locação (ex: trabalho, lazer).
+  progress?: string       // Anotações sobre o andamento da conversa/análise.
+  social?: string         // Link para perfil em rede social (Instagram/FB).
+  joinedAt: string        // Data da última entrada na Fila.
+  alert?: AlertType       // Alerta de segurança, se houver.
+  isExClient?: boolean    // Flag que indica se já foi cliente anteriormente.
+  rentalHistory?: RentalHistory[] // Lista de locações passadas.
+  queueHistory?: QueueHistory[]   // Lista de entradas anteriores na Fila.
+  documents: Document[]           // Lista de arquivos/documentos anexados.
+  positionHistory: QueueMovement[] // Log de mudanças de posição na Fila.
 }
 
 /**
- * List of document types that are strictly necessary for approval.
+ * @constant REQUIRED_DOCS
+ * @description Lista de tipos de documentos estritamente necessários para aprovação do cadastro.
  */
 const REQUIRED_DOCS: DocumentType[] = ['drivers_license', 'proof_of_residence']
 
 /**
- * Mapping of friendly labels for internal document types.
+ * @constant DOC_LABELS
+ * @description Mapeamento de rótulos amigáveis para os tipos internos de documentos.
  */
 const DOC_LABELS: Record<DocumentType, string> = {
-  drivers_license: "Driver's License",
-  proof_of_residence: 'Proof of Residence',
-  contract: 'Contract',
-  identification: 'ID / Identification',
-  deposit: 'Deposit',
-  other: 'Other',
+  drivers_license: "Carteira de Habilitação (CNH)",
+  proof_of_residence: 'Comprovante de Residência',
+  contract: 'Contrato',
+  identification: 'RG / Identidade',
+  deposit: 'Caução',
+  other: 'Outro',
 }
 
 /**
- * Options for the document type selector in the Queue upload.
+ * @constant DOC_TYPES_OPTIONS
+ * @description Opções para o seletor de tipo de documento no upload da Fila.
  */
 const DOC_TYPES_OPTIONS: { value: DocumentType; label: string }[] = [
-  { value: 'drivers_license', label: "Driver's License" },
-  { value: 'proof_of_residence', label: 'Proof of Residence' },
-  { value: 'identification', label: 'ID / Identification' },
-  { value: 'other', label: 'Other' },
+  { value: 'drivers_license', label: "Carteira de Habilitação (CNH)" },
+  { value: 'proof_of_residence', label: 'Comprovante de Residência' },
+  { value: 'identification', label: 'RG / Identidade' },
+  { value: 'other', label: 'Outro' },
 ]
 
 /**
- * Initial data for Queue simulation/mock while Supabase is not integrated.
+ * @constant mockQueue
+ * @description Dados iniciais para simulação/mock da Fila enquanto o Supabase não é integrado.
  */
 const mockQueue: PersonInQueue[] = [
   { id: '1',  position: 1,  name: 'Felipe Cardoso',        phone: '21981751172', social: 'https://www.instagram.com/2767_felipe/',           joinedAt: '2026-02-20', documents: [], positionHistory: [] },
@@ -128,24 +151,27 @@ const mockQueue: PersonInQueue[] = [
     id: '11', position: 11, name: 'Mauricio Barbosa', taxId: '123.827.187-14', phone: '21966566340',
     address: 'RUA DAS AMOREIRAS N 140, BL 2 AP 103 - COSMOS - RIO DE JANEIRO - CEP 23.056-630',
     identification: '218439255', objective: 'Motorista de aplicativo.',
-    progress: 'Awaiting progress with Braz.',
+    progress: 'Aguardando evolução com o Braz.',
     social: 'https://www.instagram.com/mauricio_b.f/', joinedAt: '2025-02-05',
     documents: [], positionHistory: [],
   },
 ]
 
 /**
- * Default state for the new candidate addition form.
+ * @constant defaultForm
+ * @description Estado padrão para o formulário de adição de novo candidato.
  */
 const defaultForm = { name: '', taxId: '', phone: '', address: '', identification: '', objective: '', progress: '', social: '' }
 
 /**
- * Mapping of default rental values by contract type.
+ * @constant DEFAULT_VALUES
+ * @description Mapeamento de valores padrão de locação por tipo de contrato.
  */
 const DEFAULT_VALUES: Record<string, string> = { '1': '350', '2': '630', '3': '350' }
 
 /**
- * Default state for the motorcycle allocation form.
+ * @constant defaultAllocationForm
+ * @description Estado padrão para o formulário de alocação de moto.
  */
 const defaultAllocationForm = {
   type: '1',
@@ -155,32 +181,36 @@ const defaultAllocationForm = {
 }
 
 /**
- * Utility function to calculate the difference in days between today and a given date.
- * @param date Data no formato YYYY-MM-DD
- * @returns Number of days (integer)
+ * @function getDaysElapsed
+ * @description Função utilitária para calcular a diferença de dias entre hoje e uma data informada.
+ * @param date - Data no formato YYYY-MM-DD.
+ * @returns Número de dias (inteiro).
  */
 function getDaysElapsed(date: string) {
   return Math.floor((new Date().getTime() - new Date(date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24))
 }
 
 /**
- * Checks if a person's record in the Queue has expired (more than 30 days without allocation).
- * @param person Person in Queue object
- * @returns true se expirado
+ * @function isExpired
+ * @description Verifica se o registro de uma pessoa na Fila expirou (mais de 30 dias sem alocação).
+ * @param person - Objeto PersonInQueue.
+ * @returns `true` se expirado.
  */
 function isExpired(person: PersonInQueue) { return !person.alert && getDaysElapsed(person.joinedAt) >= 30 }
 
 /**
- * Checks if a URL belongs to the Facebook domain.
- * @param url URL String
- * @returns true se contiver facebook.com
+ * @function isFacebook
+ * @description Verifica se uma URL pertence ao domínio do Facebook.
+ * @param url - String da URL.
+ * @returns `true` se contiver facebook.com.
  */
 function isFacebook(url: string) { return url.includes('facebook.com') }
 
 /**
- * Evaluates the readiness status (documentation) of a candidate.
- * @param person Person in Queue object
- * @returns Object with count of docs ok, total and final ready flag.
+ * @function getReadiness
+ * @description Avalia o status de prontidão (documentação) de um candidato.
+ * @param person - Objeto PersonInQueue.
+ * @returns Objeto com contagem de docs OK, total necessário e flag final de prontidão.
  */
 function getReadiness(person: PersonInQueue) {
   const okCount = REQUIRED_DOCS.filter((type) => person.documents.some((doc) => doc.type === type)).length
@@ -188,7 +218,8 @@ function getReadiness(person: PersonInQueue) {
 }
 
 /**
- * Button component that redirects to WhatsApp Web with the informed number.
+ * @component WhatsAppButton
+ * @description Componente de botão que redireciona para o WhatsApp Web com o número informado.
  */
 function WhatsAppButton({ phoneNumber }: { phoneNumber: string }) {
   const digitsOnly = phoneNumber.replace(/\D/g, '')
@@ -203,7 +234,8 @@ function WhatsAppButton({ phoneNumber }: { phoneNumber: string }) {
 }
 
 /**
- * Social media button component (Instagram or Facebook).
+ * @component SocialButton
+ * @description Componente de botão para rede social (Instagram ou Facebook).
  */
 function SocialButton({ url }: { url: string }) {
   const uniqueId = `social-icon-${url.slice(-8).replace(/\W/g, '')}`
@@ -225,7 +257,8 @@ function SocialButton({ url }: { url: string }) {
 }
 
 /**
- * Visual badge to indicate types of security alerts.
+ * @component AlertBadge
+ * @description Crachá visual para indicar tipos de alertas de segurança.
  */
 function AlertBadge({ type }: { type: AlertType }) {
   if (type === 'fraude') return (
@@ -241,7 +274,8 @@ function AlertBadge({ type }: { type: AlertType }) {
 }
 
 /**
- * Visual badge to indicate that the candidate is a former client of the company.
+ * @component ExClientBadge
+ * @description Crachá visual para indicar que o candidato é um ex-cliente da empresa.
  */
 function ExClientBadge() {
   return (
@@ -252,13 +286,14 @@ function ExClientBadge() {
 }
 
 /**
- * Visual badge that shows the progress of mandatory documentation.
+ * @component ReadinessBadge
+ * @description Crachá visual que mostra o progresso da documentação obrigatória.
  */
 function ReadinessBadge({ person }: { person: PersonInQueue }) {
   const { okCount, total, isReady } = getReadiness(person)
   if (isReady) return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-semibold">
-      <CheckCircle className="w-3 h-3" /> Ready
+      <CheckCircle className="w-3 h-3" /> Pronto
     </span>
   )
   if (okCount > 0) return (
@@ -268,14 +303,15 @@ function ReadinessBadge({ person }: { person: PersonInQueue }) {
   )
   return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#A0A0A0] text-xs">
-      <FileText className="w-3 h-3" /> No docs
+      <FileText className="w-3 h-3" /> Sem docs
     </span>
   )
 }
 
 /**
- * QUEUE DOCUMENTS MODAL
- * Manages the viewing and uploading of files for a specific candidate.
+ * @component QueueDocsModal
+ * @description Modal de Documentos da Fila.
+ * Gerencia a visualização e o upload de arquivos para um candidato específico.
  */
 function QueueDocsModal({ person, onClose, onUpdate }: {
   person: PersonInQueue
@@ -287,7 +323,8 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   /**
-   * Processes the upload of a new file by simulating the creation of a local URL.
+   * @function handleFileUpload
+   * @description Processa o upload de um novo arquivo simulando a criação de uma URL local.
    */
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -304,7 +341,8 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
   }
 
   /**
-   * Removes a document from the candidate's list.
+   * @function handleRemoveDoc
+   * @description Remove um documento da lista do candidato.
    */
   function handleRemoveDoc(docId: string) {
     const updatedDocs = docs.filter((d) => d.id !== docId)
@@ -313,10 +351,10 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
   }
 
   return (
-    <Modal open onClose={onClose} title="Documentos" size="lg">
+    <Modal open onClose={onClose} title="Documentos do Candidato" size="lg">
       <div className="space-y-5">
         <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-          <p className="text-xs text-[#A0A0A0]">Candidate</p>
+          <p className="text-xs text-[#A0A0A0]">Candidato</p>
           <p className="font-semibold text-white">{person.name}</p>
           {person.taxId && <p className="text-xs text-[#A0A0A0] font-mono">{person.taxId}</p>}
         </div>
@@ -337,11 +375,11 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
         {/* Interface de seleção e upload */}
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <Select label="Type" options={DOC_TYPES_OPTIONS} value={currentType} onChange={(e) => setCurrentType(e.target.value as DocumentType)} />
+            <Select label="Tipo de Documento" options={DOC_TYPES_OPTIONS} value={currentType} onChange={(e) => setCurrentType(e.target.value as DocumentType)} />
           </div>
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.jpg,.jpeg,.png,.webp" />
           <Button onClick={() => fileInputRef.current?.click()} variant="secondary">
-            <Upload /> Upload
+            <Upload /> Enviar
           </Button>
         </div>
 
@@ -349,7 +387,7 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
         {docs.length === 0 ? (
           <div className="text-center py-6 border border-dashed border-[#333333] rounded-xl">
             <FolderOpen className="w-7 h-7 text-[#888888] mx-auto mb-2" />
-            <p className="text-sm text-[#A0A0A0]">No documents sent</p>
+            <p className="text-sm text-[#A0A0A0]">Nenhum documento enviado</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -362,11 +400,11 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
                 </div>
                 <div className="flex items-center gap-1">
                   {doc.url && (
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors">
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors" title="Visualizar">
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
-                  <button onClick={() => handleRemoveDoc(doc.id)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors">
+                  <button onClick={() => handleRemoveDoc(doc.id)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors" title="Remover">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -376,7 +414,7 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
         )}
 
         <div className="flex justify-end pt-1">
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={onClose}>Fechar</Button>
         </div>
       </div>
     </Modal>
@@ -384,7 +422,8 @@ function QueueDocsModal({ person, onClose, onUpdate }: {
 }
 
 /**
- * Interface for the properties of the CardPerson component.
+ * @interface CardProps
+ * @description Propriedades para o componente CardPerson.
  */
 interface CardProps {
   person: PersonInQueue
@@ -401,8 +440,9 @@ interface CardProps {
 }
 
 /**
- * PERSON IN QUEUE CARD COMPONENT
- * Displays summarized information and allows expansion to view details and histories.
+ * @component CardPerson
+ * @description Componente do Card de Pessoa na Fila.
+ * Exibe informações resumidas e permite expansão para ver detalhes e históricos.
  */
 function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onToggle, onAllocate, onRemove, onMove, onDocs, onReactivate }: CardProps) {
   const daysInQueue = getDaysElapsed(person.joinedAt)
@@ -415,14 +455,14 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
       isExpanded ? 'border-[#BAFF1A]/30' : isDimmed ? 'border-[#2a2a2a]' : 'border-[#333333] hover:border-[#555555]'
     } ${isDimmed ? 'opacity-60' : ''}`}>
       <div className="flex items-center gap-3 p-4">
-        {/* Position Control (Up and Down Arrows) */}
+        {/* Controle de Posição (Setas para cima e para baixo) */}
         {!person.alert && !isPersonExpired && (
           <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
             <button
               onClick={() => !isFirst && onMove(person.id, 'up')}
               disabled={isFirst}
               className={`p-0.5 rounded transition-colors ${isFirst ? 'text-[#888888] cursor-default' : 'text-[#A0A0A0] hover:text-[#BAFF1A]'}`}
-              title="Move up in Queue"
+              title="Mover para cima na Fila"
             >
               <ArrowUp className="w-3 h-3" />
             </button>
@@ -433,14 +473,14 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
               onClick={() => !isLast && onMove(person.id, 'down')}
               disabled={isLast}
               className={`p-0.5 rounded transition-colors ${isLast ? 'text-[#888888] cursor-default' : 'text-[#A0A0A0] hover:text-[#BAFF1A]'}`}
-              title="Move down in Queue"
+              title="Mover para baixo na Fila"
             >
               <ArrowDown className="w-3 h-3" />
             </button>
           </div>
         )}
 
-        {/* Candidate Main Information */}
+        {/* Informações Principais do Candidato */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className={`font-semibold text-sm ${isDimmed ? 'text-[#A0A0A0]' : 'text-white'}`}>{person.name}</p>
@@ -480,10 +520,10 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
           )}
         </div>
 
-        {/* Card Quick Actions */}
+        {/* Ações Rápidas do Card */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {hasDetails && (
-            <button onClick={() => onToggle(person.id)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors">
+            <button onClick={() => onToggle(person.id)} className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-[#A0A0A0] hover:bg-white/5 transition-colors" title={isExpanded ? "Recolher detalhes" : "Expandir detalhes"}>
               {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           )}
@@ -492,21 +532,21 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
           </button>
           {!person.alert && !isPersonExpired && (
             <button onClick={() => onAllocate(person.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-[#BAFF1A] hover:bg-[#BAFF1A]/10 border border-[#BAFF1A]/30 transition-colors font-medium">
-              <Bike className="w-3.5 h-3.5" /> Allocate
+              <Bike className="w-3.5 h-3.5" /> Alocar
             </button>
           )}
           {isDimmed && !person.alert && (
             <button onClick={() => onReactivate(person.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-blue-400 hover:bg-blue-500/10 border border-blue-500/30 transition-colors font-medium">
-              <ArrowUp className="w-3.5 h-3.5" /> Reactivate
+              <ArrowUp className="w-3.5 h-3.5" /> Reativar
             </button>
           )}
-          <button onClick={() => onRemove(person.id)} className="p-1.5 rounded-lg text-[#888888] hover:text-red-400 hover:bg-red-500/5 transition-colors">
+          <button onClick={() => onRemove(person.id)} className="p-1.5 rounded-lg text-[#888888] hover:text-red-400 hover:bg-red-500/5 transition-colors" title="Remover da fila">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Expanded Details Section */}
+      {/* Seção de Detalhes Expandida */}
       {isExpanded && (
         <div className="border-t border-[#2a2a2a] px-4 pb-4 pt-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -514,29 +554,29 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
             {person.identification && (
               <div className="flex items-start gap-2">
                 <FileText className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5" />
-                <div><p className="text-xs text-[#A0A0A0]">Identification</p><p className="text-sm text-white font-mono">{person.identification}</p></div>
+                <div><p className="text-xs text-[#A0A0A0]">Identificação</p><p className="text-sm text-white font-mono">{person.identification}</p></div>
               </div>
             )}
           </div>
           {person.objective && (
             <div className="flex items-start gap-2">
               <Target className="w-3.5 h-3.5 text-[#BAFF1A] mt-0.5 flex-shrink-0" />
-              <div><p className="text-xs text-[#A0A0A0] mb-0.5">Objective</p><p className="text-sm text-[#A0A0A0]">{person.objective}</p></div>
+              <div><p className="text-xs text-[#A0A0A0] mb-0.5">Objetivo</p><p className="text-sm text-[#A0A0A0]">{person.objective}</p></div>
             </div>
           )}
           {person.progress && (
             <div className="flex items-start gap-2">
               <ClipboardList className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
-              <div><p className="text-xs text-[#A0A0A0] mb-0.5">Progress</p><p className="text-sm text-[#A0A0A0] whitespace-pre-line">{person.progress}</p></div>
+              <div><p className="text-xs text-[#A0A0A0] mb-0.5">Andamento</p><p className="text-sm text-[#A0A0A0] whitespace-pre-line">{person.progress}</p></div>
             </div>
           )}
 
-          {/* List of Past Rental History */}
+          {/* Lista de Histórico de Locação Passada */}
           {person.rentalHistory && person.rentalHistory.length > 0 && (
             <div className="flex items-start gap-2">
               <UserX className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs text-[#A0A0A0] mb-1.5">Client history</p>
+                <p className="text-xs text-[#A0A0A0] mb-1.5">Histórico como cliente</p>
                 <div className="space-y-2">
                   {person.rentalHistory.map((h, i) => (
                     <div key={i} className="p-2.5 rounded-lg bg-purple-500/5 border border-purple-500/15 space-y-1">
@@ -552,7 +592,7 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
                       {h.amountDue && (
                         <span className="flex items-center gap-1 text-xs text-red-400 font-semibold">
                           <DollarSign className="w-3 h-3" />
-                          Owes R$ {h.amountDue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          Devia R$ {h.amountDue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                       )}
                     </div>
@@ -562,12 +602,12 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
             </div>
           )}
 
-          {/* List of Position Change History */}
+          {/* Lista de Histórico de Mudança de Posição */}
           {person.positionHistory.length > 0 && (
             <div className="flex items-start gap-2">
               <History className="w-3.5 h-3.5 text-[#A0A0A0] mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-xs text-[#A0A0A0] mb-1.5">Movements in the Queue</p>
+                <p className="text-xs text-[#A0A0A0] mb-1.5">Movimentações na Fila</p>
                 <div className="space-y-1.5">
                   {person.positionHistory.map((h, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
@@ -590,12 +630,16 @@ function CardPerson({ person, isDimmed = false, isFirst, isLast, expandedId, onT
 }
 
 /**
- * MAIN QUEUE PAGE COMPONENT
- * Manages the global Queue state, filters, searches, and action modals.
+ * @component QueuePage
+ * @description Componente Principal da Página da Fila.
+ * Gerencia o estado global da Fila, filtros, buscas e os modais de ação.
  */
 export default function QueuePage() {
   /**
-   * ESTADO: List of people in the Queue loaded from LocalStorage or mock.
+   * @state queue
+   * @description Lista de pessoas na Fila, carregada do LocalStorage ou do mock.
+   * O "porquê" do LocalStorage: permite persistir os dados da fila entre sessões do navegador
+   * de forma simples, simulando um banco de dados para fins de demonstração.
    */
   const [queue, setQueue] = useState<PersonInQueue[]>(() => {
     try {
@@ -604,7 +648,7 @@ export default function QueuePage() {
     } catch { return mockQueue }
   })
 
-  // UI Control States and Filters
+  // Estados de Controle de UI e Filtros
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -619,21 +663,22 @@ export default function QueuePage() {
   const [moveReason, setMoveReason] = useState('')
 
   /**
-   * EFFECT: Synchronizes the Queue state with LocalStorage whenever there are changes.
+   * @effect
+   * @description Sincroniza o estado da Fila com o LocalStorage sempre que há mudanças.
    */
   useEffect(() => {
     localStorage.setItem(LS_QUEUE, JSON.stringify(queue))
   }, [queue])
 
-  // Definition of quick filter tabs
+  // Definição das abas de filtro rápido
   const readinessTabs = [
-    { label: 'All', value: 'todos' },
-    { label: 'Ready', value: 'pronto' },
-    { label: 'No docs', value: 'sem_docs' },
-    { label: 'With alert', value: 'alerta' },
+    { label: 'Todos', value: 'todos' },
+    { label: 'Prontos', value: 'pronto' },
+    { label: 'Sem Docs', value: 'sem_docs' },
+    { label: 'Com Alerta', value: 'alerta' },
   ]
 
-  // Filtering and separation of active and historical records
+  // Filtragem e separação de registros ativos e históricos
   const allActive = queue.filter((p) => !p.alert && getDaysElapsed(p.joinedAt) < 30)
   const filteredActive = allActive.filter((p) => {
     const matchesSearch = !searchTerm || [p.name, p.phone, p.taxId].some(
@@ -649,14 +694,15 @@ export default function QueuePage() {
   const historyList = queue.filter((p) => p.alert || getDaysElapsed(p.joinedAt) >= 30)
   
   const personToAllocate = queue.find((p) => p.id === allocationId)
-  const selectedBike = ALL_BIKES.find((m) => m.id === allocationForm.bikeId)
+  const selectedBike = ALL_MOTORCYCLES.find((m) => m.id === allocationForm.bikeId)
 
   /**
-   * Opens the allocation modal and loads the list of occupied motorcycles.
+   * @function handleOpenAllocation
+   * @description Abre o modal de alocação e carrega a lista de motos já ocupadas.
    */
   function handleOpenAllocation(id: string) {
     try {
-      const allocated = JSON.parse(localStorage.getItem(LS_ALLOCATED_BIKES) ?? '[]')
+      const allocated = JSON.parse(localStorage.getItem(LS_ALLOCATED_MOTORCYCLES) ?? '[]')
       setAllocatedBikes(allocated)
     } catch { setAllocatedBikes([]) }
     setAllocationId(id)
@@ -664,26 +710,30 @@ export default function QueuePage() {
   }
 
   /**
-   * Changes the contract type and updates the corresponding default value.
+   * @function handleAllocationTypeChange
+   * @description Muda o tipo de contrato e atualiza o valor padrão correspondente.
    */
   function handleAllocationTypeChange(type: string) {
     setAllocationForm((prev) => ({ ...prev, type, periodValue: DEFAULT_VALUES[type] }))
   }
 
   /**
-   * Toggles the expansion of a candidate card.
+   * @function handleToggleExpand
+   * @description Alterna a expansão de um card de candidato.
    */
   function handleToggleExpand(id: string) { setExpandedId((prev) => (prev === id ? null : id)) }
 
   /**
-   * Removes a person from the Queue and reorders subsequent positions.
+   * @function handleRemovePerson
+   * @description Remove uma pessoa da Fila e reordena as posições subsequentes.
    */
   function handleRemovePerson(id: string) {
     setQueue((prev) => prev.filter((p) => p.id !== id).map((p, i) => ({ ...p, position: i + 1 })))
   }
 
   /**
-   * Initiates the manual movement process in the Queue.
+   * @function handleMoveClick
+   * @description Inicia o processo de movimentação manual na Fila.
    */
   function handleMoveClick(id: string, direction: 'up' | 'down') {
     setMoveReason('')
@@ -691,7 +741,8 @@ export default function QueuePage() {
   }
 
   /**
-   * Executes the exchange of positions between two adjacent candidates and records it in the history.
+   * @function confirmMovePosition
+   * @description Executa a troca de posições entre dois candidatos adjacentes e a registra no histórico.
    */
   function confirmMovePosition() {
     if (!moveModal) return
@@ -710,13 +761,13 @@ export default function QueuePage() {
         date: new Date().toISOString(),
         from: posOrigin,
         to: posDestiny,
-        reason: moveReason || 'Manual reordering',
+        reason: moveReason || 'Reordenação manual',
       }
       const movementSwap: QueueMovement = {
         date: new Date().toISOString(),
         from: posDestiny,
         to: posOrigin,
-        reason: moveReason || 'Manual reordering',
+        reason: moveReason || 'Reordenação manual',
       }
 
       arr[idx] = { ...arr[idx], position: posDestiny, positionHistory: [...arr[idx].positionHistory, movement] }
@@ -729,7 +780,11 @@ export default function QueuePage() {
   }
 
   /**
-   * Finalizes the allocation, generating a new contract and removing the candidate from the Queue.
+   * @function handleConfirmAllocation
+   * @description Finaliza a alocação, gerando um novo contrato e removendo o candidato da Fila.
+   * O "porquê": Este é o ponto de conversão. O candidato se torna cliente, e uma moto
+   * que estava disponível passa a estar ocupada. A comunicação entre as telas
+   * (Fila -> Contratos) é feita via LocalStorage para simular uma API.
    */
   function handleConfirmAllocation() {
     if (!allocationId || !personToAllocate || !selectedBike) return
@@ -743,21 +798,23 @@ export default function QueuePage() {
       id: String(Date.now()),
       type: type,
       customer_id: personToAllocate.id,
-      customer_name: personToAllocate.name,
-      customer_cpf: personToAllocate.taxId ?? '',
-      customer_phone: personToAllocate.phone,
-      customer_address: personToAllocate.address,
+      customerName: personToAllocate.name,
+      customerCpf: personToAllocate.taxId ?? '',
+      customerPhone: personToAllocate.phone,
+      customerAddress: personToAllocate.address,
       motorcycle_id: selectedBike.id,
       motorcycle_plate: selectedBike.license_plate,
-      motorcycle_model: selectedBike.model,
-      motorcycle_make: selectedBike.make,
-      motorcycle_year: selectedBike.year,
-      motorcycle_color: selectedBike.color,
+      motorcycleModel: selectedBike.model,
+      motorcycleBrand: selectedBike.make, // Corrigido de make para brand
+      motorcycleYear: selectedBike.year,
+      motorcycleColor: selectedBike.color,
       start_date: allocationForm.startDate,
       end_date: end.toISOString().split('T')[0],
-      period_value: parseFloat(allocationForm.periodValue),
-      status: 'ativo' as const,
-      pending_signature: true,
+      // Ajuste para taxa semanal/quinzenal
+      weekly_rate: type !== 2 ? parseFloat(allocationForm.periodValue) : undefined,
+      biweekly_rate: type === 2 ? parseFloat(allocationForm.periodValue) : undefined,
+      status: 'active' as const,
+      signed: false, // O contrato começa como não assinado
       observations: '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -765,14 +822,15 @@ export default function QueuePage() {
 
     const existingContracts = JSON.parse(localStorage.getItem(LS_NEW_CONTRACTS) ?? '[]')
     localStorage.setItem(LS_NEW_CONTRACTS, JSON.stringify([...existingContracts, newContract]))
-    localStorage.setItem(LS_ALLOCATED_BIKES, JSON.stringify([...allocatedBikes, selectedBike.id]))
+    localStorage.setItem(LS_ALLOCATED_MOTORCYCLES, JSON.stringify([...allocatedBikes, selectedBike.id]))
 
     setQueue((prev) => prev.filter((p) => p.id !== allocationId).map((p, i) => ({ ...p, position: i + 1 })))
     setAllocationId(null)
   }
 
   /**
-   * Adds a new candidate to the end of the active Queue.
+   * @function handleAddPerson
+   * @description Adiciona um novo candidato ao final da Fila ativa.
    */
   function handleAddPerson(e: React.FormEvent) {
     e.preventDefault()
@@ -796,7 +854,8 @@ export default function QueuePage() {
   }
 
   /**
-   * Updates the document list for a specific candidate.
+   * @function handleUpdateDocs
+   * @description Atualiza a lista de documentos para um candidato específico.
    */
   function handleUpdateDocs(personId: string, docs: Document[]) {
     setQueue((prev) => prev.map((p) => p.id === personId ? { ...p, documents: docs } : p))
@@ -804,7 +863,8 @@ export default function QueuePage() {
   }
 
   /**
-   * Reactivates an expired record, updating its entry date to today.
+   * @function handleReactivatePerson
+   * @description Reativa um registro expirado, atualizando sua data de entrada para hoje.
    */
   function handleReactivatePerson(id: string) {
     setQueue((prev) => prev.map((p) => p.id === id
@@ -818,11 +878,11 @@ export default function QueuePage() {
   return (
     <div className="flex flex-col min-h-full">
       <Header
-        title="Queue de Locadores"
-        subtitle={`${filteredActive.length} waiting`}
+        title="Fila de Locadores"
+        subtitle={`${filteredActive.length} aguardando`}
         actions={
           <Button onClick={() => setIsAddModalOpen(true)}>
-            <UserPlus className="w-4 h-4" /> Add
+            <UserPlus className="w-4 h-4" /> Adicionar
           </Button>
         }
       />
@@ -858,7 +918,7 @@ export default function QueuePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
             <input
               type="text"
-              placeholder="Search by name, phone or CPF..."
+              placeholder="Buscar por nome, telefone ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-64"
@@ -870,7 +930,7 @@ export default function QueuePage() {
         {filteredActive.length === 0 ? (
           <div className="text-center py-16">
             <UserPlus className="w-10 h-10 text-[#888888] mx-auto mb-3" />
-            <p className="text-[#A0A0A0] text-sm">No person in active Queue</p>
+            <p className="text-[#A0A0A0] text-sm">Nenhuma pessoa na Fila ativa</p>
           </div>
         ) : (
           filteredActive.map((p, idx) => (
@@ -895,7 +955,7 @@ export default function QueuePage() {
             className="flex items-center gap-2 text-xs text-[#A0A0A0] hover:text-[#A0A0A0] transition-colors pt-2"
           >
             <History className="w-3.5 h-3.5" />
-            {showHistory ? 'Hide history' : `View history (${historyList.length})`}
+            {showHistory ? 'Ocultar histórico' : `Ver histórico (${historyList.length})`}
             {showHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         )}
@@ -919,50 +979,50 @@ export default function QueuePage() {
         )}
       </div>
 
-      {/* MODAL: Queue Movement Confirmation */}
-      <Modal open={!!moveModal} onClose={() => setMoveModal(null)} title="Move in Queue" size="sm">
+      {/* MODAL: Confirmação de Movimentação na Fila */}
+      <Modal open={!!moveModal} onClose={() => setMoveModal(null)} title="Mover na Fila" size="sm">
         {moveModalPerson && (
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
               <div className="flex items-center gap-2">
-                <span className="text-[#A0A0A0] text-sm">{moveModalPerson.position}º place</span>
+                <span className="text-[#A0A0A0] text-sm">{moveModalPerson.position}º lugar</span>
                 {moveModal?.direction === 'up'
                   ? <ArrowUp className="w-4 h-4 text-green-400" />
                   : <ArrowDown className="w-4 h-4 text-amber-400" />
                 }
                 <span className="text-white text-sm font-medium">
-                  {moveModal?.direction === 'up' ? moveModalPerson.position - 1 : moveModalPerson.position + 1}º place
+                  {moveModal?.direction === 'up' ? moveModalPerson.position - 1 : moveModalPerson.position + 1}º lugar
                 </span>
               </div>
               <p className="text-white font-semibold mt-1">{moveModalPerson.name}</p>
             </div>
             <Input
-              label="Reason (optional)"
+              label="Motivo (opcional)"
               placeholder="Ex: documentação completa, caução pago..."
               value={moveReason}
               onChange={(e) => setMoveReason(e.target.value)}
             />
             <div className="flex gap-3 justify-end pt-2">
-              <Button variant="ghost" onClick={() => setMoveModal(null)}>Cancel</Button>
-              <Button onClick={confirmMovePosition}>Confirm</Button>
+              <Button variant="ghost" onClick={() => setMoveModal(null)}>Cancelar</Button>
+              <Button onClick={confirmMovePosition}>Confirmar</Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* MODAL: Motorcycle Allocation (Contract Creation) */}
-      <Modal open={!!allocationId} onClose={() => setAllocationId(null)} title="Link to a Motorcycle" size="md">
+      {/* MODAL: Alocação de Moto (Criação de Contrato) */}
+      <Modal open={!!allocationId} onClose={() => setAllocationId(null)} title="Vincular a uma Moto" size="md">
         {personToAllocate && (
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-white/[0.03] border border-[#333333]">
-              <p className="text-xs text-[#A0A0A0] mb-1">Client</p>
+              <p className="text-xs text-[#A0A0A0] mb-1">Cliente</p>
               <p className="font-semibold text-white">{personToAllocate.name}</p>
               <p className="text-sm text-[#A0A0A0]">{personToAllocate.phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '$1 $2-$3')}</p>
               {personToAllocate.taxId && <p className="text-xs text-[#A0A0A0] font-mono mt-0.5">{personToAllocate.taxId}</p>}
             </div>
 
             <Select
-              label="Contract Type"
+              label="Tipo de Contrato"
               options={[
                 { value: '1', label: 'Tipo 1 — Locação (semanal · 90 dias renovável)' },
                 { value: '2', label: 'Tipo 2 — Fidelidade Quinzenal (quinzenal · 24 meses)' },
@@ -972,14 +1032,14 @@ export default function QueuePage() {
               onChange={(e) => handleAllocationTypeChange(e.target.value)}
             />
 
-            {/* Motorcycle listing — only those not allocated in LS */}
+            {/* Listagem de motos — apenas as não alocadas no LS */}
             {(() => {
-              const availableBikes = ALL_BIKES.filter((m) => !allocatedBikes.includes(m.id))
+              const availableBikes = ALL_MOTORCYCLES.filter((m) => !allocatedBikes.includes(m.id))
               return (
                 <Select
-                  label={`Motorcycle available${availableBikes.length === 0 ? ' (none at the moment)' : ''}`}
+                  label={`Moto disponível${availableBikes.length === 0 ? ' (nenhuma no momento)' : ''}`}
                   options={[
-                    { value: '', label: availableBikes.length === 0 ? 'No motorcycle available' : 'Select the motorcycle...' },
+                    { value: '', label: availableBikes.length === 0 ? 'Nenhuma moto disponível' : 'Selecione a moto...' },
                     ...availableBikes.map((m) => ({ value: m.id, label: `${m.license_plate} — ${m.model} (${m.color})` })),
                   ]}
                   value={allocationForm.bikeId}
@@ -990,13 +1050,13 @@ export default function QueuePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label={`Value per ${allocationForm.type === '2' ? 'fortnight' : 'week'} (R$)`}
+                label={`Valor por ${allocationForm.type === '2' ? 'quinzena' : 'semana'} (R$)`}
                 type="number" step="0.01"
                 value={allocationForm.periodValue}
                 onChange={(e) => setAllocationForm((prev) => ({ ...prev, periodValue: e.target.value }))}
               />
               <Input
-                label="Start date"
+                label="Data de início"
                 type="date"
                 value={allocationForm.startDate}
                 onChange={(e) => setAllocationForm((prev) => ({ ...prev, startDate: e.target.value }))}
@@ -1004,23 +1064,23 @@ export default function QueuePage() {
             </div>
 
             <p className="text-xs text-amber-400/80 bg-amber-500/5 border border-amber-500/15 rounded-lg px-3 py-2">
-              The contract will be created with status <strong>Pending Signature</strong>. Go to the Contracts screen to attach the signed PDF.
+              O contrato será criado com status <strong>Pendente Assinatura</strong>. Vá para a tela de Contratos para anexar o PDF assinado.
             </p>
 
             <div className="flex gap-3 justify-end pt-2">
-              <Button variant="ghost" onClick={() => setAllocationId(null)}>Cancel</Button>
+              <Button variant="ghost" onClick={() => setAllocationId(null)}>Cancelar</Button>
               <Button
                 onClick={handleConfirmAllocation}
                 disabled={!allocationForm.bikeId || !allocationForm.periodValue}
               >
-                <ArrowRight className="w-4 h-4" /> Confirm and generate contract
+                <ArrowRight className="w-4 h-4" /> Confirmar e gerar contrato
               </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* MODAL: Candidate Document Management */}
+      {/* MODAL: Gerenciamento de Documentos do Candidato */}
       {docsPerson && (
         <QueueDocsModal
           person={queue.find((p) => p.id === docsPerson.id) ?? docsPerson}
@@ -1029,24 +1089,24 @@ export default function QueuePage() {
         />
       )}
 
-      {/* MODAL: New Person Registration in Queue */}
-      <Modal open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add to Queue" size="lg">
+      {/* MODAL: Novo Cadastro de Pessoa na Fila */}
+      <Modal open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Adicionar à Fila" size="lg">
         <form onSubmit={handleAddPerson} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Name" placeholder="Full name" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
-            <Input label="Phone" placeholder="21 99999-0000" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} required />
+            <Input label="Nome" placeholder="Nome completo" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
+            <Input label="Telefone" placeholder="21 99999-0000" value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} required />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="CPF" placeholder="000.000.000-00" value={addForm.taxId} onChange={(e) => setAddForm({ ...addForm, taxId: e.target.value })} />
-            <Input label="Identification (ID / Doc)" placeholder="000000000" value={addForm.identification} onChange={(e) => setAddForm({ ...addForm, identification: e.target.value })} />
+            <Input label="Identificação (RG / Doc)" placeholder="000000000" value={addForm.identification} onChange={(e) => setAddForm({ ...addForm, identification: e.target.value })} />
           </div>
-          <Input label="Address" placeholder="Street, number - Neighborhood - City - State - ZIP" value={addForm.address} onChange={(e) => setAddForm({ ...addForm, address: e.target.value })} />
+          <Input label="Endereço" placeholder="Rua, número - Bairro - Cidade - Estado - CEP" value={addForm.address} onChange={(e) => setAddForm({ ...addForm, address: e.target.value })} />
           <Input label="Instagram / Facebook" placeholder="https://www.instagram.com/usuario" value={addForm.social} onChange={(e) => setAddForm({ ...addForm, social: e.target.value })} />
-          <Textarea label="Objective" placeholder="Why do you want to rent?" rows={2} value={addForm.objective} onChange={(e) => setAddForm({ ...addForm, objective: e.target.value })} />
-          <Textarea label="Progress" placeholder="Contact history..." rows={2} value={addForm.progress} onChange={(e) => setAddForm({ ...addForm, progress: e.target.value })} />
+          <Textarea label="Objetivo" placeholder="Por que deseja alugar?" rows={2} value={addForm.objective} onChange={(e) => setAddForm({ ...addForm, objective: e.target.value })} />
+          <Textarea label="Andamento" placeholder="Histórico de contato..." rows={2} value={addForm.progress} onChange={(e) => setAddForm({ ...addForm, progress: e.target.value })} />
           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-            <Button type="submit"><UserPlus className="w-4 h-4" /> Add</Button>
+            <Button type="button" variant="ghost" onClick={() => setIsAddModalOpen(false)}>Cancelar</Button>
+            <Button type="submit"><UserPlus className="w-4 h-4" /> Adicionar</Button>
           </div>
         </form>
       </Modal>
