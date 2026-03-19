@@ -1,11 +1,20 @@
 /**
  * @file Button.tsx
- * @description Componente de botão reutilizável e customizável para a interface do sistema GoMoto.
- * Este componente suporta diferentes variantes visuais (primary, secondary, ghost, danger, outline),
- * tamanhos variados e estado de carregamento (loading).
+ * @description Componente de botão reutilizável para o design system do GoMoto.
  * 
- * O componente utiliza 'forwardRef' para permitir o acesso direto ao elemento DOM do botão,
- * o que é essencial para integrações com bibliotecas de formulários ou animações.
+ * @summary
+ * O "porquê" deste componente é criar um ponto único de verdade para todos os botões
+ * da aplicação. Ao centralizar a estilização e o comportamento, garantimos consistência
+ * visual e facilitamos a manutenção. Ele suporta variantes (cores), tamanhos e um
+ * estado de carregamento, cobrindo 99% dos casos de uso de botões no sistema.
+ * 
+ * @arquitetura
+ * - **`forwardRef`**: Permite que componentes pais obtenham uma referência ao elemento
+ *   DOM `<button>` interno, essencial para integrações com bibliotecas de formulários
+ *   (como React Hook Form) ou para manipulação de foco.
+ * - **`cva` (Class Variance Authority) pattern**: Embora não use a biblioteca `cva`
+ *   diretamente, ele segue o mesmo padrão: mapeia `props` (variant, size) para
+ *   classes CSS do Tailwind, mantendo a lógica de estilo declarativa e organizada.
  */
 
 import { cn } from '@/lib/utils'
@@ -13,45 +22,47 @@ import { forwardRef } from 'react'
 
 /**
  * @type ButtonVariant
- * @description Define as variantes visuais disponíveis para o botão.
- * - 'primary': Destaque principal (verde limão característico da marca).
- * - 'secondary': Estilo secundário com fundo escuro.
- * - 'ghost': Fundo transparente, ideal para ações menos enfáticas.
- * - 'danger': Indicativo de ações destrutivas ou críticas (vermelho).
- * - 'outline': Apenas bordas, para ações de suporte.
+ * @description Define as variantes visuais (cores e estilos) para o botão.
+ * Cada variante tem um propósito semântico:
+ * - 'primary': Ação principal, de maior destaque (verde limão da marca).
+ * - 'secondary': Ação secundária, menos proeminente (fundo escuro).
+ * - 'ghost': Ação terciária, sem fundo, para links ou ações sutis.
+ * - 'danger': Ações destrutivas ou que exigem atenção (excluir, cancelar).
+ * - 'outline': Ação alternativa, com ênfase moderada (apenas bordas).
  */
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline'
 
 /**
  * @type ButtonSize
  * @description Define as opções de tamanho para o botão.
- * - 'sm': Pequeno, para espaços reduzidos.
- * - 'md': Médio, tamanho padrão do sistema.
- * - 'lg': Grande, para chamadas de ação (CTAs) principais.
+ * - 'sm': Pequeno, usado em contextos densos como tabelas ou modais compactos.
+ * - 'md': Médio, o tamanho padrão para a maioria das interações.
+ * - 'lg': Grande, para chamadas de ação (CTAs) de alta importância, como no login.
  */
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 /**
  * @interface ButtonProps
- * @description Estende os atributos nativos de um elemento de botão do HTML.
- * Adiciona propriedades customizadas para controlar o estilo e comportamento.
- * 
- * @property {ButtonVariant} [variant] - O estilo visual do botão.
- * @property {ButtonSize} [size] - As dimensões físicas do botão.
- * @property {boolean} [loading] - Indica se o botão está em estado de processamento.
- * @property {React.ReactNode} children - O conteúdo interno (texto, ícones, etc).
+ * @description Estende os atributos nativos de um `<button>` HTML, adicionando
+ * propriedades customizadas para controlar o estilo e comportamento do componente.
  */
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  /** A variante de estilo visual do botão. Padrão: 'primary'. */
   variant?: ButtonVariant
+  /** As dimensões físicas do botão. Padrão: 'md'. */
   size?: ButtonSize
+  /** Se `true`, exibe um spinner e desabilita o botão. */
   loading?: boolean
+  /** O conteúdo interno (texto, ícones, etc.). */
   children: React.ReactNode
 }
 
 /**
  * @constant variants
- * @description Mapeamento de classes Tailwind CSS para cada variante de botão.
- * Define cores de fundo, texto, bordas e comportamentos de hover/active.
+ * @description Mapeamento que associa cada `ButtonVariant` a um conjunto de classes Tailwind CSS.
+ * O "porquê": Centraliza a lógica de estilo, tornando o design system mais robusto.
+ * Alterar uma cor aqui (ex: o `hover` do botão primário) atualiza todos os botões
+ * primários da aplicação consistentemente.
  */
 const variants: Record<ButtonVariant, string> = {
   primary: 'bg-[#BAFF1A] text-[#121212] font-semibold hover:bg-[#a8e617] active:bg-[#96cc15]',
@@ -63,8 +74,9 @@ const variants: Record<ButtonVariant, string> = {
 
 /**
  * @constant sizes
- * @description Mapeamento de classes Tailwind CSS para os tamanhos do botão.
- * Controla o preenchimento (padding), tamanho da fonte e arredondamento dos cantos.
+ * @description Mapeamento que associa cada `ButtonSize` a um conjunto de classes Tailwind CSS.
+ * O "porquê": Controla o `padding`, `font-size` e `border-radius`, garantindo uma
+ * hierarquia visual clara e consistente entre os diferentes tamanhos de botão.
  */
 const sizes: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-sm rounded-md',
@@ -74,47 +86,45 @@ const sizes: Record<ButtonSize, string> = {
 
 /**
  * @component Button
- * @description O componente funcional principal que renderiza o elemento <button>.
- * Utiliza a função 'cn' (classnames utility) para mesclar classes de forma condicional.
+ * @description O componente funcional que renderiza o elemento `<button>`.
  * 
- * @param {ButtonProps} props - Propriedades do componente.
- * @param {React.ForwardedRef<HTMLButtonElement>} ref - Referência para o elemento DOM.
+ * @param {ButtonProps} props - As propriedades para customizar o botão.
+ * @param {React.ForwardedRef<HTMLButtonElement>} ref - A referência encaminhada para o elemento DOM.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', loading, className, children, disabled, ...props }, ref) => {
-    /**
-     * Renderização do botão.
-     * O botão é desabilitado se a prop 'disabled' for verdadeira ou se estiver em estado de 'loading'.
-     */
     return (
       <button
         ref={ref}
+        // O botão é desabilitado se a prop `disabled` for `true` OU se estiver no estado `loading`.
         disabled={disabled || loading}
+        // A função `cn` mescla as classes de forma inteligente, evitando conflitos.
         className={cn(
-          /** Classes base compartilhadas por todos os botões */
+          // 1. Classes base: aplicadas a TODAS as variantes de botão.
           'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150',
           'disabled:opacity-50 disabled:cursor-not-allowed',
-          /** Aplica a variante e o tamanho selecionados */
+          // 2. Classes de variante: aplica o estilo da variante selecionada.
           variants[variant],
+          // 3. Classes de tamanho: aplica as dimensões do tamanho selecionado.
           sizes[size],
-          /** Permite a injeção de classes extras via props */
+          // 4. Classes externas: permite sobrescrever ou adicionar classes ao usar o componente.
           className
         )}
         {...props}
       >
-        {/** Exibe um ícone de carregamento animado (spinner) se a prop loading for true */}
+        {/* Renderização condicional do ícone de carregamento (spinner). */}
         {loading && (
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         )}
-        {/** Renderiza o conteúdo textual ou componentes filhos passados ao botão */}
+        {/* Renderiza o conteúdo (ex: texto ou outros ícones) passado para o botão. */}
         {children}
       </button>
     )
   }
 )
 
-/** Define o nome de exibição para facilitar o debugging no React DevTools */
+// Define um nome de exibição para facilitar a depuração no React DevTools.
 Button.displayName = 'Button'

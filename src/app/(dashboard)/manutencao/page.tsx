@@ -14,36 +14,65 @@ import { Table } from '@/components/ui/Table'
 import { formatDate } from '@/lib/utils'
 import type { StandardMaintenanceItem, Maintenance, MaintenanceStatus } from '@/types'
 
-// ─── tipos internos ───────────────────────────────────────────────────────────
+// ─── TIPOS INTERNOS ───────────────────────────────────────────────────────────
 
-// Dados financeiros individuais por item registrado (step 2 do modal de registro)
+/**
+ * @type ResponsibleItem
+ * @description Define quem é o responsável financeiro por um item de manutenção.
+ * 'empresa': Custo 100% da GoMoto.
+ * 'cliente': Custo 100% do locatário (geralmente em contratos de promessa de compra).
+ * '50/50': Custo dividido, comum em preventivas de contratos de locação.
+ */
 type ResponsibleItem = 'empresa' | 'cliente' | '50/50'
+
+/**
+ * @interface FinancialItem
+ * @description Armazena os dados financeiros individuais para cada item registrado na etapa 2 do modal.
+ * O "porquê": Desacopla a informação financeira do registro de manutenção principal,
+ * permitindo que múltiplos serviços (ex: troca de óleo + pneu) sejam registrados
+ * em uma única operação, mas com custos e responsabilidades financeiras distintas.
+ */
 type FinancialItem = {
-  id: string           // mesmo id do MaintenanceRecord
-  value: string        // cost digitado pelo usuário (string para o input)
+  id: string           // Mesmo ID do MaintenanceRecord correspondente.
+  value: string        // Custo digitado pelo usuário (string para o input).
   has_odometer_photo: boolean
   has_invoice_photo: boolean
-  responsibility: ResponsibleItem       // responsabilidade — auto-detectada, mas editável pelo usuário
+  responsibility: ResponsibleItem // Responsabilidade — auto-detectada, mas editável.
 }
 
-// Dados de contract usados apenas para a lógica financeira do registro de manutenção.
-// Substituir por consulta real ao Supabase quando a integração estiver pronta.
+/**
+ * @type MockContract
+ * @description Dados de contrato usados apenas para a lógica financeira do registro de manutenção.
+ * O "porquê": Simula uma consulta ao Supabase para determinar a regra de negócio
+ * financeira a ser aplicada (ex: cliente em promessa de compra paga 100%).
+ * Substituir por consulta real quando a integração estiver pronta.
+ */
 type MockContract = {
-  type: 'promessa' | 'locacao'  // promessa = cliente paga 100%; locacao = 50/50 preventiva
+  type: 'promessa' | 'locacao'
   customer_name: string
   weekly_value: number
-  next_billing: string      // data (YYYY-MM-DD) da cobrança pendente mais próxima
+  next_billing: string      // Data (YYYY-MM-DD) da cobrança pendente mais próxima.
 }
 
+/**
+ * @interface MotorcycleWithKm
+ * @description Agrega dados da moto com sua quilometragem atual e contrato associado.
+ */
 type MotorcycleWithKm = { id: string; plate: string; model: string; current_km: number; contract?: MockContract }
 
+/**
+ * @interface MaintenanceRecord
+ * @description Estende a interface de Manutenção base com dados denormalizados da moto.
+ * O "porquê": Evita a necessidade de joins ou buscas adicionais na hora de renderizar a lista,
+ * tornando a exibição dos dados mais performática.
+ */
 type MaintenanceRecord = Maintenance & {
   motorcycle_plate: string
   motorcycle_model: string
   motorcycle_current_km: number
 }
 
-// ─── catálogo dos 13 items padrão ────────────────────────────────────────────
+// ─── CATÁLOGO DOS 13 ITENS PADRÃO ────────────────────────────────────────────
 
 const DEFAULT_ITEMS: StandardMaintenanceItem[] = [
   { id: 'ip1',  name: 'Troca de óleo',                          km_interval: 1000,  day_interval: null, type: 'preventive', tip: 'Use óleo 20W50 ou 10W30; troque o filtro a cada 2 trocas.' },
@@ -56,12 +85,12 @@ const DEFAULT_ITEMS: StandardMaintenanceItem[] = [
   { id: 'ip10', name: 'Filtro de ar',                           km_interval: 7000,  day_interval: null, type: 'preventive', tip: 'Limpar ou trocar; poeira urbana reduz durabilidade.' },
   { id: 'ip11', name: 'Velas de ignição',                       km_interval: 10000, day_interval: null, type: 'preventive', tip: 'Verificar e ajustar folga antes de trocar.' },
   { id: 'ip12', name: 'Amortecedores',                          km_interval: 25000, day_interval: null, type: 'preventive', tip: 'Peso extra acelera desgaste do óleo interno.' },
-  { id: 'ip13', name: 'Vistoria mensal',                        km_interval: null,  day_interval: 30,   type: 'inspection',   tip: 'Vistoria obrigatória mensal de todas as motorcycles.' },
+  { id: 'ip13', name: 'Vistoria mensal',                        km_interval: null,  day_interval: 30,   type: 'inspection',   tip: 'Vistoria obrigatória mensal de todas as motocicletas.' },
 ]
 
-// ─── mock: motorcycles ──────────────────────────────────────────────────────────────
+// ─── MOCK: MOTOCICLETAS ──────────────────────────────────────────────────────────────
 
-// PLACEHOLDER — substituir nomes/valores reais e type de contract quando integrar Supabase
+// PLACEHOLDER — substituir nomes/valores reais e tipo de contrato quando integrar Supabase
 const mockMotorcyclesInit: MotorcycleWithKm[] = [
   { id: '1', plate: 'SYF1C42', model: 'Honda CG 160 START',       current_km: 46578,
     contract: { type: 'locacao',  customer_name: 'Cliente SYF1C42',  weekly_value: 350, next_billing: '2026-03-21' } },
@@ -73,9 +102,9 @@ const mockMotorcyclesInit: MotorcycleWithKm[] = [
     contract: { type: 'promessa', customer_name: 'Cliente RJA5J85',  weekly_value: 400, next_billing: '2026-03-28' } },
 ]
 
-// ─── mock: manutenções ────────────────────────────────────────────────────────
-// Data de TODAY (mock): 2026-03-14
-// Dados baseados no histórico real de despesas/manutenções da frota
+// ─── MOCK: MANUTENÇÕES ────────────────────────────────────────────────────────
+// Data de HOJE (mock): 14/03/2026
+// Dados baseados no histórico real de despesas/manutenções da frota.
 
 const mkBase = (overrides: Partial<MaintenanceRecord>): MaintenanceRecord => ({
   id: '', motorcycle_id: '', standard_item_id: null, type: 'preventive',
@@ -92,7 +121,7 @@ const mkBase = (overrides: Partial<MaintenanceRecord>): MaintenanceRecord => ({
 const mockMaintenancesInit: MaintenanceRecord[] = [
 
   // ── SYF1C42 — Honda CG 160 START (km: 46.578) ─────────────────────────────
-  // Status geral: todas agendadas, motorcycle bem mantida
+  // Status geral: todas agendadas, motocicleta bem mantida.
 
   // Troca de óleo: última em 15/01/2026 @ 46.578 km → próxima: 47.578
   mkBase({ id: 's_r1', motorcycle_id: '1', standard_item_id: 'ip1', description: 'Troca de óleo', predicted_km: 46578, actual_km: 46578, completed_date: '2026-01-15', completed: true, workshop: 'Oficina do Careca', motorcycle_plate: 'SYF1C42', motorcycle_model: 'Honda CG 160 START', motorcycle_current_km: 46578 }),
@@ -250,21 +279,26 @@ const mockMaintenancesInit: MaintenanceRecord[] = [
   mkBase({ id: 'fv1',  motorcycle_id: '4', standard_item_id: 'ip13', type: 'inspection', description: 'Vistoria mensal', scheduled_date: '2026-04-13', motorcycle_plate: 'RJA5J85', motorcycle_model: 'Yamaha YBR150 FACTOR SED', motorcycle_current_km: 29282 }),
 ]
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 const TODAY = new Date('2026-03-14')
 
 // Média de uso dos clientes: ~1.000 km/semana (varia entre 800–1.200 km/semana).
-// Usado para converter distância em km para days e comparar manutenções km-based vs date-based.
+// Usado para converter distância em km para dias e comparar manutenções baseadas em km vs. data.
 const KM_PER_WEEK = 1000
 const KM_PER_DAY = KM_PER_WEEK / 7 // ≈ 143 km/dia
 
+/**
+ * @function calculateStatus
+ * @description Calcula o status de uma manutenção (vencida, próxima, agendada, completa).
+ * @returns {MaintenanceStatus}
+ */
 function calculateStatus(item: MaintenanceRecord): MaintenanceStatus {
   if (item.completed) return 'completed'
 
   const standard = DEFAULT_ITEMS.find((p) => p.id === item.standard_item_id)
 
-  // baseado em data (vistoria)
+  // Baseado em data (ex: vistoria)
   if (item.scheduled_date && !standard?.km_interval) {
     const data = new Date(item.scheduled_date)
     const diffDays = Math.floor((data.getTime() - TODAY.getTime()) / 86400000)
@@ -273,10 +307,10 @@ function calculateStatus(item: MaintenanceRecord): MaintenanceStatus {
     return 'scheduled'
   }
 
-  // baseado em km
+  // Baseado em km
   if (item.predicted_km !== null) {
     const interval = standard?.km_interval ?? 1000
-    const alertKm = Math.floor(interval * 0.1)
+    const alertKm = Math.floor(interval * 0.1) // Alerta quando faltar 10% do intervalo
     if (item.motorcycle_current_km >= item.predicted_km) return 'overdue'
     if (item.motorcycle_current_km >= item.predicted_km - alertKm) return 'upcoming'
     return 'scheduled'
@@ -285,26 +319,42 @@ function calculateStatus(item: MaintenanceRecord): MaintenanceStatus {
   return 'scheduled'
 }
 
+/**
+ * @function statusOrder
+ * @description Define a ordem de prioridade para ordenação visual dos status.
+ */
 function statusOrder(s: MaintenanceStatus) {
   return { overdue: 0, upcoming: 1, scheduled: 2, completed: 3 }[s]
 }
 
+/**
+ * @function fmtKm
+ * @description Formata um número para uma string de quilometragem.
+ */
 function fmtKm(km: number) {
   return km.toLocaleString('pt-BR') + ' km'
 }
 
+/**
+ * @function diffKm
+ * @description Calcula a quilometragem restante para uma manutenção.
+ */
 function diffKm(item: MaintenanceRecord) {
   if (!item.predicted_km) return null
   return item.predicted_km - item.motorcycle_current_km
 }
 
+/**
+ * @function diffDays
+ * @description Calcula os dias restantes para uma manutenção baseada em data.
+ */
 function diffDays(item: MaintenanceRecord) {
   if (!item.scheduled_date) return null
   const data = new Date(item.scheduled_date)
   return Math.floor((data.getTime() - TODAY.getTime()) / 86400000)
 }
 
-// ─── badge de status ──────────────────────────────────────────────────────────
+// ─── BADGE DE STATUS ──────────────────────────────────────────────────────────
 
 function BadgeStatus({ status }: { status: MaintenanceStatus }) {
   const map: Record<MaintenanceStatus, { label: string; cls: string }> = {
@@ -330,16 +380,16 @@ function BadgeType({ type }: { type: 'preventive' | 'corrective' | 'inspection' 
   )
 }
 
-// ─── formulários padrão ───────────────────────────────────────────────────────
+// ─── FORMULÁRIOS PADRÃO ───────────────────────────────────────────────────────
 
 const defaultRegister = {
-  // step 1 — dados técnicos
+  // etapa 1 — dados técnicos
   step: 1 as 1 | 2,
   actual_km: '',
   workshop: 'Oficina do Careca',
   observations: '',
   extraItems: [] as string[],
-  // step 2 — dados financeiros por item (inicializado ao avançar para step 2)
+  // etapa 2 — dados financeiros por item (inicializado ao avançar para etapa 2)
   financialItems: [] as FinancialItem[],
   discountConfirmed: false, // confirmação explícita para descontar na cobrança (caso 50/50)
 }
@@ -356,7 +406,7 @@ const defaultNew = {
 
 const defaultUpdateKm = { motorcycle_id: '', current_km: '' }
 
-// ─── componente principal ─────────────────────────────────────────────────────
+// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function MaintenancePage() {
   const [motorcycles, setMotorcycles] = useState<MotorcycleWithKm[]>(mockMotorcyclesInit)
@@ -380,7 +430,7 @@ export default function MaintenancePage() {
   const [deletingItem, setDeletingItem] = useState<MaintenanceRecord | null>(null)
   const [detailItem, setDetailItem] = useState<MaintenanceRecord | null>(null)
 
-  // histórico por motorcycle (colapsado por padrão)
+  // histórico por moto (colapsado por padrão)
   const [historyMotorcycles, setHistoryMotorcycles] = useState<Set<string>>(new Set())
   function toggleHistory(id: string) {
     setHistoryMotorcycles((prev) => {
@@ -391,8 +441,13 @@ export default function MaintenancePage() {
     })
   }
 
-  // ── computed ────────────────────────────────────────────────────────────────
+  // ── COMPUTED ────────────────────────────────────────────────────────────────
 
+  /**
+   * @memo withStatus
+   * @description Memoiza o cálculo de status para cada item de manutenção,
+   * evitando re-cálculos desnecessários a cada renderização.
+   */
   const withStatus = useMemo(() =>
     maintenances.map((m) => {
       const motorcycle = motorcycles.find((mo) => mo.id === m.motorcycle_id)
@@ -403,6 +458,10 @@ export default function MaintenancePage() {
     [maintenances, motorcycles]
   )
 
+  /**
+   * @memo filtered
+   * @description Memoiza a lista de manutenções após aplicar os filtros de UI.
+   */
   const filtered = useMemo(() => {
     return withStatus
       .filter((m) => {
@@ -417,10 +476,15 @@ export default function MaintenancePage() {
       .sort((a, b) => statusOrder(a._status) - statusOrder(b._status))
   }, [withStatus, statusFilter, motorcycleFilter, searchQuery])
 
-  // ── agrupamento por motorcycle ────────────────────────────────────────────────────
+  // ── AGRUPAMENTO POR MOTOCICLETA ────────────────────────────────────────────────────
 
   type MaintenanceWithStatus = MaintenanceRecord & { _status: MaintenanceStatus }
 
+  /**
+   * @memo byMotorcycle
+   * @description Agrupa as manutenções filtradas por motocicleta,
+   * facilitando a renderização em blocos expansíveis na UI.
+   */
   const byMotorcycle = useMemo(() => {
     const map = new Map<string, { motorcycle: MotorcycleWithKm; items: MaintenanceWithStatus[] }>()
     filtered.forEach((item) => {
@@ -432,6 +496,7 @@ export default function MaintenancePage() {
       }
       map.get(item.motorcycle_id)!.items.push(item)
     })
+    // Ordena as motos para que as com status mais críticos (vencidas, próximas) apareçam primeiro.
     return Array.from(map.values()).sort((a, b) => {
       const worstStatusPriority = (items: MaintenanceWithStatus[]) =>
         items.some((i) => i._status === 'overdue') ? 0
@@ -442,7 +507,7 @@ export default function MaintenancePage() {
     })
   }, [filtered, motorcycles])
 
-  // por padrão todas as motorcycles começam expandidas; quando o usuário clica, entra no set de colapsadas
+  // por padrão todas as motocicletas começam expandidas; quando o usuário clica, entra no set de colapsadas
   const [collapsedMotorcycles, setCollapsedMotorcycles] = useState<Set<string>>(new Set())
   function toggleMotorcycle(id: string) {
     setCollapsedMotorcycles((prev) => {
@@ -462,7 +527,7 @@ export default function MaintenancePage() {
     return d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth()
   }).length
 
-  // ── tabs ────────────────────────────────────────────────────────────────────
+  // ── TABS ────────────────────────────────────────────────────────────────────
 
   const tabs = [
     { value: 'todas',    label: 'Todas',    count: withStatus.length },
@@ -472,14 +537,21 @@ export default function MaintenancePage() {
     { value: 'completed',label: 'Realizadas', count: withStatus.filter(m => m.completed).length },
   ]
 
-  // ── ações ───────────────────────────────────────────────────────────────────
+  // ── AÇÕES ───────────────────────────────────────────────────────────────────
 
+  /**
+   * @function openRecord
+   * @description Inicia o fluxo de registro de uma manutenção como "realizada".
+   */
   function openRecord(item: MaintenanceRecord) {
     setRegisteringItem(item)
     setRegisterForm({ ...defaultRegister, actual_km: item.motorcycle_current_km ? String(item.motorcycle_current_km) : '' })
   }
 
-  // helper: registra um item como realizado e agenda o próximo
+  /**
+   * @function registerItem
+   * @description Helper que marca um item como realizado e agenda o próximo ciclo automaticamente.
+   */
   function registerItem(
     list: MaintenanceRecord[],
     item: MaintenanceRecord,
@@ -507,7 +579,7 @@ export default function MaintenancePage() {
         invoice_photo_url: hasInvoicePhoto ? 'nota_fiscal.jpg' : list[idx].invoice_photo_url,
       }
     }
-    // auto-agenda próxima (km-based)
+    // Auto-agenda próxima (baseado em km)
     if (standard?.km_interval) {
       list.push({
         ...item,
@@ -524,7 +596,7 @@ export default function MaintenancePage() {
         updated_at: new Date().toISOString(),
       })
     }
-    // auto-agenda próxima vistoria (30 days)
+    // Auto-agenda próxima vistoria (30 dias)
     if (standard?.day_interval) {
       const nextDate = new Date(TODAY)
       nextDate.setDate(nextDate.getDate() + standard.day_interval)
@@ -546,6 +618,10 @@ export default function MaintenancePage() {
     }
   }
 
+  /**
+   * @function confirmRecord
+   * @description Processa e finaliza o registro da manutenção, incluindo a lógica financeira.
+   */
   function confirmRecord() {
     if (!registeringItem) return
     const actualKm = parseInt(registerForm.actual_km) || 0
@@ -557,7 +633,7 @@ export default function MaintenancePage() {
     const allItemsLog: MaintenanceRecord[] = [
       registeringItem,
       ...registerForm.extraItems
-        .map((id) => { /* acesso read-only ao prev não disponível aqui; usamos estado direto */ return maintenances.find((m) => m.id === id) })
+        .map((id) => { return maintenances.find((m) => m.id === id) })
         .filter((m): m is MaintenanceRecord => !!m),
     ]
     allItemsLog.forEach((item) => {
@@ -567,11 +643,11 @@ export default function MaintenancePage() {
       const r = fin?.responsibility ?? 'empresa' // usa a seleção manual do usuário
       const desc = `Manutenção — ${item.description} (${item.motorcycle_plate})`
       if (r === 'empresa') {
-        console.log('[DESPESA] categoria=Manutenção | value=', v, '| descrição=', desc, '| forma=Caixa da empresa')
+        console.log('[DESPESA] categoria=Manutenção | valor=', v, '| descrição=', desc, '| forma=Caixa da empresa')
       } else if (r === 'cliente') {
-        console.log('[DESPESA] categoria=Manutenção | value=', v, '| descrição=', desc, '| forma=Pago pelo cliente')
+        console.log('[DESPESA] categoria=Manutenção | valor=', v, '| descrição=', desc, '| forma=Pago pelo cliente')
       } else {
-        console.log('[DESPESA] categoria=Manutenção | value empresa=', v / 2, '| descrição=', desc)
+        console.log('[DESPESA] categoria=Manutenção | valor empresa=', v / 2, '| descrição=', desc)
         if (registerForm.discountConfirmed && motorcycleContract) {
           console.log('[COBRANÇA] desconto=', v / 2, '| cliente=', motorcycleContract.customer_name, '| semana=', motorcycleContract.next_billing)
         }
@@ -581,7 +657,7 @@ export default function MaintenancePage() {
     setMaintenances((prev) => {
       const updated = [...prev]
 
-      // registra o item principal com seu cost individual
+      // Registra o item principal com seu custo individual
       const mainFin = registerForm.financialItems.find((f) => f.id === registeringItem.id)
       const mainCost = parseFloat(mainFin?.value.replace(',', '.') ?? '0') || null
       registerItem(
@@ -592,7 +668,7 @@ export default function MaintenancePage() {
         mainCost, 0,
       )
 
-      // registra items extras com cost e fotos individuais
+      // Registra itens extras com custo e fotos individuais
       registerForm.extraItems.forEach((extraId, i) => {
         const extraItem = prev.find((m) => m.id === extraId)
         if (!extraItem) return
@@ -610,7 +686,7 @@ export default function MaintenancePage() {
       return updated
     })
 
-    // atualiza current_km da motorcycle
+    // Atualiza current_km da motocicleta
     if (actualKm > 0) {
       setMotorcycles((prev) =>
         prev.map((mo) =>
@@ -625,6 +701,10 @@ export default function MaintenancePage() {
     setRegisterForm(defaultRegister)
   }
 
+  /**
+   * @function handleNewMaintenance
+   * @description Cria um novo agendamento de manutenção (preventiva, corretiva ou vistoria).
+   */
   function handleNewMaintenance(e: React.FormEvent) {
     e.preventDefault()
     const motorcycle = motorcycles.find((m) => m.id === newForm.motorcycle_id)
@@ -657,6 +737,10 @@ export default function MaintenancePage() {
     setNewModalOpen(false)
   }
 
+  /**
+   * @function handleUpdateKm
+   * @description Atualiza a quilometragem de uma moto manualmente.
+   */
   function handleUpdateKm(e: React.FormEvent) {
     e.preventDefault()
     const km = parseInt(kmForm.current_km)
@@ -671,187 +755,17 @@ export default function MaintenancePage() {
     setKmModalOpen(false)
   }
 
+  /**
+   * @function confirmDeletion
+   * @description Remove um agendamento de manutenção da lista.
+   */
   function confirmDeletion() {
     if (!deletingItem) return
     setMaintenances((prev) => prev.filter((m) => m.id !== deletingItem.id))
     setDeletingItem(null)
   }
-
-  // ── colunas tabela pendentes (mantidas para referência / uso futuro) ────────
-
-  const pendingCols = [
-    {
-      key: 'motorcycle',
-      header: 'Motorcycle',
-      render: (row: MaintenanceWithStatus) => (
-        <div>
-          <p className="font-mono text-sm font-semibold text-white">{row.motorcycle_plate}</p>
-          <p className="text-xs text-[#A0A0A0]">{row.motorcycle_model}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'item',
-      header: 'Item',
-      render: (row: MaintenanceWithStatus) => (
-        <div className="max-w-[200px]">
-          <p className="text-white text-sm">{row.description}</p>
-          <BadgeType type={row.type} />
-        </div>
-      ),
-    },
-    {
-      key: 'prediction',
-      header: 'Prediction',
-      render: (row: MaintenanceWithStatus) => {
-        if (row.predicted_km !== null) {
-          return (
-            <div>
-              <p className="text-white text-sm">{fmtKm(row.predicted_km)}</p>
-              <p className="text-xs text-[#A0A0A0]">Atual: {fmtKm(row.motorcycle_current_km)}</p>
-            </div>
-          )
-        }
-        if (row.scheduled_date) {
-          return (
-            <div>
-              <p className="text-white text-sm">{formatDate(row.scheduled_date)}</p>
-              <p className="text-xs text-[#A0A0A0]">Vistoria mensal</p>
-            </div>
-          )
-        }
-        return <span className="text-[#A0A0A0]">—</span>
-      },
-    },
-    {
-      key: 'remaining',
-      header: 'Situação',
-      render: (row: MaintenanceWithStatus) => {
-        const km = diffKm(row)
-        const days = diffDays(row)
-        if (km !== null) {
-          if (km <= 0) return <span className="text-red-400 text-sm font-medium">Vencida há {fmtKm(Math.abs(km))}</span>
-          return <span className={`text-sm font-medium ${km <= 100 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>Faltam {fmtKm(km)}</span>
-        }
-        if (days !== null) {
-          if (days < 0) return <span className="text-red-400 text-sm font-medium">Overdue for {Math.abs(days)} days</span>
-          if (days === 0) return <span className="text-amber-400 text-sm font-medium">Due today</span>
-          return <span className={`text-sm font-medium ${days <= 3 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>In {days} days</span>
-        }
-        return <span className="text-[#A0A0A0]">—</span>
-      },
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row: MaintenanceWithStatus) => <BadgeStatus status={row._status} />,
-    },
-    {
-      key: 'actions',
-      header: 'Ações',
-      render: (row: MaintenanceWithStatus) => (
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            onClick={() => openRecord(row)}
-            className="text-xs px-2 py-1 h-auto text-[#BAFF1A] hover:bg-[#BAFF1A]/10"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Registrar
-          </Button>
-          <button
-            onClick={() => setDeletingItem(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ]
-
-  const completedCols = [
-    {
-      key: 'motorcycle',
-      header: 'Motorcycle',
-      render: (row: MaintenanceWithStatus) => (
-        <div>
-          <p className="font-mono text-sm font-semibold text-white">{row.motorcycle_plate}</p>
-          <p className="text-xs text-[#A0A0A0]">{row.motorcycle_model}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'item',
-      header: 'Item',
-      render: (row: MaintenanceWithStatus) => (
-        <div>
-          <p className="text-white text-sm">{row.description}</p>
-          <BadgeType type={row.type} />
-        </div>
-      ),
-    },
-    {
-      key: 'actual_km',
-      header: 'KM Realizado',
-      render: (row: MaintenanceWithStatus) => (
-        <span className="text-white text-sm">
-          {row.actual_km !== null ? fmtKm(row.actual_km) : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'data',
-      header: 'Data',
-      render: (row: MaintenanceWithStatus) => (
-        <span>{row.completed_date ? formatDate(row.completed_date) : '—'}</span>
-      ),
-    },
-    {
-      key: 'workshop',
-      header: 'Oficina',
-      render: (row: MaintenanceWithStatus) => (
-        <span className="text-sm text-[#A0A0A0]">{row.workshop ?? '—'}</span>
-      ),
-    },
-    {
-      key: 'fotos',
-      header: 'Docs',
-      render: (row: MaintenanceWithStatus) => (
-        <div className="flex gap-1">
-          {row.odometer_photo_url
-            ? <span title="Odômetro" className="text-green-400"><Camera className="w-4 h-4" /></span>
-            : <span title="Sem foto odômetro" className="text-[#333333]"><Camera className="w-4 h-4" /></span>}
-          {row.invoice_photo_url
-            ? <span title="Nota fiscal" className="text-green-400"><FileText className="w-4 h-4" /></span>
-            : <span title="Sem nota fiscal" className="text-[#333333]"><FileText className="w-4 h-4" /></span>}
-        </div>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      render: (row: MaintenanceWithStatus) => (
-        <div className="flex gap-1">
-          <button
-            onClick={() => setDetailItem(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
-            title="Ver detalhes"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeletingItem(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ]
-
-  // ── colunas unificadas (usadas nas sub-tabelas agrupadas) ───────────────────
+  
+  // ── COLUNAS UNIFICADAS (usadas nas sub-tabelas agrupadas) ───────────────────
 
   const unifiedCols = [
     {
@@ -866,7 +780,7 @@ export default function MaintenancePage() {
     },
     {
       key: 'prediction',
-      header: 'Prediction / Completed',
+      header: 'Previsto / Realizado',
       render: (row: MaintenanceWithStatus) => {
         if (row.completed) {
           return (
@@ -900,9 +814,9 @@ export default function MaintenancePage() {
           return <span className={`text-sm font-medium ${km <= 100 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>Faltam {fmtKm(km)}</span>
         }
         if (days !== null) {
-          if (days < 0) return <span className="text-red-400 text-sm font-medium">Overdue for {Math.abs(days)} days</span>
-          if (days === 0) return <span className="text-amber-400 text-sm font-medium">Due today</span>
-          return <span className={`text-sm font-medium ${days <= 3 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>In {days} days</span>
+          if (days < 0) return <span className="text-red-400 text-sm font-medium">Vencida há {Math.abs(days)} dias</span>
+          if (days === 0) return <span className="text-amber-400 text-sm font-medium">Vence hoje</span>
+          return <span className={`text-sm font-medium ${days <= 3 ? 'text-amber-400' : 'text-[#A0A0A0]'}`}>Em {days} dias</span>
         }
         return <span className="text-[#A0A0A0]">—</span>
       },
@@ -958,12 +872,12 @@ export default function MaintenancePage() {
   ]
 
   const motorcycleOptions = [
-    { value: '', label: 'Todas as motorcycles' },
+    { value: '', label: 'Todas as motocicletas' },
     ...motorcycles.map((m) => ({ value: m.id, label: `${m.plate} — ${m.model}` })),
   ]
 
   const motorcycleSelectOptions = [
-    { value: '', label: 'Selecione a motorcycle' },
+    { value: '', label: 'Selecione a motocicleta' },
     ...motorcycles.map((m) => ({ value: m.id, label: `${m.plate} — ${m.model}` })),
   ]
 
@@ -974,7 +888,7 @@ export default function MaintenancePage() {
 
   const selectedStandard = DEFAULT_ITEMS.find((p) => p.id === newForm.standard_item_id)
 
-  // ─── render ────────────────────────────────────────────────────────────────
+  // ─── RENDER ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col min-h-full">
@@ -1061,7 +975,7 @@ export default function MaintenancePage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
               <input
                 type="text"
-                placeholder="Buscar item ou motorcycle..."
+                placeholder="Buscar item ou motocicleta..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-56"
@@ -1070,7 +984,7 @@ export default function MaintenancePage() {
           </div>
         </div>
 
-        {/* ── Agrupado por motorcycle (expansível) ──────────────────────────────── */}
+        {/* ── Agrupado por motocicleta (expansível) ──────────────────────────────── */}
         {byMotorcycle.length === 0 ? (
           <Card>
             <p className="text-center text-[#A0A0A0] py-8">Nenhuma manutenção encontrada para os filtros selecionados.</p>
@@ -1092,7 +1006,7 @@ export default function MaintenancePage() {
 
               return (
                 <Card key={motorcycle.id} padding="none">
-                  {/* cabeçalho da motorcycle */}
+                  {/* cabeçalho da motocicleta */}
                   <button
                     onClick={() => toggleMotorcycle(motorcycle.id)}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
@@ -1137,7 +1051,7 @@ export default function MaintenancePage() {
                           columns={unifiedCols}
                           data={pendingItems}
                           keyExtractor={(r) => r.id}
-                          emptyMessage="Sem items"
+                          emptyMessage="Sem itens"
                         />
                       ) : !showCompletedDirectly ? (
                         <p className="text-center text-[#555555] py-5 text-sm">Todas as manutenções em dia.</p>
@@ -1235,7 +1149,7 @@ export default function MaintenancePage() {
                 ? (() => { const d = new Date(TODAY); d.setDate(d.getDate() + standard.day_interval!); return d.toISOString().split('T')[0] })()
                 : null
 
-              // outros pendentes desta motorcycle (vencidos ou próximos) → sugerir juntar
+              // outros pendentes desta moto (vencidos ou próximos) → sugerir juntar
               const suggested = withStatus.filter(
                 (m) => m.motorcycle_id === registeringItem.motorcycle_id
                   && !m.completed
@@ -1250,10 +1164,10 @@ export default function MaintenancePage() {
                 return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1]
               }
 
-              // converte km em days estimados usando a taxa média de uso da frota
+              // converte km em dias estimados usando a taxa média de uso da frota
               function kmInDays(km: number) { return km / KM_PER_DAY }
 
-              // IDs dos items que serão feitos nesta operação (este item + extras marcados)
+              // IDs dos itens que serão feitos nesta operação (este item + extras marcados)
               const idsBeingDone = new Set([registeringItem.id, ...registerForm.extraItems])
 
               // suggested: split entre marcados (serão feitos) e pendentes (ficam em aberto)
@@ -1263,14 +1177,14 @@ export default function MaintenancePage() {
               // vencidos que NÃO serão feitos agora → próxima visita é "imediata"
               const remainingOverdue = suggestedPending.filter((m) => m._status === 'overdue')
 
-              // todos os items pendentes desta motorcycle (não sendo feitos agora)
+              // todos os itens pendentes desta moto (não sendo feitos agora)
               const allPending = withStatus.filter(
                 (m) => m.motorcycle_id === registeringItem.motorcycle_id && !m.completed && !idsBeingDone.has(m.id)
               )
 
-              // ── candidates para "próxima visita" ─────────────────────────────────
-              // Regra: items sendo feitos → usa actualKm + intervalo (próximo ciclo)
-              //        items pendentes restantes → usa predicted_km/data atual deles
+              // ── CANDIDATOS PARA "PRÓXIMA VISITA" ─────────────────────────────────
+              // Regra: itens sendo feitos → usa actualKm + intervalo (próximo ciclo)
+              //        itens pendentes restantes → usa predicted_km/data atual deles
               type Cand = { km: number | null; dias: number | null; name: string }
               const candidates: Cand[] = []
 
@@ -1285,7 +1199,7 @@ export default function MaintenancePage() {
                 if (p?.day_interval) candidates.push({ km: null, dias: p.day_interval, name: m.description })
               })
 
-              // items que FICAM pendentes → usam seu predicted_km/data atual (podem ser mais próximos!)
+              // itens que FICAM pendentes → usam seu predicted_km/data atual (podem ser mais próximos!)
               allPending.forEach((m) => {
                 if (m.predicted_km !== null && m.predicted_km > actualKm) {
                   candidates.push({ km: m.predicted_km, dias: null, name: m.description })
@@ -1331,7 +1245,7 @@ export default function MaintenancePage() {
                   const approxWeeks = Math.round(daysForKm / 7)
                   return (
                     <>
-                      a próxima ida à workshop será somente daqui{' '}
+                      a próxima ida à oficina será somente daqui{' '}
                       <strong>{fmtKm(nextKm!.km! - actualKm)}</strong>
                       {approxWeeks > 0 && <span> (~{approxWeeks} {approxWeeks === 1 ? 'semana' : 'semanas'})</span>}
                       {' '}para <strong>{joinNames(namesSameKm)}</strong>.
@@ -1344,7 +1258,7 @@ export default function MaintenancePage() {
                 return (
                   <>
                     a próxima manutenção será daqui{' '}
-                    <strong>{remainingDays} {remainingDays === 1 ? 'dia' : 'days'}</strong>
+                    <strong>{remainingDays} {remainingDays === 1 ? 'dia' : 'dias'}</strong>
                     {approxWeeks > 1 && <span> (~{approxWeeks} semanas)</span>}
                     {' '}para <strong>{nextDay!.name}</strong>.
                   </>
@@ -1359,12 +1273,12 @@ export default function MaintenancePage() {
                       Próxima <strong>{standard!.name}</strong>:{' '}
                       {nextKmItem
                         ? <><strong>{fmtKm(nextKmItem)}</strong> <span className="text-blue-300">— daqui {fmtKm(nextKmItem - actualKm)}</span></>
-                        : <><strong>{formatDate(nextDateItem!)}</strong> <span className="text-blue-300">— daqui 30 days</span></>
+                        : <><strong>{formatDate(nextDateItem!)}</strong> <span className="text-blue-300">— daqui 30 dias</span></>
                       }
                     </div>
                   )}
 
-                  {/* sem standard (corretiva): mostra próxima da motorcycle */}
+                  {/* sem standard (corretiva): mostra próxima da moto */}
                   {!nextKmItem && !nextDateItem && (() => {
                     const next = withStatus
                       .filter((m) => m.motorcycle_id === registeringItem.motorcycle_id && !m.completed && m.id !== registeringItem.id && m.predicted_km !== null)
@@ -1372,7 +1286,7 @@ export default function MaintenancePage() {
                     if (!next) return null
                     return (
                       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-blue-400">
-                        Próxima manutenção desta motorcycle: <strong>{next.description}</strong> em{' '}
+                        Próxima manutenção desta moto: <strong>{next.description}</strong> em{' '}
                         <strong>{fmtKm(next.predicted_km!)}</strong>{' '}
                         <span className="text-blue-300">— daqui {fmtKm(next.predicted_km! - actualKm)}</span>
                       </div>
@@ -1437,7 +1351,7 @@ export default function MaintenancePage() {
                 onClick={() => {
                   if (!registeringItem) return
                   const mainItem = registeringItem // captura para uso em funções aninhadas
-                  // detecta responsabilidade padrão de cada item conforme contract da motorcycle
+                  // detecta responsabilidade padrão de cada item conforme contrato da moto
                   const contract = motorcycles.find((m) => m.id === mainItem.motorcycle_id)?.contract
                   function autoResp(itemId: string): ResponsibleItem {
                     const item = itemId === mainItem.id
@@ -1469,7 +1383,7 @@ export default function MaintenancePage() {
         {registeringItem && registerForm.step === 2 && (() => {
           const contract = motorcycles.find((m) => m.id === registeringItem.motorcycle_id)?.contract
 
-          // Todos os items desta operação (principal + extras)
+          // Todos os itens desta operação (principal + extras)
           const allItems: MaintenanceRecord[] = [
             registeringItem,
             ...registerForm.extraItems
@@ -1500,7 +1414,7 @@ export default function MaintenancePage() {
             else if (r === '50/50' && v > 0) { totalCompany += v / 2; totalCustomerDiscount += v / 2; some5050WithValue = true }
           })
 
-          // Ao menos um item com value preenchido
+          // Ao menos um item com valor preenchido
           const someValue = registerForm.financialItems.some(
             (f) => parseFloat(f.value.replace(',', '.')) > 0
           )
@@ -1514,7 +1428,7 @@ export default function MaintenancePage() {
 
           return (
             <div className="space-y-3">
-              {/* Cabeçalho: motorcycle + KM */}
+              {/* Cabeçalho: moto + KM */}
               <div className="flex items-center justify-between px-1">
                 <p className="text-xs text-[#A0A0A0]">
                   {registeringItem.motorcycle_plate} · {fmtKm(parseInt(registerForm.actual_km) || registeringItem.motorcycle_current_km)} · {registerForm.workshop}
@@ -1533,7 +1447,7 @@ export default function MaintenancePage() {
 
                   return (
                     <div key={item.id} className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-2.5 space-y-2">
-                      {/* Nome + type */}
+                      {/* Nome + tipo */}
                       <div className="flex items-center gap-2">
                         <BadgeType type={item.type} />
                         <span className="text-sm text-white font-medium flex-1 truncate">{item.description}</span>
@@ -1674,7 +1588,7 @@ export default function MaintenancePage() {
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   {allItems.length > 1
-                    ? `Confirmar ${allItems.length} items`
+                    ? `Confirmar ${allItems.length} itens`
                     : 'Confirmar Registro'}
                 </Button>
               </div>
@@ -1692,7 +1606,7 @@ export default function MaintenancePage() {
       >
         <form onSubmit={handleNewMaintenance} className="space-y-4">
           <Select
-            label="Motorcycle *"
+            label="Motocicleta *"
             options={motorcycleSelectOptions}
             value={newForm.motorcycle_id}
             onChange={(e) => setNewForm({ ...newForm, motorcycle_id: e.target.value })}
@@ -1777,7 +1691,7 @@ export default function MaintenancePage() {
       >
         <form onSubmit={handleUpdateKm} className="space-y-4">
           <Select
-            label="Motorcycle *"
+            label="Motocicleta *"
             options={motorcycleSelectOptions}
             value={kmForm.motorcycle_id}
             onChange={(e) => {
@@ -1821,7 +1735,7 @@ export default function MaintenancePage() {
         {detailItem && (
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div><p className="text-xs text-[#A0A0A0]">Motorcycle</p><p className="text-white font-medium">{detailItem.motorcycle_plate}</p></div>
+              <div><p className="text-xs text-[#A0A0A0]">Motocicleta</p><p className="text-white font-medium">{detailItem.motorcycle_plate}</p></div>
               <div><p className="text-xs text-[#A0A0A0]">Modelo</p><p className="text-white">{detailItem.motorcycle_model}</p></div>
               <div><p className="text-xs text-[#A0A0A0]">Item</p><p className="text-white">{detailItem.description}</p></div>
               <div><p className="text-xs text-[#A0A0A0]">Tipo</p><BadgeType type={detailItem.type} /></div>

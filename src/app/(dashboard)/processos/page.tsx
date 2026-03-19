@@ -1,9 +1,19 @@
 /**
- * ARQUIVO: src/app/(dashboard)/processos/page.tsx
- * DESCRIÇÃO: Página de Gestão de Processos da GoMoto.
- *            Funciona como uma base de conhecimento (FAQ) para os funcionários, 
- *            centralizando regras de locação, cobrança, manutenção e documentação.
- *            Permite a criação, edição e exclusão de processos internos.
+ * @file src/app/(dashboard)/processos/page.tsx
+ * @description Página de Gestão de Processos e Base de Conhecimento da GoMoto.
+ * 
+ * @summary
+ * Esta página funciona como uma base de conhecimento centralizada (FAQ) para os funcionários.
+ * O "porquê" de sua existência é padronizar o atendimento e as operações, garantindo
+ * que todos na equipe sigam as mesmas regras e tenham acesso rápido a respostas
+ * para as dúvidas mais comuns de clientes sobre locação, cobrança, manutenção, etc.
+ * Isso reduz erros, agiliza o treinamento e melhora a consistência do serviço.
+ * 
+ * @funcionalidades
+ * 1.  **Visualização em Acordeão**: Exibe os processos como uma lista de perguntas e respostas expansíveis.
+ * 2.  **Agrupamento por Categoria**: Organiza os processos em seções (Locação, Cobrança, etc.) para fácil navegação.
+ * 3.  **Filtro Rápido**: Permite filtrar a lista para ver apenas uma categoria por vez.
+ * 4.  **CRUD de Processos**: Interface para administradores criarem, editarem e excluírem processos internos.
  */
 
 'use client'
@@ -19,13 +29,17 @@ import { Modal } from '@/components/ui/Modal'
 import type { Process } from '@/types'
 
 /**
- * Lista fixa de categorias disponíveis para classificar os processos da empresa.
+ * @constant categories
+ * @description Lista fixa de categorias para classificar os processos da empresa.
+ * O "porquê": Garante consistência na categorização e alimenta os filtros da UI.
  */
 const categories = ['Locação', 'Cobrança', 'Manutenção', 'Documentação', 'Geral']
 
 /**
- * Dados iniciais para simulação de processos cadastrados.
- * Cada processo possui uma pergunta, uma resposta detalhada e uma categoria.
+ * @constant mockProcesses
+ * @description Dados iniciais para simular os processos já cadastrados.
+ * O "porquê": Permite o desenvolvimento da UI sem dependência do banco de dados,
+ * populando a lista com exemplos realistas de perguntas e respostas.
  */
 const mockProcesses: Process[] = [
   {
@@ -131,7 +145,10 @@ const mockProcesses: Process[] = [
 ]
 
 /**
- * Mapeamento de estilos visuais (variantes do componente Badge) para cada categoria.
+ * @constant categoryBadgeVariant
+ * @description Mapeamento de estilos visuais (cores do Badge) para cada categoria.
+ * O "porquê": Centraliza a lógica de estilização, tornando fácil alterar a cor
+ * associada a uma categoria em um único local.
  */
 const categoryBadgeVariant: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger'> = {
   Locação: 'brand',
@@ -142,52 +159,62 @@ const categoryBadgeVariant: Record<string, 'success' | 'info' | 'warning' | 'mut
 }
 
 /**
- * Estado inicial para o formulário de criação/edição de processos.
+ * @constant defaultForm
+ * @description Estado inicial para o formulário de criação/edição de processos.
+ * O "porquê": Garante que o modal de "Adicionar Processo" sempre abra com os campos limpos.
  */
 const defaultForm = { question: '', answer: '', category: 'Geral' }
 
 /**
- * COMPONENTE PRINCIPAL: ProcessesPage
- * Renderiza uma lista sanfonada (accordion) de processos agrupados por categoria.
+ * @component ProcessesPage
+ * @description Componente principal que renderiza a lista de processos em formato de acordeão.
  */
 export default function ProcessesPage() {
   /**
-   * ESTADO: Lista de processos atualmente exibida.
+   * @state processes
+   * @description Armazena a lista completa de processos. É a fonte da verdade para a UI.
    */
   const [processes, setProcesses] = useState<Process[]>(mockProcesses)
   /**
-   * ESTADO: ID do processo que está com a resposta visível (expandido).
+   * @state expandedId
+   * @description Guarda o ID do processo que está atualmente expandido, mostrando a resposta. Se `null`, todos estão fechados.
    */
   const [expandedId, setExpandedId] = useState<string | null>(null)
   /**
-   * ESTADO: Valor do filtro de categoria selecionado pelo usuário.
+   * @state categoryFilter
+   * @description Armazena o valor do filtro de categoria selecionado pelo usuário.
    */
   const [categoryFilter, setCategoryFilter] = useState('')
   /**
-   * ESTADO: Controla a visibilidade do modal de cadastro/edição.
+   * @state isModalOpen
+   * @description Controla a visibilidade do modal de cadastro/edição.
    */
   const [isModalOpen, setIsModalOpen] = useState(false)
   /**
-   * ESTADO: Armazena o objeto do processo que está sendo editado, ou null para novo.
+   * @state editingProcess
+   * @description Guarda o objeto do processo em edição. Se `null`, o modal está em modo de "criação".
    */
   const [editingProcess, setEditingProcess] = useState<Process | null>(null)
   /**
-   * ESTADO: Dados temporários do formulário no modal.
+   * @state form
+   * @description Armazena os valores atuais do formulário no modal.
    */
   const [form, setForm] = useState(defaultForm)
 
   /**
-   * CONSTANTE: filteredProcesses
-   * Aplica o filtro de categoria selecionado sobre a lista total de processos.
+   * @const filteredProcesses
+   * @description Aplica o filtro de categoria à lista de processos. Se nenhum filtro
+   * estiver ativo, retorna a lista completa.
    */
   const filteredProcesses = categoryFilter
     ? processes.filter((p) => p.category === categoryFilter)
     : processes
 
   /**
-   * CONSTANTE: groupedProcesses
-   * Organiza os processos filtrados em um objeto onde a chave é a categoria.
-   * Facilita a renderização de grupos visualmente separados.
+   * @const groupedProcesses
+   * @description Organiza os processos filtrados em um objeto onde a chave é a categoria.
+   * O "porquê": Facilita a renderização da UI em blocos agrupados por categoria,
+   * ao invés de uma lista única desordenada.
    */
   const groupedProcesses = categories.reduce<Record<string, Process[]>>((acc, cat) => {
     const items = filteredProcesses.filter((p) => p.category === cat)
@@ -196,8 +223,9 @@ export default function ProcessesPage() {
   }, {})
 
   /**
-   * FUNÇÃO: handleSubmit
-   * Processa o envio do formulário para salvar um novo processo ou atualizar um existente.
+   * @function handleSubmit
+   * @description Processa o envio do formulário, salvando um novo processo ou atualizando um existente.
+   * @param e - O evento do formulário, para prevenir o recarregamento da página.
    */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -206,12 +234,12 @@ export default function ProcessesPage() {
       setProcesses((prev) =>
         prev.map((p) =>
           p.id === editingProcess.id
-            ? { ...p, question: form.question, answer: form.answer, category: form.category }
+            ? { ...p, question: form.question, answer: form.answer, category: form.category, updated_at: new Date().toISOString() }
             : p
         )
       )
     } else {
-      // Lógica de Inserção de Novo Processo
+      // Lógica de Criação
       const newProcess: Process = {
         id: String(Date.now()),
         question: form.question,
@@ -230,8 +258,9 @@ export default function ProcessesPage() {
   }
 
   /**
-   * FUNÇÃO: handleEdit
-   * Prepara o modal para edição de um processo específico carregando seus dados atuais.
+   * @function handleEdit
+   * @description Prepara o modal para edição, carregando os dados do processo selecionado.
+   * @param process - O objeto do processo a ser editado.
    */
   function handleEdit(process: Process) {
     setEditingProcess(process)
@@ -240,16 +269,19 @@ export default function ProcessesPage() {
   }
 
   /**
-   * FUNÇÃO: handleDelete
-   * Remove um processo da lista baseada no seu identificador.
+   * @function handleDelete
+   * @description Remove um processo da lista.
+   * O "porquê": A remoção é feita de forma otimista na UI, filtrando o array de estado.
+   * Em uma aplicação real, aqui seria chamada uma API para deletar no banco.
+   * @param id - O ID do processo a ser removido.
    */
   function handleDelete(id: string) {
     setProcesses((prev) => prev.filter((p) => p.id !== id))
   }
 
   /**
-   * FUNÇÃO: handleOpenModal
-   * Abre o modal limpo para a criação de um novo processo.
+   * @function handleOpenModal
+   * @description Abre o modal em modo de "criação".
    */
   function handleOpenModal() {
     setEditingProcess(null)
@@ -259,6 +291,7 @@ export default function ProcessesPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {/* Cabeçalho da página com título, contador e botão de ação principal. */}
       <Header
         title="Processos da Empresa"
         subtitle={`${processes.length} processos cadastrados`}
@@ -271,11 +304,11 @@ export default function ProcessesPage() {
       />
 
       <div className="p-6 space-y-4">
-        {/* SEÇÃO DE FILTROS: Permite filtrar os processos por categoria */}
+        {/* SEÇÃO DE FILTROS: Permite filtrar os processos por categoria. */}
         <div className="flex items-center gap-3 flex-wrap">
           <BookOpen className="w-4 h-4 text-[#A0A0A0]" />
           <div className="flex gap-2 flex-wrap">
-            {/* Botões de filtro rápido */}
+            {/* Botões de filtro rápido, incluindo "Todas". */}
             {[{ value: '', label: 'Todas' }, ...categories.map((c) => ({ value: c, label: c }))].map(
               (opt) => (
                 <button
@@ -294,10 +327,10 @@ export default function ProcessesPage() {
           </div>
         </div>
 
-        {/* LISTAGEM AGRUPADA: Itera sobre as categorias que possuem itens */}
+        {/* LISTAGEM AGRUPADA: Itera sobre as categorias que possuem itens. */}
         {Object.entries(groupedProcesses).map(([category, items]) => (
           <div key={category} className="space-y-2">
-            {/* Cabeçalho da Categoria */}
+            {/* Cabeçalho de cada Categoria */}
             <div className="flex items-center gap-2 py-1">
               <Badge variant={categoryBadgeVariant[category] ?? 'muted'}>{category}</Badge>
               <span className="text-xs text-[#A0A0A0]">{items.length} processo(s)</span>
@@ -310,7 +343,7 @@ export default function ProcessesPage() {
                   key={process.id}
                   className="bg-[#202020] border border-[#333333] rounded-xl overflow-hidden transition-colors hover:border-[#444444]"
                 >
-                  {/* Botão de Expansão (Pergunta) */}
+                  {/* Botão de Expansão que contém a pergunta. */}
                   <button
                     className="w-full flex items-center justify-between gap-4 p-4 text-left"
                     onClick={() =>
@@ -323,27 +356,27 @@ export default function ProcessesPage() {
                     
                     {/* Ações e Indicador de Status do Acordeão */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Botão Editar */}
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
+                          e.stopPropagation() // Impede que o clique no botão também expanda/recolha o acordeão.
                           handleEdit(process)
                         }}
                         className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
+                        title="Editar processo"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      {/* Botão Excluir */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDelete(process.id)
                         }}
                         className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                        title="Excluir processo"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      {/* Ícone de Seta (Cima/Baixo) */}
+                      {/* Ícone de Seta que muda conforme o estado expandido. */}
                       {expandedId === process.id ? (
                         <ChevronUp className="w-4 h-4 text-[#A0A0A0]" />
                       ) : (
@@ -352,10 +385,10 @@ export default function ProcessesPage() {
                     </div>
                   </button>
 
-                  {/* Conteúdo Expansível (Resposta) */}
+                  {/* Conteúdo Expansível (A resposta para a pergunta). */}
                   {expandedId === process.id && (
                     <div className="px-4 pb-4 border-t border-[#2a2a2a] pt-3">
-                      <p className="text-sm text-[#A0A0A0] leading-relaxed">{process.answer}</p>
+                      <p className="text-sm text-[#A0A0A0] leading-relaxed whitespace-pre-wrap">{process.answer}</p>
                     </div>
                   )}
                 </div>
@@ -364,7 +397,7 @@ export default function ProcessesPage() {
           </div>
         ))}
 
-        {/* FEEDBACK: Exibido quando nenhum processo corresponde ao filtro ou a lista está vazia */}
+        {/* FEEDBACK DE LISTA VAZIA: Exibido se nenhum processo corresponder ao filtro. */}
         {filteredProcesses.length === 0 && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -379,26 +412,23 @@ export default function ProcessesPage() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingProcess ? 'Editar Processo' : 'Adicionar Processo'}
+        title={editingProcess ? 'Editar Processo' : 'Adicionar Novo Processo'}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Seletor de Categoria */}
           <Select
             label="Categoria"
             options={categories.map((c) => ({ value: c, label: c }))}
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
           />
-          {/* Campo da Pergunta */}
           <Input
             label="Pergunta"
-            placeholder="Como funciona o processo de locação?"
+            placeholder="Ex: Como funciona o processo de locação?"
             value={form.question}
             onChange={(e) => setForm({ ...form, question: e.target.value })}
             required
           />
-          {/* Campo da Resposta Detalhada */}
           <Textarea
             label="Resposta"
             placeholder="Descreva o processo de forma clara e objetiva..."
