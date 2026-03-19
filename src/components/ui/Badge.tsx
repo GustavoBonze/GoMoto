@@ -1,8 +1,13 @@
 /**
  * @file Badge.tsx
- * @description Componente de etiqueta (Badge) e componente de Status especializado para o sistema GoMoto.
- * Estes componentes são utilizados para exibir estados, categorias ou pequenas informações de destaque
- * com cores semânticas que facilitam a leitura rápida do usuário.
+ * @description Componente de etiqueta (Badge) e seu componente especializado `StatusBadge`.
+ * 
+ * @summary
+ * O "porquê" deste arquivo é centralizar a estilização de pequenas informações de
+ * destaque, como status, categorias ou tags. Ele oferece um componente `Badge` base,
+ * que é flexível, e um `StatusBadge` especializado, que mapeia automaticamente
+ * os status do sistema (ex: 'pending', 'available') para um texto e uma cor
+ * correspondentes. Isso garante consistência visual e semântica em toda a aplicação.
  */
 
 import { cn } from '@/lib/utils'
@@ -10,35 +15,37 @@ import { cn } from '@/lib/utils'
 /**
  * @type BadgeVariant
  * @description Define as variantes de estilo visual disponíveis para o Badge.
- * Cada variante corresponde a um contexto semântico:
- * - 'success': Indica sucesso ou estado positivo (verde).
- * - 'warning': Indica atenção ou estado intermediário (âmbar).
- * - 'danger': Indica erro, perigo ou estado crítico (vermelho).
- * - 'info': Indica informação neutra ou estados informativos (azul).
- * - 'muted': Estilo discreto para informações secundárias (cinza).
- * - 'brand': Utiliza as cores da marca GoMoto (verde limão).
+ * O "porquê" deste tipo é criar um contrato claro para as opções de estilo,
+ * onde cada variante tem um significado semântico:
+ * - 'success': Sucesso, concluído, positivo (verde).
+ * - 'warning': Atenção, pendente, em andamento (âmbar).
+ * - 'danger': Erro, perigo, estado crítico (vermelho).
+ * - 'info': Informação neutra, status de alocação (azul).
+ * - 'muted': Discreto, para informações secundárias ou inativas (cinza).
+ * - 'brand': Cor principal da marca GoMoto (verde limão).
  * - 'orange': Variante laranja para estados específicos como prejuízo.
  */
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'brand' | 'orange'
 
 /**
  * @interface BadgeProps
- * @description Propriedades para o componente base Badge.
- * 
- * @property {BadgeVariant} [variant] - A variante visual a ser aplicada.
- * @property {React.ReactNode} children - O conteúdo a ser exibido dentro da etiqueta.
- * @property {string} [className] - Classes CSS adicionais para customização pontual.
+ * @description Propriedades para o componente base `Badge`.
  */
 interface BadgeProps {
+  /** A variante de cor/estilo a ser aplicada. O padrão é 'muted'. */
   variant?: BadgeVariant
+  /** O conteúdo a ser exibido dentro da etiqueta (geralmente texto). */
   children: React.ReactNode
+  /** Classes CSS adicionais para customizações pontuais. */
   className?: string
 }
 
 /**
  * @constant variants
  * @description Mapeamento de estilos Tailwind CSS para cada variante do Badge.
- * Utiliza cores com opacidade no fundo (background) e bordas sutis para um visual moderno.
+ * O "porquê": Centraliza a lógica de estilização em um único objeto, facilitando
+ * a manutenção do design system. Se uma cor precisar ser alterada, a mudança é
+ * feita aqui e reflete em todos os Badges da aplicação.
  */
 const variants: Record<BadgeVariant, string> = {
   success: 'bg-green-500/12 text-green-400 border border-green-500/20',
@@ -52,8 +59,12 @@ const variants: Record<BadgeVariant, string> = {
 
 /**
  * @constant statusLabels
- * @description Configuração centralizada de rótulos (labels) e variantes para status do sistema.
- * Este mapeamento traduz chaves de status do banco de dados para textos legíveis e estilos visuais.
+ * @description Mapeamento centralizado que traduz chaves de status do sistema
+ * para textos legíveis (rótulos) e suas variantes de cor correspondentes.
+ * O "porquê": Este é o coração do `StatusBadge`. Ele desacopla a lógica de negócio
+ * (ex: a string 'rented' vinda do banco) da sua representação na UI ('Alugada' com
+ * a cor 'info'). Isso torna o sistema extremamente manutenível, pois para adicionar
+ * um novo status ou mudar a cor de um existente, basta alterar esta constante.
  */
 const statusLabels: Record<string, { label: string; variant: BadgeVariant }> = {
   /** Status de Motos e Contratos */
@@ -88,15 +99,17 @@ const statusLabels: Record<string, { label: string; variant: BadgeVariant }> = {
 
 /**
  * @component StatusBadge
- * @description Componente especializado que recebe uma string de status e renderiza
- * automaticamente o Badge correto com o texto e a cor configurados.
- * 
- * @param {string} status - O identificador do status (ex: 'pago', 'disponivel').
+ * @description Componente especializado que recebe uma chave de status e renderiza
+ * automaticamente o `Badge` correto com o texto e a cor configurados em `statusLabels`.
+ * @param {object} props - Propriedades do componente.
+ * @param {string} props.status - O identificador do status (ex: 'paid', 'available').
  */
 export function StatusBadge({ status }: { status: string }) {
   /** 
    * Busca a configuração no mapeamento, ignorando maiúsculas/minúsculas.
-   * Se não encontrar, utiliza o próprio texto do status com a variante 'muted'.
+   * Se não encontrar, usa o próprio texto do status com a variante 'muted' como fallback.
+   * O "porquê" do fallback: Garante que o sistema não quebre se receber um status
+   * inesperado, exibindo-o de forma discreta.
    */
   const config = statusLabels[status.toLowerCase()] ?? { label: status, variant: 'muted' as BadgeVariant }
   
@@ -106,18 +119,18 @@ export function StatusBadge({ status }: { status: string }) {
 /**
  * @component Badge
  * @description Componente funcional base para exibição de etiquetas.
- * 
  * @param {BadgeProps} props - Propriedades para estilização e conteúdo.
  */
 export function Badge({ variant = 'muted', children, className }: BadgeProps) {
   return (
     <span
+      // A função `cn` (classnames) mescla as classes de forma inteligente.
       className={cn(
-        /** Classes estruturais básicas */
+        // Classes base: definem a estrutura fundamental do Badge.
         'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-        /** Aplica o estilo baseado na variante escolhida */
+        // Classes dinâmicas: aplicam o estilo da variante escolhida.
         variants[variant],
-        /** Permite sobrescrever ou adicionar classes externamente */
+        // Classes externas: permitem customizações adicionais ao usar o componente.
         className
       )}
     >

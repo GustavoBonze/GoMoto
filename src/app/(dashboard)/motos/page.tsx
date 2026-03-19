@@ -1,23 +1,26 @@
 /**
- * ARQUIVO: src/app/(dashboard)/motos/page.tsx
+ * @file src/app/(dashboard)/motos/page.tsx
+ * @description Página de gestão de frota do sistema GoMoto.
  * 
- * DESCRIÇÃO GERAL:
- * Esta é a página de gestão de frota do sistema GoMoto. Ela permite ao administrador:
- * 1. Visualizar todas as motocicletas cadastradas em um formato de grade (cards).
- * 2. Filtrar a frota por status operacional (Disponível, Alugada, Manutenção).
- * 3. Pesquisar veículos específicos por placa, modelo ou marca.
- * 4. Cadastrar novas motos através de um fluxo guiado (Wizard) em dois passos.
- * 5. Editar informações técnicas, financeiras e de aquisição de cada veículo.
- * 6. Visualizar detalhes profundos de cada moto em um modal dedicado.
+ * @summary
+ * Esta página é o centro de controle dos ativos físicos da empresa (as motocicletas).
+ * O "porquê" desta página é fornecer uma visão completa e controle total sobre cada
+ * veículo, desde seu cadastro inicial até seu status operacional diário.
  * 
- * FLUXO DE CADASTRO (WIZARD):
- * - Passo 1: Coleta de dados básicos (Placa, Renavam, Chassi, Cor, Dados de compra).
- * - Passo 2: Configuração de "Bootstrap" de manutenção (Último KM/Data de cada item).
+ * @funcionalidades
+ * 1.  **Visualização da Frota**: Exibe todas as motocicletas cadastradas em um formato de grade (cards).
+ * 2.  **Filtros Rápidos**: Permite filtrar a frota por status (Disponível, Alugada, Manutenção).
+ * 3.  **Busca Detalhada**: Oferece pesquisa por placa, modelo ou marca.
+ * 4.  **Cadastro Guiado (Wizard)**: Um fluxo de 2 passos para registrar novas motos, garantindo
+ *     que dados técnicos e de manutenção inicial sejam coletados corretamente.
+ * 5.  **Edição e Detalhes**: Permite editar informações e visualizar uma ficha técnica completa de cada veículo.
  * 
- * PADRÕES DE UI/UX:
- * - Uso de cores semânticas nas bordas dos cards para identificação rápida de status.
- * - Modais responsivos para diferentes níveis de informação.
- * - Feedbacks visuais para status de manutenção (OK ou Pendente).
+ * @arquitetura
+ * - **Client Component**: A página é interativa, usando estado do React para filtros, modais e formulários.
+ * - **Estrutura de Dados Mock**: Simula a tabela `motos` do Supabase para desenvolvimento ágil.
+ * - **Componentização**: A ficha técnica e os cards são componentizados para reutilização e clareza.
+ * - **Cores Semânticas**: O status de cada moto é refletido visualmente na borda do card,
+ *   permitindo uma identificação rápida do estado operacional da frota.
  */
 
 'use client' // Diretiva para indicar que este é um Client Component (interatividade React)
@@ -51,10 +54,10 @@ import { formatCurrency } from '@/lib/utils'
 import type { Motorcycle, MotorcycleStatus } from '@/types'
 
 /**
- * MOCK DATA: mockMotorcycles
- * 
- * Lista estática de motos para popular a interface durante o desenvolvimento.
- * Reflete a estrutura real da tabela 'motos' no banco de dados Supabase.
+ * @constant mockMotorcycles
+ * @description Lista estática de motos para popular a interface durante o desenvolvimento.
+ * O "porquê": Permite construir e testar a UI sem depender de uma conexão real com o banco de dados,
+ * agilizando o desenvolvimento do front-end. Reflete a estrutura da tabela `motos` no Supabase.
  */
 const mockMotorcycles: Motorcycle[] = [
   {
@@ -144,62 +147,63 @@ const mockMotorcycles: Motorcycle[] = [
 ]
 
 /**
- * CONFIGURAÇÕES: filterOptions
- * Define os botões de filtro rápido acima da listagem.
+ * @constant filterOptions
+ * @description Define os botões de filtro rápido acima da listagem.
  */
 const filterOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Available', value: 'available' },
-  { label: 'Rented', value: 'rented' },
-  { label: 'Maintenance', value: 'maintenance' },
+  { label: 'Todas', value: 'all' },
+  { label: 'Disponíveis', value: 'available' },
+  { label: 'Alugadas', value: 'rented' },
+  { label: 'Em Manutenção', value: 'maintenance' },
 ]
 
 /**
- * CONFIGURAÇÕES: statusOptions
- * Opções para o campo Select do formulário de cadastro.
+ * @constant statusOptions
+ * @description Opções para o campo Select do formulário de cadastro.
  */
 const statusOptions = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'inactive', label: 'Inactive' },
+  { value: 'available', label: 'Disponível' },
+  { value: 'rented', label: 'Alugada' },
+  { value: 'maintenance', label: 'Em Manutenção' },
+  { value: 'inactive', label: 'Inativa' },
 ]
 
 /**
- * CONFIGURAÇÕES: fuelOptions
- * Tipos de combustíveis suportados pelo sistema.
+ * @constant fuelOptions
+ * @description Tipos de combustíveis suportados pelo sistema.
  */
 const fuelOptions = [
-  { value: 'GASOLINA', label: 'Gasoline' },
-  { value: 'ÁLCOOL/GASOLINA', label: 'Ethanol/Gasoline (Flex)' },
-  { value: 'ELÉTRICO', label: 'Electric' },
+  { value: 'GASOLINA', label: 'Gasolina' },
+  { value: 'ÁLCOOL/GASOLINA', label: 'Álcool/Gasolina (Flex)' },
+  { value: 'ELÉTRICO', label: 'Elétrico' },
 ]
 
 /**
- * CONSTANTE: BOOTSTRAP_MAINTENANCE_ITEMS
- * 
- * Lista de itens de manutenção preventiva padrão para motos 150/160cc.
- * Estes itens são exibidos no Passo 2 do cadastro de uma nova moto para inicializar o histórico.
+ * @constant BOOTSTRAP_MAINTENANCE_ITEMS
+ * @description Lista de itens de manutenção preventiva padrão para motos 150/160cc.
+ * O "porquê": Estes itens são a base para o sistema de previsão de manutenções.
+ * Ao cadastrar uma nova moto, o Passo 2 (Bootstrap) usa esta lista para criar
+ * o histórico inicial, permitindo que o sistema agende as próximas revisões.
  */
 const BOOTSTRAP_MAINTENANCE_ITEMS = [
-  { id: 'ip1',  name: 'Oil change',                        type: 'km'   as const, interval: 1000,  hint: 'every 1,000 km'      },
-  { id: 'ip2',  name: 'Oil filter',                        type: 'km'   as const, interval: 4000,  hint: 'every 4,000 km'      },
-  { id: 'ip5',  name: 'Chain/sprocket/pinion replacement', type: 'km'   as const, interval: 12000, hint: 'every 12,000 km'     },
-  { id: 'ip6',  name: 'Rear brake shoe',                   type: 'km'   as const, interval: 12000, hint: 'every 12,000 km'     },
-  { id: 'ip7',  name: 'Front brake pad',                   type: 'km'   as const, interval: 8000,  hint: 'every 8,000 km'      },
-  { id: 'ip8',  name: 'Front tire',                        type: 'km'   as const, interval: 12000, hint: 'every 12,000 km'     },
-  { id: 'ip9',  name: 'Rear tire',                         type: 'km'   as const, interval: 8000,  hint: 'every 8,000 km'      },
-  { id: 'ip10', name: 'Air filter',                        type: 'km'   as const, interval: 7000,  hint: 'every 7,000 km'      },
-  { id: 'ip11', name: 'Spark plugs',                       type: 'km'   as const, interval: 10000, hint: 'every 10,000 km'     },
-  { id: 'ip12', name: 'Shock absorbers',                   type: 'km'   as const, interval: 25000, hint: 'every 25,000 km'     },
-  { id: 'ip13', name: 'Monthly inspection',                type: 'data' as const, interval: 30,    hint: 'every month'         },
+  { id: 'ip1',  name: 'Troca de óleo',                        type: 'km'   as const, interval: 1000,  hint: 'a cada 1.000 km'      },
+  { id: 'ip2',  name: 'Filtro de óleo',                        type: 'km'   as const, interval: 4000,  hint: 'a cada 4.000 km'      },
+  { id: 'ip5',  name: 'Troca da relação (corrente/coroa/pinhão)', type: 'km'   as const, interval: 12000, hint: 'a cada 12.000 km'     },
+  { id: 'ip6',  name: 'Lona de freio traseira',                   type: 'km'   as const, interval: 12000, hint: 'a cada 12.000 km'     },
+  { id: 'ip7',  name: 'Pastilha de freio dianteira',            type: 'km'   as const, interval: 8000,  hint: 'a cada 8.000 km'      },
+  { id: 'ip8',  name: 'Pneu dianteiro',                        type: 'km'   as const, interval: 12000, hint: 'a cada 12.000 km'     },
+  { id: 'ip9',  name: 'Pneu traseiro',                         type: 'km'   as const, interval: 8000,  hint: 'a cada 8.000 km'      },
+  { id: 'ip10', name: 'Filtro de ar',                        type: 'km'   as const, interval: 7000,  hint: 'a cada 7.000 km'      },
+  { id: 'ip11', name: 'Velas de ignição',                       type: 'km'   as const, interval: 10000, hint: 'a cada 10.000 km'     },
+  { id: 'ip12', name: 'Amortecedores',                   type: 'km'   as const, interval: 25000, hint: 'a cada 25.000 km'     },
+  { id: 'ip13', name: 'Vistoria mensal',                type: 'data' as const, interval: 30,    hint: 'a cada mês'         },
 ]
 
 /**
- * ESTADO INICIAL: defaultFormState
- * 
- * Define os valores padrão para o formulário de criação de moto.
- * Garante que todos os campos controlados tenham um valor inicial (evita erros de undefined).
+ * @constant defaultFormState
+ * @description Define os valores padrão para o formulário de criação de moto.
+ * O "porquê": Garante que todos os campos controlados do formulário tenham um valor inicial
+ * definido, evitando erros de "uncontrolled to controlled component" no React.
  */
 const defaultFormState = {
   licensePlate: '',         // Placa do veículo
@@ -222,10 +226,10 @@ const defaultFormState = {
 }
 
 /**
- * MAPA DE CORES: cardBorderMap
- * 
- * Associa cada status de moto a uma classe de borda do Tailwind CSS.
- * Permite que a UI indique visualmente o status sem precisar ler o texto.
+ * @constant cardBorderMap
+ * @description Associa cada status de moto a uma classe de borda do Tailwind CSS.
+ * O "porquê": Permite que a UI indique visualmente o status sem precisar ler o texto,
+ * usando cores semânticas para uma identificação rápida do estado operacional da frota.
  */
 const cardBorderMap: Record<string, string> = {
   available: 'border-green-500/20', // Borda sutil verde
@@ -235,10 +239,10 @@ const cardBorderMap: Record<string, string> = {
 }
 
 /**
- * FUNÇÃO UTILITÁRIA: motorcycleToForm
- * 
- * Converte um objeto Moto (formato do banco) para o formato esperado pelo formulário (Strings).
- * Essencial para popular os campos durante a edição de um registro existente.
+ * @function motorcycleToForm
+ * @description Converte um objeto Moto (formato do banco) para o formato esperado pelo formulário (Strings).
+ * O "porquê": Essencial para popular os campos durante a edição de um registro existente,
+ * adaptando os tipos de dados (ex: number para string) para os inputs HTML.
  */
 function motorcycleToForm(motorcycle: Motorcycle) {
   return {
@@ -263,45 +267,45 @@ function motorcycleToForm(motorcycle: Motorcycle) {
 }
 
 /**
- * COMPONENTE DE PÁGINA: MotosPage
- * 
- * Gerencia toda a lógica e renderização da tela de frota.
+ * @component MotorcyclesPage
+ * @description Gerencia toda a lógica e renderização da tela de frota.
  */
 export default function MotorcyclesPage() {
   /* 
    * GERENCIAMENTO DE ESTADOS (React State):
    */
-  // Lista principal de motos exibida na tela
+  // Lista principal de motos exibida na tela.
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(mockMotorcycles)
-  // Valor atual do filtro de status (todas, disponivel, etc)
+  // Valor atual do filtro de status (todas, disponivel, etc).
   const [filter, setFilter] = useState('all')
-  // Texto digitado no campo de busca para filtragem dinâmica
+  // Texto digitado no campo de busca para filtragem dinâmica.
   const [search, setSearch] = useState('')
-  // Controla se o modal de formulário está visível
+  // Controla se o modal de formulário está visível.
   const [modalOpen, setModalOpen] = useState(false)
-  // Armazena o ID da moto sendo editada. Se for null, o modal funciona como "Novo Cadastro".
+  // Armazena o ID da moto sendo editada. Se for `null`, o modal funciona como "Novo Cadastro".
   const [editingId, setEditingId] = useState<string | null>(null)
-  // Objeto contendo os dados atuais digitados no formulário do modal
+  // Objeto contendo os dados atuais digitados no formulário do modal.
   const [form, setForm] = useState(defaultFormState)
-  // Objeto da moto selecionada para visualização detalhada no modal de leitura
+  // Objeto da moto selecionada para visualização detalhada no modal de leitura.
   const [motorcycleDetails, setMotorcycleDetails] = useState<Motorcycle | null>(null)
-  // Objeto da moto marcada para exclusão definitiva
+  // Objeto da moto marcada para exclusão definitiva.
   const [deletingMotorcycle, setDeletingMotorcycle] = useState<Motorcycle | null>(null)
-  // Passo atual do Wizard de cadastro (1 = Dados Básicos, 2 = Manutenções Iniciais)
+  // Passo atual do Wizard de cadastro (1 = Dados Básicos, 2 = Manutenções Iniciais).
   const [step, setStep] = useState<1 | 2>(1)
-  // Mapa de valores (KM ou Data) informados no passo 2 do cadastro
+  // Mapa de valores (KM ou Data) informados no passo 2 do cadastro.
   const [bootstrapItems, setBootstrapItems] = useState<Record<string, string>>({})
 
   /**
-   * CONSTANTE: filteredMotorcycles
-   * 
-   * Filtra a lista de motos em tempo real com base no status selecionado e no termo de busca.
-   * A busca ignora maiúsculas/minúsculas e procura em Placa, Modelo, Marca e Cor.
+   * @const filteredMotorcycles
+   * @description Filtra a lista de motos em tempo real com base no status e busca.
+   * O "porquê" de ser uma constante derivada: Evita a necessidade de um estado
+   * separado para a lista filtrada, recalculando-a apenas quando as dependências
+   * (`motorcycles`, `filter`, `search`) mudam, o que é eficiente.
    */
   const filteredMotorcycles = motorcycles.filter((m) => {
-    // Verifica se a moto pertence à categoria de status selecionada
+    // Verifica se a moto pertence à categoria de status selecionada.
     const passesFilter = filter === 'all' || m.status === filter
-    // Verifica se algum campo da moto contém o texto da busca
+    // Verifica se algum campo da moto contém o texto da busca (case-insensitive).
     const passesSearch = !search || [m.license_plate, m.model, m.make, m.color].some(
       (v) => v?.toLowerCase().includes(search.toLowerCase())
     )
@@ -309,8 +313,8 @@ export default function MotorcyclesPage() {
   })
 
   /**
-   * HANDLER: openNewMotorcycle
-   * Prepara o estado para abrir o modal de criação de um novo veículo.
+   * @function openNewMotorcycle
+   * @description Prepara o estado para abrir o modal de criação de um novo veículo.
    */
   function openNewMotorcycle() {
     setEditingId(null)           // Modo: Criação
@@ -321,8 +325,8 @@ export default function MotorcyclesPage() {
   }
 
   /**
-   * HANDLER: closeModal
-   * Reseta os estados auxiliares e fecha o modal.
+   * @function closeModal
+   * @description Reseta os estados auxiliares e fecha o modal.
    */
   function closeModal() {
     setModalOpen(false)
@@ -331,8 +335,8 @@ export default function MotorcyclesPage() {
   }
 
   /**
-   * HANDLER: openEditMotorcycle
-   * Prepara o estado para abrir o modal de edição de um veículo existente.
+   * @function openEditMotorcycle
+   * @description Prepara o estado para abrir o modal de edição de um veículo existente.
    */
   function openEditMotorcycle(motorcycle: Motorcycle) {
     setEditingId(motorcycle.id)                  // Modo: Edição
@@ -341,10 +345,8 @@ export default function MotorcyclesPage() {
   }
 
   /**
-   * HANDLER: handleStep1
-   * 
-   * Processa a submissão do formulário de dados básicos.
-   * Se for edição, finaliza imediatamente. Se for nova, avança para o passo 2.
+   * @function handleStep1
+   * @description Processa a submissão do passo 1. Se for edição, finaliza. Se for criação, avança.
    */
   function handleStep1(e: React.FormEvent) {
     e.preventDefault() // Evita recarregamento da página
@@ -356,9 +358,8 @@ export default function MotorcyclesPage() {
   }
 
   /**
-   * HANDLER: handleSubmitFinal
-   * 
-   * Consolida todos os dados do formulário e salva no estado global (emula banco de dados).
+   * @function handleSubmitFinal
+   * @description Consolida os dados do formulário e salva no estado global (simula o DB).
    */
   function handleSubmitFinal() {
     // Criação do objeto de dados higienizado
@@ -397,16 +398,16 @@ export default function MotorcyclesPage() {
       } as Motorcycle
       setMotorcycles((prev) => [newMotorcycle, ...prev])
       
-      // LOGICA FUTURA: Aqui os 'bootstrapItems' seriam enviados para API 
-      // para criar registros iniciais na tabela de histórico de manutenção.
+      // LÓGICA FUTURA: Aqui os 'bootstrapItems' seriam enviados para uma API
+      // para criar os registros iniciais na tabela de histórico de manutenção.
     }
 
     closeModal() // Fecha modal e limpa estados
   }
 
   /**
-   * HANDLER: confirmDeletion
-   * Executa a remoção física da moto da lista atual.
+   * @function confirmDeletion
+   * @description Executa a remoção definitiva da moto da lista.
    */
   function confirmDeletion() {
     if (!deletingMotorcycle) return
@@ -414,23 +415,21 @@ export default function MotorcyclesPage() {
     setDeletingMotorcycle(null) // Fecha modal de confirmação
   }
 
-  /**
-   * RENDERIZAÇÃO: MotosPage
-   */
+  // Renderização principal do componente
   return (
     <div className="flex flex-col min-h-full">
       {/* 
-        * COMPONENTE: Cabeçalho
-        * Exibe o título "Motos" e o contador total de veículos cadastrados.
-        * Fornece o botão de ação principal para cadastrar nova moto.
+        * COMPONENTE: Cabeçalho da Página
+        * Exibe o título e o contador total de veículos.
+        * Fornece a ação principal para cadastrar nova moto.
         */}
       <Header
-        title="Motorcycles"
-        subtitle={`${motorcycles.length} motorcycles registered in the fleet`}
+        title="Motocicletas"
+        subtitle={`${motorcycles.length} motos registradas na frota`}
         actions={
           <Button onClick={openNewMotorcycle} className="shadow-lg shadow-[#BAFF1A]/10">
             <Plus className="w-4 h-4" />
-            Nova Motorcycle
+            Nova Moto
           </Button>
         }
       />
@@ -473,7 +472,7 @@ export default function MotorcyclesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
             <input
               type="text"
-              placeholder="Search license plate, model, make, or color..."
+              placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#606060] focus:outline-none focus:border-[#BAFF1A]/50 focus:ring-1 focus:ring-[#BAFF1A]/20 transition-all"
@@ -486,17 +485,17 @@ export default function MotorcyclesPage() {
           * Renderiza os cards das motos filtradas ou uma mensagem de "vazio".
           */}
         {filteredMotorcycles.length === 0 ? (
-          /* ESTADO VAZIO: Quando nenhum critério de busca/filtro retorna resultados */
+          /* ESTADO VAZIO: Quando a busca/filtro não retorna resultados */
           <div className="flex flex-col items-center justify-center py-24 bg-[#1a1a1a]/50 rounded-2xl border border-dashed border-[#333333]">
             <div className="w-16 h-16 bg-[#252525] rounded-full flex items-center justify-center text-[#555555] mb-4">
               <Bike className="w-8 h-8" />
             </div>
-            <p className="text-[#A0A0A0] font-medium">No vehicles found for current filters.</p>
+            <p className="text-[#A0A0A0] font-medium">Nenhum veículo encontrado para os filtros atuais.</p>
             <button 
               onClick={() => {setFilter('all'); setSearch('');}}
               className="text-xs text-[#BAFF1A] mt-2 hover:underline"
             >
-              Clear all filters
+              Limpar todos os filtros
             </button>
           </div>
         ) : (
@@ -513,7 +512,7 @@ export default function MotorcyclesPage() {
                 <div className="h-40 bg-gradient-to-b from-[#2a2a2a] to-[#202020] flex items-center justify-center border-b border-[#333333] relative">
                   <div className="flex flex-col items-center gap-2 text-[#444444] group-hover:text-[#666666] transition-colors">
                     <Bike className="w-14 h-14" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">No image</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Sem Imagem</span>
                   </div>
                   
                   {/* SELO DE MANUTENÇÃO: Indicativo crítico de segurança */}
@@ -521,12 +520,12 @@ export default function MotorcyclesPage() {
                     {moto.maintenance_up_to_date ? (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-tight">
                         <CheckCircle className="w-3 h-3" />
-                        Maintenance Up-to-Date
+                        Manutenção em Dia
                       </span>
                     ) : (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-tight">
                         <AlertCircle className="w-3 h-3" />
-                        Review Pending
+                        Revisão Pendente
                       </span>
                     )}
                   </div>
@@ -540,7 +539,7 @@ export default function MotorcyclesPage() {
                       <h4 className="font-bold text-white text-base leading-tight truncate group-hover:text-[#BAFF1A] transition-colors">
                         {moto.make} {moto.model}
                       </h4>
-                      <p className="text-xs text-[#606060] mt-1 font-medium">Mfg/Model Year: {moto.year}</p>
+                      <p className="text-xs text-[#606060] mt-1 font-medium">Fab/Mod: {moto.year}</p>
                     </div>
                     <StatusBadge status={moto.status} />
                   </div>
@@ -606,16 +605,16 @@ export default function MotorcyclesPage() {
       <Modal
         open={modalOpen}
         onClose={closeModal}
-        title={editingId ? 'Edit Motorcycle Data' : step === 1 ? 'Register Motorcycle — Step 1: Identification' : 'Register Motorcycle — Step 2: Configure Revisions'}
+        title={editingId ? 'Editar Dados da Moto' : step === 1 ? 'Cadastrar Moto — Passo 1: Identificação' : 'Cadastrar Moto — Passo 2: Configurar Revisões'}
         size="lg"
       >
-        {/* ── SECTION: STEP 1 - BASIC AND TECHNICAL DATA ──────────────────────────────── */}
+        {/* ── SEÇÃO: PASSO 1 - DADOS BÁSICOS E TÉCNICOS ──────────────────────────────── */}
         {(editingId || step === 1) && (
         <form onSubmit={handleStep1} className="space-y-5 p-1">
           {/* Identificação Legal */}
           <div className="grid grid-cols-2 gap-5">
             <Input
-              label="Vehicle License Plate"
+              label="Placa do Veículo"
               placeholder="Ex: ABC1D23"
               value={form.licensePlate}
               onChange={(e) => setForm({ ...form, licensePlate: e.target.value })}
@@ -623,8 +622,8 @@ export default function MotorcyclesPage() {
               
             />
             <Input
-              label="RENAVAM Code"
-              placeholder="Enter the 11 digits"
+              label="Código RENAVAM"
+              placeholder="Digite os 11 dígitos"
               value={form.renavam}
               onChange={(e) => setForm({ ...form, renavam: e.target.value })}
               required
@@ -634,14 +633,14 @@ export default function MotorcyclesPage() {
           {/* Dados de Fabricação */}
           <div className="grid grid-cols-2 gap-5">
             <Input
-              label="Make / Manufacturer"
+              label="Marca / Fabricante"
               placeholder="Ex: HONDA"
               value={form.make}
               onChange={(e) => setForm({ ...form, make: e.target.value })}
               required
             />
             <Input
-              label="Commercial Model"
+              label="Modelo Comercial"
               placeholder="Ex: CG 160 FAN"
               value={form.model}
               onChange={(e) => setForm({ ...form, model: e.target.value })}
@@ -652,21 +651,21 @@ export default function MotorcyclesPage() {
           {/* Características Físicas e Motorização */}
           <div className="grid grid-cols-3 gap-5">
             <Input
-              label="Year (Mfg/Model)"
+              label="Ano (Fab/Mod)"
               placeholder="Ex: 2024/2024"
               value={form.year}
               onChange={(e) => setForm({ ...form, year: e.target.value })}
               required
             />
             <Input
-              label="Predominant Color"
+              label="Cor Predominante"
               placeholder="Ex: PRETA"
               value={form.color}
               onChange={(e) => setForm({ ...form, color: e.target.value })}
               required
             />
             <Select
-              label="Fuel"
+              label="Combustível"
               options={fuelOptions}
               value={form.fuel}
               onChange={(e) => setForm({ ...form, fuel: e.target.value })}
@@ -675,32 +674,32 @@ export default function MotorcyclesPage() {
 
           <div className="grid grid-cols-2 gap-5">
             <Input
-              label="Chassis Number"
-              placeholder="Enter the code engraved on the frame"
+              label="Número do Chassi"
+              placeholder="Digite o código gravado no chassi"
               value={form.chassis}
               onChange={(e) => setForm({ ...form, chassis: e.target.value })}
               required
             />
             <Input
-              label="Engine Displacement (CC)"
+              label="Cilindrada do Motor (CC)"
               placeholder="Ex: 162cc"
               value={form.engineCapacity}
               onChange={(e) => setForm({ ...form, engineCapacity: e.target.value })}
             />
           </div>
 
-          {/* ACQUISITION HISTORY: Details who GoMoto bought the vehicle from */}
+          {/* HISTÓRICO DE AQUISIÇÃO: Detalhes de quem a GoMoto comprou o veículo */}
           <div className="border-t border-white/5 pt-4 mt-2">
-            <h5 className="text-[10px] font-bold text-[#BAFF1A] uppercase tracking-widest mb-4">Purchase Information</h5>
+            <h5 className="text-[10px] font-bold text-[#BAFF1A] uppercase tracking-widest mb-4">Informações da Compra</h5>
             <div className="grid grid-cols-2 gap-5">
               <Input
-                label="Previous Owner (Seller)"
+                label="Dono Anterior (Vendedor)"
                 placeholder="Nome conforme documento"
                 value={form.previousOwnerName}
                 onChange={(e) => setForm({ ...form, previousOwnerName: e.target.value })}
               />
               <Input
-                label="Seller's CPF"
+                label="CPF do Vendedor"
                 placeholder="000.000.000-00"
                 value={form.previousOwnerDocument}
                 onChange={(e) => setForm({ ...form, previousOwnerDocument: e.target.value })}
@@ -708,14 +707,14 @@ export default function MotorcyclesPage() {
             </div>
             <div className="grid grid-cols-2 gap-5 mt-5">
               <Input
-                label="Purchase Date"
+                label="Data da Compra"
                 type="date"
                 value={form.purchaseDate}
                 onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })}
               />
               <Input
-                label="Acquisition Value / FIPE (R$)"
-                placeholder="0.00"
+                label="Valor de Aquisição / FIPE (R$)"
+                placeholder="0,00"
                 value={form.fipeValue}
                 onChange={(e) => setForm({ ...form, fipeValue: e.target.value })}
               />
@@ -725,15 +724,15 @@ export default function MotorcyclesPage() {
           {/* STATUS OPERACIONAL E USO ATUAL */}
           <div className="grid grid-cols-2 gap-5 border-t border-white/5 pt-4">
             <Select
-              label="Current Fleet Status"
+              label="Status Atual na Frota"
               options={statusOptions}
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
             />
             <Input
-              label="Entry Mileage"
+              label="Quilometragem de Entrada"
               type="number"
-              placeholder="Current KM indicated on the panel"
+              placeholder="KM atual indicado no painel"
               value={form.currentKm}
               onChange={(e) => setForm({ ...form, currentKm: e.target.value })}
             />
@@ -741,8 +740,8 @@ export default function MotorcyclesPage() {
 
           {/* CAMPO DE TEXTO LIVRE PARA VISTORIA */}
           <Textarea
-            label="Inspection Report / Additional Observations"
-            placeholder="Describe scratches, damages, or details observed upon vehicle delivery..."
+            label="Laudo de Vistoria / Observações Adicionais"
+            placeholder="Descreva arranhões, avarias ou detalhes observados na entrega do veículo..."
             rows={4}
             value={form.observations}
             onChange={(e) => setForm({ ...form, observations: e.target.value })}
@@ -751,19 +750,19 @@ export default function MotorcyclesPage() {
           {/* BOTÕES DE NAVEGAÇÃO DO MODAL */}
           <div className="flex gap-4 justify-end pt-4 border-t border-white/5">
             <Button type="button" variant="ghost" onClick={closeModal}>
-              CANCEL
+              CANCELAR
             </Button>
             <Button type="submit" className="min-w-[180px]">
               {editingId ? (
                 /* Botão se estiver editando */
                 <>
                   <Edit2 className="w-4 h-4" />
-                  SAVE CHANGES
+                  SALVAR ALTERAÇÕES
                 </>
               ) : (
                 /* Botão se estiver criando nova moto */
                 <>
-                  NEXT STEP: REVISIONS →
+                  PRÓXIMO PASSO: REVISÕES →
                 </>
               )}
             </Button>
@@ -771,13 +770,13 @@ export default function MotorcyclesPage() {
         </form>
         )}
 
-        {/* ── SECTION: STEP 2 - MAINTENANCE BOOTSTRAP (ONLY FOR NEW MOTORCYCLES) ─────────────────── */}
+        {/* ── SEÇÃO: PASSO 2 - BOOTSTRAP DE MANUTENÇÃO (APENAS PARA NOVAS MOTOS) ─────────────────── */}
         {!editingId && step === 2 && (
           <div className="space-y-6 p-1">
             <div className="bg-[#BAFF1A]/5 border border-[#BAFF1A]/10 rounded-xl p-4">
               <p className="text-sm text-[#A0A0A0] leading-relaxed">
-                For the system to predict upcoming revisions, inform the <strong className="text-white">last time</strong> each item below was changed or revised. 
-                <br /><span className="text-[10px] text-[#606060]">TIP: If unknown, leave blank and the system will mark it as "Immediate Revision Needed".</span>
+                Para o sistema prever as próximas revisões, informe a <strong className="text-white">última vez</strong> que cada item abaixo foi trocado ou revisado. 
+                <br /><span className="text-[10px] text-[#606060]">DICA: Se não souber, deixe em branco e o sistema marcará como "Revisão Imediata".</span>
               </p>
             </div>
 
@@ -796,7 +795,7 @@ export default function MotorcyclesPage() {
                       <div className="relative">
                         <input
                           type="number"
-                          placeholder="Last Change KM"
+                          placeholder="KM da Última Troca"
                           value={bootstrapItems[item.id] ?? ''}
                           onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
                           className="w-36 px-4 py-2 rounded-lg bg-[#2A2A2A] border border-[#333333] text-sm text-white placeholder-[#555555] focus:outline-none focus:border-[#BAFF1A]/40 text-right font-mono"
@@ -829,11 +828,11 @@ export default function MotorcyclesPage() {
             {/* AÇÕES DE NAVEGAÇÃO DO WIZARD */}
             <div className="flex gap-4 justify-between pt-4 border-t border-white/5">
               <Button variant="ghost" onClick={() => setStep(1)} className="px-6">
-                ← BACK TO DATA
+                ← VOLTAR AOS DADOS
               </Button>
               <Button onClick={handleSubmitFinal} className="px-10 shadow-lg shadow-[#BAFF1A]/20">
                 <Plus className="w-4 h-4" />
-                FINISH REGISTRATION
+                CONCLUIR CADASTRO
               </Button>
             </div>
           </div>
@@ -844,42 +843,42 @@ export default function MotorcyclesPage() {
         * MODAL: CONFIRMAÇÃO DE EXCLUSÃO
         * Medida de segurança para evitar exclusão acidental.
         */}
-      <Modal open={!!deletingMotorcycle} onClose={() => setDeletingMotorcycle(null)} title="Confirm Permanent Deletion" size="sm">
+      <Modal open={!!deletingMotorcycle} onClose={() => setDeletingMotorcycle(null)} title="Confirmar Exclusão Permanente" size="sm">
         <div className="space-y-6">
           <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl">
             <p className="text-[#A0A0A0] text-sm leading-relaxed text-center">
-              You are about to remove the motorcycle <br />
+              Você está prestes a remover a moto <br />
               <strong className="text-white text-base font-bold">{deletingMotorcycle?.make} {deletingMotorcycle?.model} — Placa {deletingMotorcycle?.license_plate}</strong>
               <br /><br />
-              This operation <span className="text-red-400 font-bold underline">cannot be undone</span>, and all linked histories will be lost.
+              Esta operação <span className="text-red-400 font-bold underline">não pode ser desfeita</span> e todos os históricos vinculados serão perdidos.
             </p>
           </div>
           
           <div className="flex gap-3">
             <Button variant="ghost" onClick={() => setDeletingMotorcycle(null)} className="flex-1">
-              CANCEL
+              CANCELAR
             </Button>
             <Button variant="danger" onClick={confirmDeletion} className="flex-1 shadow-lg shadow-red-500/20">
               <Trash2 className="w-4 h-4" />
-              CONFIRM DELETION
+              CONFIRMAR EXCLUSÃO
             </Button>
           </div>
         </div>
       </Modal>
 
       {/* 
-        * MODAL: VISUALIZAÇÃO DETALHADA (READ-ONLY)
-        * Exibe todas as informações técnicas e de histórico do veículo de forma organizada.
+        * MODAL: VISUALIZAÇÃO DETALHADA (FICHA TÉCNICA)
+        * Exibe todas as informações de forma organizada e apenas para leitura.
         */}
       {motorcycleDetails && (
         <Modal
           open={!!motorcycleDetails}
           onClose={() => setMotorcycleDetails(null)}
-          title="Vehicle Technical Sheet"
+          title="Ficha Técnica do Veículo"
           size="lg"
         >
           <div className="space-y-8 p-1">
-            {/* MODAL HEADER: Title and Main Status */}
+            {/* CABEÇALHO DO MODAL: Título e Status Principal */}
             <div className="flex items-start justify-between gap-6 pb-6 border-b border-white/5">
               <div>
                 <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">
@@ -912,17 +911,17 @@ export default function MotorcyclesPage() {
               <section className="space-y-4">
                 <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Dados de Registro</h5>
                 <div className="space-y-4">
-                  <DetailRow label="Placa (Letras/Números)" value={motorcycleDetails.license_plate} mono />
-                  <DetailRow label="Código RENAVAM (11 dígitos)" value={motorcycleDetails.renavam} mono />
-                  <DetailRow label="Número do Chassi (Gravação)" value={motorcycleDetails.chassis} mono />
+                  <DetailRow label="Placa do Veículo" value={motorcycleDetails.license_plate} mono />
+                  <DetailRow label="Código RENAVAM" value={motorcycleDetails.renavam} mono />
+                  <DetailRow label="Número do Chassi" value={motorcycleDetails.chassis} mono />
                 </div>
               </section>
 
               <section className="space-y-4">
-                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Especificações Motoras</h5>
+                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Especificações do Motor</h5>
                 <div className="space-y-4">
                   <DetailRow label="Tipo de Combustível" value={motorcycleDetails.fuel} />
-                  <DetailRow label="Potência Nominal / Cilindrada" value={motorcycleDetails.engine_capacity} />
+                  <DetailRow label="Potência / Cilindrada" value={motorcycleDetails.engine_capacity} />
                   <DetailRow label="Identificador de Frota" value={`ID-#${motorcycleDetails.id}`} />
                 </div>
               </section>
@@ -996,17 +995,15 @@ export default function MotorcyclesPage() {
 }
 
 /**
- * SUB-COMPONENTE: DetailRow
+ * @component DetailRow
+ * @description Sub-componente para padronizar a exibição de pares Rótulo/Valor na Ficha Técnica.
+ * O "porquê": Melhora a manutenção do código ao evitar repetição de classes CSS.
  * 
- * Finalidade: Padronizar a exibição de pares Rótulo/Valor na Ficha Técnica.
- * Melhora a manutenção do código ao evitar repetição de classes CSS de grid e texto.
- * 
- * PROPS:
- * - label: Texto explicativo do campo (Ex: "Placa")
- * - value: O conteúdo em si.
- * - mono: Se verdadeiro, usa fonte monoespaçada (ideal para códigos/placas).
- * - highlight: Se verdadeiro, destaca o valor em verde limão (ideal para dinheiro).
- * - fullWidth: Se verdadeiro, ocupa as duas colunas do grid.
+ * @param {string} label - O texto explicativo do campo.
+ * @param {string | number | null} value - O conteúdo a ser exibido.
+ * @param {boolean} mono - Se verdadeiro, usa fonte monoespaçada.
+ * @param {boolean} highlight - Se verdadeiro, destaca o valor em verde.
+ * @param {boolean} fullWidth - Se verdadeiro, ocupa a largura total do grid.
  */
 function DetailRow({
   label,
@@ -1037,10 +1034,3 @@ function DetailRow({
     </div>
   )
 }
-
-/**
- * NOTAS FINAIS DE DESENVOLVIMENTO:
- * - O sistema de paginação de dados e scroll infinito pode ser implementado futuramente na grid.
- * - A integração com API de CEP/Placa pode automatizar parte do preenchimento no Passo 1.
- * - Este arquivo é o coração operacional da frota e deve manter alto rigor em validações.
- */

@@ -1,9 +1,13 @@
 /**
  * @file Table.tsx
- * @description Componente de tabela genérico e altamente reutilizável para o GoMoto.
- * Utiliza Generics (T) do TypeScript para garantir a tipagem correta dos dados em cada coluna.
- * Suporta estados de carregamento, mensagens para listas vazias, renderização customizada de células
- * e interatividade nas linhas (clique na linha).
+ * @description Componente de tabela genérico e reutilizável para o sistema GoMoto.
+ * 
+ * @summary
+ * O "porquê" deste componente é criar uma base única para todas as listagens de dados
+ * tabulares da aplicação. Ao usar Generics do TypeScript (`<T>`), ele se torna
+ * fortemente tipado e adaptável a qualquer tipo de dado (clientes, motos, cobranças, etc.).
+ * Isso padroniza a aparência, o comportamento e a forma de construir tabelas,
+ * suportando estados de carregamento, listas vazias e renderização customizada de células.
  */
 
 import { cn } from '@/lib/utils'
@@ -12,43 +16,52 @@ import { cn } from '@/lib/utils'
  * @interface Column
  * @description Define a estrutura de uma coluna da tabela.
  * 
- * @template T - O tipo do objeto de dados que a linha representa.
- * @property {string} key - Identificador único da coluna (geralmente o nome da propriedade no objeto).
- * @property {string} header - O rótulo que será exibido no cabeçalho (<thead>).
- * @property {(row: T) => React.ReactNode} [render] - Função opcional para renderizar conteúdo customizado na célula (ex: Badges, ícones).
- * @property {string} [className] - Classes CSS para estilização específica da coluna (ex: largura, alinhamento).
+ * @template T - O tipo do objeto de dados que a linha representa (ex: `User`, `Motorcycle`).
  */
 interface Column<T> {
+  /** Identificador único da coluna, geralmente o nome da propriedade no objeto de dados. */
   key: string
+  /** O rótulo que será exibido no cabeçalho da tabela (`<thead>`). */
   header: string
+  /** 
+   * Função opcional para renderizar conteúdo customizado na célula.
+   * O "porquê": Essencial para exibir componentes como Badges, ícones, ou botões,
+   * ao invés de apenas texto simples. Recebe o objeto da linha (`row`) como argumento.
+   */
   render?: (row: T) => React.ReactNode
+  /** Classes CSS adicionais para estilização específica da coluna (ex: largura, alinhamento). */
   className?: string
 }
 
 /**
  * @interface TableProps
- * @description Propriedades para configuração e comportamento da tabela.
+ * @description Propriedades para configurar e popular o componente `Table`.
  * 
- * @template T - Tipo genérico para os dados da tabela.
- * @property {Column<T>[]} columns - Configuração das colunas a serem exibidas.
- * @property {T[]} data - Array de objetos contendo os dados a serem listados.
- * @property {(row: T) => string} keyExtractor - Função para extrair uma chave única de cada linha (essencial para o React).
- * @property {(row: T) => void} [onRowClick] - Callback opcional acionado ao clicar em uma linha.
- * @property {string} [emptyMessage] - Texto exibido quando não há dados (default: 'Nenhum registro encontrado').
- * @property {boolean} [loading] - Indica se os dados estão sendo buscados no servidor.
+ * @template T - Tipo genérico para os dados da tabela, garantindo consistência com as colunas.
  */
 interface TableProps<T> {
+  /** Array com a configuração das colunas a serem exibidas. */
   columns: Column<T>[]
+  /** Array de objetos contendo os dados a serem listados. */
   data: T[]
+  /** 
+   * Função para extrair uma chave (`key`) única de cada linha.
+   * O "porquê": O React exige uma `key` estável e única para cada item em uma lista
+   * para otimizar a renderização e o gerenciamento de estado.
+   */
   keyExtractor: (row: T) => string
+  /** Callback opcional acionado quando o usuário clica em uma linha. */
   onRowClick?: (row: T) => void
+  /** Mensagem exibida quando não há dados. Padrão: 'Nenhum registro encontrado'. */
   emptyMessage?: string
+  /** Se `true`, exibe um indicador de carregamento ao invés da tabela. */
   loading?: boolean
 }
 
 /**
  * @component Table
- * @description Renderiza uma tabela HTML otimizada para o tema escuro do GoMoto.
+ * @description Renderiza uma tabela HTML estilizada para o tema escuro do GoMoto,
+ * com suporte a estados de carregamento, vazio e interatividade.
  * 
  * @template T - O tipo de dado de cada linha da tabela.
  */
@@ -61,15 +74,14 @@ export function Table<T>({
   loading,
 }: TableProps<T>) {
   
-  /** 
-   * Estado de Carregamento (Loading)
-   * Renderiza um Spinner centralizado se a prop 'loading' for verdadeira.
-   */
+  // 1. Estado de Carregamento (Loading)
+  // O "porquê": Fornece feedback visual imediato ao usuário de que os dados estão sendo
+  // buscados, melhorando a percepção de performance.
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center gap-3">
-          {/** SVG de Spinner animado */}
+          {/* Ícone de spinner animado */}
           <svg className="animate-spin h-8 w-8 text-[#BAFF1A]" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -80,10 +92,9 @@ export function Table<T>({
     )
   }
 
-  /** 
-   * Estado Vazio (Empty State)
-   * Exibido quando a lista de dados está vazia e o carregamento já terminou.
-   */
+  // 2. Estado Vazio (Empty State)
+  // O "porquê": Informa claramente ao usuário que a operação foi concluída, mas
+  // não há registros para exibir, evitando uma tela em branco confusa.
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -92,11 +103,12 @@ export function Table<T>({
     )
   }
 
+  // 3. Renderização da Tabela
   return (
-    /** Contêiner com scroll horizontal para telas menores */
+    // Contêiner que permite rolagem horizontal em telas pequenas para evitar quebra de layout.
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
-        {/** Cabeçalho da Tabela */}
+        {/* Cabeçalho da Tabela */}
         <thead>
           <tr className="border-b border-[#333333]">
             {columns.map((column) => (
@@ -113,7 +125,7 @@ export function Table<T>({
           </tr>
         </thead>
         
-        {/** Corpo da Tabela: Mapeia cada objeto do array 'data' para uma linha (<tr>) */}
+        {/* Corpo da Tabela */}
         <tbody className="divide-y divide-[#2a2a2a]">
           {data.map((rowData) => (
             <tr
@@ -121,23 +133,25 @@ export function Table<T>({
               onClick={() => onRowClick?.(rowData)}
               className={cn(
                 'transition-colors duration-100',
-                /** Aplica estilo de cursor e hover apenas se houver ação de clique definida */
+                // Estilo interativo (cursor e hover) aplicado apenas se a linha for clicável.
                 onRowClick && 'cursor-pointer hover:bg-white/[0.03]'
               )}
             >
-              {/** Mapeia as colunas definidas para criar cada célula (<td>) */}
+              {/* Células da linha */}
               {columns.map((column) => (
                 <td
                   key={column.key}
                   className={cn('px-4 py-3 text-sm text-[#A0A0A0]', column.className)}
                 >
-                  {/** 
-                   * Se a coluna possui uma função 'render', utiliza ela para o conteúdo.
-                   * Caso contrário, tenta acessar o valor pela chave (key) ou exibe um traço (-).
+                  {/**
+                   * Lógica de renderização da célula:
+                   * - Se a coluna tiver uma função `render`, ela é usada para criar conteúdo customizado.
+                   * - Caso contrário, tenta acessar a propriedade do objeto pela `column.key`.
+                   * - Se o valor não for encontrado, exibe um traço '—' como fallback.
                    */}
                   {column.render
                     ? column.render(rowData)
-                    : String((rowData as Record<string, unknown>)[column.key] ?? '-')}
+                    : String((rowData as Record<string, unknown>)[column.key] ?? '—')}
                 </td>
               ))}
             </tr>
