@@ -66,10 +66,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  */
 const variants: Record<ButtonVariant, string> = {
   primary: 'bg-[#BAFF1A] text-[#121212] font-semibold hover:bg-[#a8e617] active:bg-[#96cc15]',
-  secondary: 'bg-[#323232] text-white hover:bg-[#404040] active:bg-[#2a2a2a]',
-  ghost: 'bg-transparent text-[#A0A0A0] hover:bg-white/5 hover:text-white',
-  danger: 'bg-red-500/12 text-red-400 border border-red-500/20 hover:bg-red-500/20',
-  outline: 'bg-transparent border border-[#333333] text-white hover:border-[#BAFF1A] hover:text-[#BAFF1A]',
+  secondary: 'bg-[#323232] text-[#f5f5f5] hover:bg-[#474747]',
+  ghost: 'bg-transparent text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]',
+  danger: 'bg-[#bf1d1e] text-[#f5f5f5] hover:bg-[#a01819]',
+  outline: 'bg-transparent border border-[#474747] text-[#f5f5f5] hover:border-[#BAFF1A] hover:text-[#BAFF1A]',
 }
 
 /**
@@ -79,9 +79,9 @@ const variants: Record<ButtonVariant, string> = {
  * hierarquia visual clara e consistente entre os diferentes tamanhos de botão.
  */
 const sizes: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm rounded-md',
-  md: 'px-4 py-2 text-sm rounded-lg',
-  lg: 'px-6 py-3 text-base rounded-lg',
+  sm: 'px-3 py-1.5 text-sm rounded-full',
+  md: 'px-4 py-2 text-sm rounded-full',
+  lg: 'px-6 py-3 text-base rounded-full',
 }
 
 /**
@@ -102,7 +102,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           // 1. Classes base: aplicadas a TODAS as variantes de botão.
           'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'hover:scale-[1.025] active:scale-95',
+          'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100',
           // 2. Classes de variante: aplica o estilo da variante selecionada.
           variants[variant],
           // 3. Classes de tamanho: aplica as dimensões do tamanho selecionado.

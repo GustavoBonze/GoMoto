@@ -36,7 +36,7 @@ export async function POST() {
    * Instancia o cliente do Supabase.
    * Ele lerá automaticamente os cookies enviados pelo navegador para identificar a sessão atual.
    */
-  const supabase = createClient()
+  const supabase = await createClient()
   
   /**
    * Chama a API de autenticação do Supabase para invalidar a sessão.

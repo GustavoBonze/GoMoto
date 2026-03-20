@@ -1,963 +1,669 @@
 /**
  * @file page.tsx
- * @description Página de Registro de Entradas (Receitas) do Sistema GoMoto.
- * 
- * Este arquivo gerencia a visualização e o cadastro de todas as entradas financeiras
- * reais no caixa da empresa. Diferente da tela de cobranças (que foca no que deve ser recebido),
- * esta tela foca no que já foi efetivamente pago pelos locatários.
- * 
+ * @description Página de gestão de Entradas (Receitas) do Sistema GoMoto.
+ *
+ * Gerencia o registro de todas as entradas financeiras reais no caixa da empresa.
+ * Diferente da tela de cobranças (que foca no que deve ser recebido), esta tela
+ * foca no que já foi efetivamente pago pelos locatários.
+ *
  * Funcionalidades principais:
- * - Registro histórico de pagamentos recebidos (Semanal, Caução, Multas, etc.).
- * - Painel estatístico com Total Geral, Total do Mês e comparativo com o mês anterior.
- * - Detalhamento (breakdown) de receitas por categoria de referência e por método de pagamento.
- * - Identificação da motocicleta mais rentável do mês atual.
- * - Busca global e filtros rápidos por tipo de entrada.
- * - Paginação de resultados para otimização de performance.
- * 
+ * - Listagem de entradas filtrada por mês com total destacado no topo.
+ * - CRUD completo: criar, editar e excluir entradas via modais.
+ * - Busca por placa, locatário ou tipo de referência.
+ * - Autocomplete de placas a partir das motos cadastradas no Supabase.
+ * - Cards de resumo: Total do Mês, Quantidade de Lançamentos, Ticket Médio.
+ *
  * O código utiliza identificadores em Inglês para conformidade técnica e
  * comentários em Português Brasil para clareza da regra de negócio local.
  */
 
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Plus, Edit2, Trash2, TrendingUp, Search } from 'lucide-react'
-import { Header } from '@/components/layout/Header'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { Card } from '@/components/ui/Card'
-import { Input, Select, Textarea } from '@/components/ui/Input'
-import { Modal } from '@/components/ui/Modal'
-import { Table } from '@/components/ui/Table'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import { Pagination } from '@/components/ui/Pagination'
-import type { Income } from '@/types'
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Plus, Edit2, Trash2, TrendingUp, Calendar, DollarSign, Search } from 'lucide-react';
+import type { Income } from '@/types';
+import { createClient } from '@/lib/supabase/client';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { Header } from '@/components/layout/Header';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Input, Select, Textarea } from '@/components/ui/Input';
+import { Table } from '@/components/ui/Table';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
-/**
- * @constant mockIncomes
- * @description Dados simulados representando entradas financeiras históricas.
- * Utilizado para demonstração de interface e testes de layout enquanto o backend não é integrado.
- */
-const mockIncomes: Income[] = [
-  {
-    id: '141',
-    vehicle: 'AAA0A00',
-    date: '2026-03-11',
-    lessee: 'ALEXANDRE DANTAS DAS SILVA',
-    amount: 150.00,
-    reference: 'Proporcional',
-    payment_method: 'Boleto',
-    period_from: '2026-03-09',
-    period_to: '2026-03-10',
-    observations: '',
-    created_at: '2026-03-11T10:00:00Z',
-  },
-  {
-    id: '142',
-    vehicle: 'AAA0A00',
-    date: '2026-03-09',
-    lessee: 'ALEXANDRE DANTAS DAS SILVA',
-    amount: 500.00,
-    reference: 'Caução',
-    payment_method: 'PIX',
-    observations: '',
-    created_at: '2026-03-09T10:00:00Z',
-  },
-  {
-    id: '140',
-    vehicle: 'CCC2C22',
-    date: '2026-03-11',
-    lessee: 'FABRICIO DO VALE NEPOMUCENO',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-03-04',
-    period_to: '2026-03-10',
-    observations: '',
-    created_at: '2026-03-11T10:00:00Z',
-  },
-  {
-    id: '139',
-    vehicle: 'DDD3D33',
-    date: '2026-03-11',
-    lessee: 'FLAVIO SILVA COUTINHO',
-    amount: 337.50,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-03-04',
-    period_to: '2026-03-10',
-    observations: 'Semanal com divisão de manutenção R$ 12,50',
-    created_at: '2026-03-11T10:00:00Z',
-  },
-  {
-    id: '138',
-    vehicle: 'DDD3D33',
-    date: '2026-03-04',
-    lessee: 'FLAVIO SILVA COUTINHO',
-    amount: 304.25,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-25',
-    period_to: '2026-03-03',
-    observations: 'Semanal com divisão de manutenção R$ 45,75',
-    created_at: '2026-03-04T10:00:00Z',
-  },
-  {
-    id: '137',
-    vehicle: 'CCC2C22',
-    date: '2026-03-04',
-    lessee: 'FABRICIO DO VALE NEPOMUCENO',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-25',
-    period_to: '2026-03-03',
-    observations: '',
-    created_at: '2026-03-04T10:00:00Z',
-  },
-  {
-    id: '136',
-    vehicle: 'DDD3D33',
-    date: '2026-02-25',
-    lessee: 'FLAVIO SILVA COUTINHO',
-    amount: 335.55,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-18',
-    period_to: '2026-02-24',
-    observations: 'Semanal com divisão de manutenção R$ 14,45 troca de óleo',
-    created_at: '2026-02-25T10:00:00Z',
-  },
-  {
-    id: '135',
-    vehicle: 'CCC2C22',
-    date: '2026-02-25',
-    lessee: 'FABRICIO DO VALE NEPOMUCENO',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-18',
-    period_to: '2026-02-24',
-    observations: '',
-    created_at: '2026-02-25T10:00:00Z',
-  },
-  {
-    id: '134',
-    vehicle: 'DDD3D33',
-    date: '2026-02-18',
-    lessee: 'FLAVIO SILVA COUTINHO',
-    amount: 330.00,
-    reference: 'Semanal',
-    payment_method: 'PIX',
-    period_from: '2026-02-11',
-    period_to: '2026-02-17',
-    observations: 'Semanal com desconto integral da troca da lona de freio R$ 20,00',
-    created_at: '2026-02-18T10:00:00Z',
-  },
-  {
-    id: '133',
-    vehicle: 'CCC2C22',
-    date: '2026-02-18',
-    lessee: 'FABRICIO DO VALE NEPOMUCENO',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-11',
-    period_to: '2026-02-17',
-    observations: '',
-    created_at: '2026-02-18T10:00:00Z',
-  },
-  {
-    id: '132',
-    vehicle: 'BBB1B11',
-    date: '2026-02-16',
-    lessee: 'DOUGLAS DOS SANTOS SIMÕES',
-    amount: 630.00,
-    reference: 'Quinzenal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-01',
-    period_to: '2026-02-15',
-    observations: '',
-    created_at: '2026-02-16T10:00:00Z',
-  },
-  {
-    id: '131',
-    vehicle: 'DDD3D33',
-    date: '2026-02-11',
-    lessee: 'FLAVIO SILVA COUTINHO',
-    amount: 173.00,
-    reference: 'Proporcional',
-    payment_method: 'PIX',
-    period_from: '2026-02-06',
-    period_to: '2026-02-10',
-    observations: 'Proporcional com desconto integral de troca do farol R$ 27,00',
-    created_at: '2026-02-11T10:00:00Z',
-  },
-  {
-    id: '130',
-    vehicle: 'CCC2C22',
-    date: '2026-02-11',
-    lessee: 'FABRICIO DO VALE NEPOMUCENO',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-02-04',
-    period_to: '2026-02-10',
-    observations: '',
-    created_at: '2026-02-11T10:00:00Z',
-  },
-  {
-    id: '129',
-    vehicle: 'DDD3D33',
-    date: '2026-02-06',
-    lessee: 'FLAVIO SILVA COUTINHO',
-    amount: 500.00,
-    reference: 'Caução',
-    payment_method: 'PIX',
-    observations: '',
-    created_at: '2026-02-06T10:00:00Z',
-  },
-  {
-    id: '128',
-    vehicle: 'CCC2C22',
-    date: '2026-02-04',
-    lessee: 'FABRICIO DO VALE NEPOMUCENO',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-01-28',
-    period_to: '2026-02-03',
-    observations: '',
-    created_at: '2026-02-04T10:00:00Z',
-  },
-  {
-    id: '127',
-    vehicle: 'AAA0A00',
-    date: '2026-02-04',
-    lessee: 'THIAGO ALVES CARLOS',
-    amount: 350.00,
-    reference: 'Semanal',
-    payment_method: 'Boleto',
-    period_from: '2026-01-28',
-    period_to: '2026-02-03',
-    observations: '',
-    created_at: '2026-02-04T10:00:00Z',
-  },
-  {
-    id: '126',
-    vehicle: 'BBB1B11',
-    date: '2026-01-31',
-    lessee: 'DOUGLAS DOS SANTOS SIMÕES',
-    amount: 630.00,
-    reference: 'Quinzenal',
-    payment_method: 'Boleto',
-    period_from: '2026-01-16',
-    period_to: '2026-01-31',
-    observations: '',
-    created_at: '2026-01-31T10:00:00Z',
-  },
-  {
-    id: '23',
-    vehicle: 'AAA0A00',
-    date: '2025-05-07',
-    lessee: 'MARCOS FELIPE NEVES LOUREIRO',
-    amount: 100.00,
-    reference: 'Pagamento de Multa',
-    payment_method: 'PIX',
-    observations: 'Parcela 2 de 3 — multa de trânsito pendente',
-    created_at: '2025-05-07T10:00:00Z',
-  },
-  {
-    id: '19',
-    vehicle: 'AAA0A00',
-    date: '2025-05-04',
-    lessee: 'MARCOS FELIPE NEVES LOUREIRO',
-    amount: 100.00,
-    reference: 'Pagamento de Multa',
-    payment_method: 'PIX',
-    observations: 'Parcela 1 de 3 — multa de trânsito',
-    created_at: '2025-05-04T10:00:00Z',
-  },
-]
+// --- INTERFACES LOCAIS ---
 
 /**
- * @constant referenceOptions
- * @description Categorias de referência para classificar a origem da entrada financeira.
+ * @interface Moto
+ * @description Estrutura simplificada de moto usada no datalist de autocomplete de placas.
  */
-const referenceOptions = [
-  { value: '', label: 'Selecione a referência' },
-  { value: 'Semanal', label: 'Semanal' },
-  { value: 'Quinzenal', label: 'Quinzenal' },
-  { value: 'Mensal', label: 'Mensal' },
-  { value: 'Proporcional', label: 'Proporcional' },
-  { value: 'Caução', label: 'Caução' },
-  { value: 'Pagamento de Multa', label: 'Pagamento de Multa' },
-  { value: 'Pagamento de Manutenção', label: 'Pagamento de Manutenção' },
-  { value: 'Outros', label: 'Outros' },
-]
-
-/**
- * @constant paymentMethodOptions
- * @description Formas de pagamento aceitas e registradas pelo sistema.
- */
-const paymentMethodOptions = [
-  { value: '', label: 'Selecione o método' },
-  { value: 'PIX', label: 'PIX' },
-  { value: 'Boleto', label: 'Boleto' },
-  { value: 'Cartão de crédito', label: 'Cartão de crédito' },
-  { value: 'Cartão de débito', label: 'Cartão de débito' },
-  { value: 'Dinheiro', label: 'Dinheiro' },
-]
-
-/**
- * @constant vehicleOptions
- * @description Lista de placas de veículos para vinculação da entrada (frota atual).
- */
-const vehicleOptions = [
-  { value: '', label: 'Selecione o veículo' },
-  { value: 'BBB1B11', label: 'BBB1B11' },
-  { value: 'AAA0A00', label: 'AAA0A00' },
-  { value: 'CCC2C22', label: 'CCC2C22' },
-  { value: 'DDD3D33', label: 'DDD3D33' },
-  { value: 'RJA5J86', label: 'RJA5J86' },
-]
-
-/**
- * @constant referenceBadge
- * @description Mapeamento de estilos visuais (cores) para cada tipo de referência de entrada.
- */
-const referenceBadge: Record<string, 'success' | 'info' | 'warning' | 'muted' | 'brand' | 'danger' | 'orange'> = {
-  Semanal: 'success',
-  Quinzenal: 'brand',
-  Proporcional: 'success',
-  Mensal: 'info',
-  Caução: 'warning',
-  'Pagamento de Multa': 'danger',
-  'Pagamento de Manutenção': 'orange',
-  Outros: 'muted',
+interface Moto {
+  id: string;
+  license_plate: string;
+  model: string;
+  make: string;
 }
 
-/**
- * @constant defaultForm
- * @description Estrutura de dados inicial para o formulário de cadastro de nova entrada.
- */
-const defaultForm = {
+// --- CONSTANTES ---
+
+/** @constant REFERENCIAS — Tipos possíveis para uma entrada financeira. */
+const REFERENCIAS = [
+  'Aluguel Semanal',
+  'Aluguel Quinzenal',
+  'Aluguel Mensal',
+  'Caução',
+  'Multa',
+  'Proporcional',
+  'Outros',
+];
+
+/** @constant METODOS_PAGAMENTO — Formas de pagamento aceitas pela empresa. */
+const METODOS_PAGAMENTO = [
+  'PIX',
+  'Dinheiro',
+  'Cartão de Crédito',
+  'Cartão de Débito',
+  'Boleto',
+  'Transferência',
+];
+
+/** @constant FORM_INICIAL — Estado padrão do formulário ao criar uma nova entrada. */
+const FORM_INICIAL = {
   vehicle: '',
   date: new Date().toISOString().split('T')[0],
   lessee: '',
   amount: '',
-  reference: '',
-  payment_method: '',
+  reference: 'Aluguel Semanal',
+  payment_method: 'PIX',
   period_from: '',
   period_to: '',
   observations: '',
-}
+};
 
-/** @constant PAGE_SIZE - Número de registros exibidos por página na tabela. */
-const PAGE_SIZE = 10
+// --- COMPONENTE PRINCIPAL ---
 
 /**
- * @component IncomesPage
- * @description Componente funcional que renderiza a interface de Entradas Financeiras.
- * Gerencia a lógica de filtragem, paginação, e as operações de CRUD (localmente neste estágio).
+ * @component EntradasPage
+ * @description Página principal de gestão de entradas financeiras do GoMoto.
  */
-export default function IncomesPage() {
-  /** @state incomes - Lista total de entradas carregadas no estado local. */
-  const [incomes, setIncomes] = useState<Income[]>(mockIncomes)
-  /** @state modalOpen - Controla a abertura do modal de cadastro/edição. */
-  const [modalOpen, setModalOpen] = useState(false)
-  /** @state editing - Objeto da entrada que está sendo alterada (null se for nova). */
-  const [editing, setEditing] = useState<Income | null>(null)
-  /** @state deleting - Objeto da entrada marcada para exclusão definitiva. */
-  const [deleting, setDeleting] = useState<Income | null>(null)
-  /** @state form - Estado que armazena os valores dos inputs do formulário. */
-  const [form, setForm] = useState(defaultForm)
-  /** @state search - Termo de pesquisa para busca na lista. */
-  const [search, setSearch] = useState('')
-  /** @state referenceFilter - Filtro ativo por categoria de referência (ex: Semanal). */
-  const [referenceFilter, setReferenceFilter] = useState('all')
-  /** @state page - Índice da página atual na paginação da tabela. */
-  const [page, setPage] = useState(0)
+export default function EntradasPage() {
+  const supabase = createClient();
 
-  /** VARIÁVEIS DE CALENDÁRIO PARA MÉTRICAS COMPARATIVAS */
-  const today = new Date()
-  const currentMonth = today.getMonth()
-  const currentYear = today.getFullYear()
-  const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
-  const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
+  // --- Estados de Dados ---
+  /** Lista de entradas carregadas do Supabase para o mês selecionado. */
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  /** Lista de motos cadastradas para o autocomplete de placas. */
+  const [motos, setMotos] = useState<Moto[]>([]);
 
-  /** @variable currentMonthIncomes - Filtragem de registros ocorridos no mês vigente. */
-  const currentMonthIncomes = incomes.filter((e) => {
-    const d = new Date(e.date)
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear
-  })
+  // --- Estados de Carregamento e Ações ---
+  /** Indica se os dados da tabela estão sendo buscados. */
+  const [loading, setLoading] = useState(true);
+  /** Indica se o formulário está sendo submetido (criar ou editar). */
+  const [saving, setSaving] = useState(false);
+  /** Indica se a exclusão está em andamento. */
+  const [deleting, setDeleting] = useState(false);
 
-  /** @variable previousMonthIncomes - Filtragem de registros ocorridos no mês imediatamente anterior. */
-  const previousMonthIncomes = incomes.filter((e) => {
-    const d = new Date(e.date)
-    return d.getMonth() === previousMonth && d.getFullYear() === previousYear
-  })
+  // --- Estados de Filtro ---
+  /** Texto digitado no campo de busca rápida. */
+  const [searchQuery, setSearchQuery] = useState('');
+  /** Mês selecionado no filtro, no formato 'YYYY-MM'. Padrão: mês atual. */
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
 
-  /** @variable currentMonthTotal - Soma financeira das entradas do mês atual. */
-  const currentMonthTotal = currentMonthIncomes.reduce((sum, e) => sum + e.amount, 0)
-  /** @variable previousMonthTotal - Soma financeira das entradas do mês anterior. */
-  const previousMonthTotal = previousMonthIncomes.reduce((sum, e) => sum + e.amount, 0)
-  /** @variable monthlyVariation - Cálculo percentual de crescimento ou queda vs mês anterior. */
-  const monthlyVariation = previousMonthTotal > 0
-    ? ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
-    : null
+  // --- Estados de Controle de Modais ---
+  /** Controla a visibilidade do modal de criação/edição. */
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  /** Controla a visibilidade do modal de confirmação de exclusão. */
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  /** Guarda a entrada em edição ou exclusão; null indica modo de criação. */
+  const [currentIncome, setCurrentIncome] = useState<Income | null>(null);
 
-  /** @variable totalOverall - Soma total de todas as entradas registradas no sistema. */
-  const totalOverall = incomes.reduce((sum, e) => sum + e.amount, 0)
-  /** @variable averageTicket - Média ponderada por registro de entrada. */
-  const averageTicket = incomes.length > 0 ? totalOverall / incomes.length : 0
+  // --- Estado do Formulário ---
+  /** Dados preenchidos no formulário do modal. */
+  const [formData, setFormData] = useState(FORM_INICIAL);
+  /** Erros de validação do formulário. */
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // --- BUSCA DE DADOS ---
 
   /**
-   * @function getBreakdownByReference
-   * @description Agrupa e soma os valores das entradas por categoria de referência.
-   * @param list - Lista de entradas a serem analisadas.
-   * @returns Array de tuplas [referência, { amount, count }] ordenado por valor decrescente.
+   * @description Busca as entradas e as motos do Supabase.
+   * Filtra as entradas pelo mês selecionado usando os limites de data.
    */
-  function getBreakdownByReference(list: Income[]) {
-    const map: Record<string, { amount: number; count: number }> = {}
-    list.forEach((e) => {
-      if (!map[e.reference]) map[e.reference] = { amount: 0, count: 0 }
-      map[e.reference].amount += e.amount
-      map[e.reference].count += 1
-    })
-    return Object.entries(map).sort((a, b) => b[1].amount - a[1].amount)
-  }
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [yearStr, monthStr] = selectedMonth.split('-');
+      const year = parseInt(yearStr);
+      const month = parseInt(monthStr);
 
-  /**
-   * @function getBreakdownByMethod
-   * @description Agrupa e soma os valores das entradas por método de pagamento.
-   * @param list - Lista de entradas a serem analisadas.
-   */
-  function getBreakdownByMethod(list: Income[]) {
-    const map: Record<string, { amount: number; count: number }> = {}
-    list.forEach((e) => {
-      const method = e.payment_method || 'Não informado'
-      if (!map[method]) map[method] = { amount: 0, count: 0 }
-      map[method].amount += e.amount
-      map[method].count += 1
-    })
-    return Object.entries(map).sort((a, b) => b[1].amount - a[1].amount)
-  }
+      const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month, 0).toISOString().split('T')[0];
 
-  /** ANÁLISE DE RENTABILIDADE POR VEÍCULO NO MÊS */
-  const motorcycleProfitability: Record<string, number> = {}
-  currentMonthIncomes.forEach((e) => {
-    motorcycleProfitability[e.vehicle] = (motorcycleProfitability[e.vehicle] ?? 0) + e.amount
-  })
-  /** @variable topMotorcycle - Placa e valor da moto que mais gerou receita no mês. */
-  const topMotorcycle = Object.entries(motorcycleProfitability).sort((a, b) => b[1] - a[1])[0]
+      const [incomesResult, motosResult] = await Promise.all([
+        supabase
+          .from('incomes')
+          .select('*')
+          .gte('date', firstDay)
+          .lte('date', lastDay)
+          .order('date', { ascending: false }),
+        supabase
+          .from('motorcycles')
+          .select('id, license_plate, model, make')
+          .order('license_plate'),
+      ]);
 
-  /** OPÇÕES DE FILTRO RÁPIDO NA INTERFACE */
-  const referenceTabs = [
-    { label: 'Todas', value: 'all' },
-    { label: 'Semanal', value: 'Semanal' },
-    { label: 'Quinzenal', value: 'Quinzenal' },
-    { label: 'Proporcional', value: 'Proporcional' },
-    { label: 'Caução', value: 'Caução' },
-    { label: 'Multa', value: 'Pagamento de Multa' },
-    { label: 'Outros', value: 'others' },
-  ]
+      if (incomesResult.error) throw incomesResult.error;
+      if (motosResult.error) throw motosResult.error;
 
-  /**
-   * @variable filteredIncomes
-   * @description Aplica os filtros de busca (textual) e referência (aba selecionada) sobre a lista total.
-   */
-  const filteredIncomes = incomes.filter((e) => {
-    const q = search.toLowerCase()
-    const matchesSearch =
-      e.lessee.toLowerCase().includes(q) ||
-      e.vehicle.toLowerCase().includes(q) ||
-      e.reference.toLowerCase().includes(q) ||
-      (e.observations?.toLowerCase().includes(q) ?? false)
-    
-    const matchesRef =
-      referenceFilter === 'all' ? true :
-      referenceFilter === 'others' ? !['Semanal', 'Quinzenal', 'Proporcional', 'Caução', 'Pagamento de Multa'].includes(e.reference) :
-      e.reference === referenceFilter
-    
-    return matchesSearch && matchesRef
-  })
-
-  /** PAGINAÇÃO LÓGICA */
-  const totalItems = filteredIncomes.length
-  /** @variable pageIncomes - Segmento da lista filtrada que será exibido na página atual. */
-  const pageIncomes = filteredIncomes.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-
-  /** MANIPULADORES DE EVENTOS */
-
-  function handleSearch(value: string) {
-    setSearch(value)
-    setPage(0) // Reseta para a primeira página ao buscar
-  }
-
-  function handleReferenceFilter(value: string) {
-    setReferenceFilter(value)
-    setPage(0) // Reseta para a primeira página ao filtrar
-  }
-
-  function openNew() {
-    setEditing(null)
-    setForm(defaultForm)
-    setModalOpen(true)
-  }
-
-  function openEdit(income: Income) {
-    setEditing(income)
-    setForm({
-      vehicle: income.vehicle,
-      date: income.date,
-      lessee: income.lessee,
-      amount: String(income.amount),
-      reference: income.reference,
-      payment_method: income.payment_method,
-      period_from: income.period_from ?? '',
-      period_to: income.period_to ?? '',
-      observations: income.observations ?? '',
-    })
-    setModalOpen(true)
-  }
-
-  /**
-   * @function handleSubmit
-   * @description Processa a gravação de dados, suportando tanto novos registros quanto edições.
-   */
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (editing) {
-      setIncomes((prev) =>
-        prev.map((en) =>
-          en.id === editing.id
-            ? {
-                ...en,
-                vehicle: form.vehicle,
-                date: form.date,
-                lessee: form.lessee,
-                amount: parseFloat(form.amount),
-                reference: form.reference,
-                payment_method: form.payment_method,
-                period_from: form.period_from || undefined,
-                period_to: form.period_to || undefined,
-                observations: form.observations || undefined,
-              }
-            : en
-        )
-      )
-    } else {
-      const newEntry: Income = {
-        id: String(Date.now()),
-        vehicle: form.vehicle,
-        date: form.date,
-        lessee: form.lessee,
-        amount: parseFloat(form.amount),
-        reference: form.reference,
-        payment_method: form.payment_method,
-        period_from: form.period_from || undefined,
-        period_to: form.period_to || undefined,
-        observations: form.observations || undefined,
-        created_at: new Date().toISOString(),
-      }
-      setIncomes((prev) => [newEntry, ...prev])
+      setIncomes((incomesResult.data as Income[]) || []);
+      setMotos((motosResult.data as Moto[]) || []);
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+    } finally {
+      setLoading(false);
     }
-    setForm(defaultForm)
-    setEditing(null)
-    setModalOpen(false)
-  }
+  }, [selectedMonth, supabase]);
+
+  /** Recarrega os dados sempre que o mês do filtro mudar. */
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // --- CÁLCULOS E FILTRAGEM ---
 
   /**
-   * @function handleDelete
-   * @description Confirma a remoção definitiva de um registro do estado.
+   * @description Lista de entradas filtrada pelo texto de busca.
    */
-  function handleDelete() {
-    if (!deleting) return
-    setIncomes((prev) => prev.filter((en) => en.id !== deleting.id))
-    setDeleting(null)
-  }
+  const filteredIncomes = useMemo(() => {
+    if (!searchQuery) return incomes;
+    const lowerQuery = searchQuery.toLowerCase();
+    return incomes.filter(
+      (income) =>
+        income.vehicle?.toLowerCase().includes(lowerQuery) ||
+        income.lessee?.toLowerCase().includes(lowerQuery) ||
+        income.reference?.toLowerCase().includes(lowerQuery)
+    );
+  }, [incomes, searchQuery]);
 
-  /** DEFINIÇÃO DAS COLUNAS DA TABELA */
+  /** Totais calculados do período filtrado. */
+  const { totalAmount, launchCount, averageTicket } = useMemo(() => {
+    const total = filteredIncomes.reduce((acc, curr) => acc + Number(curr.amount), 0);
+    const count = filteredIncomes.length;
+    const avg = count > 0 ? total / count : 0;
+    return { totalAmount: total, launchCount: count, averageTicket: avg };
+  }, [filteredIncomes]);
+
+  // --- HANDLERS DE MODAL ---
+
+  /**
+   * @description Abre o modal em modo de criação ou edição.
+   * @param income — Dados da entrada que será editada; undefined para criar nova.
+   */
+  const handleOpenModal = (income?: Income) => {
+    if (income) {
+      setCurrentIncome(income);
+      setFormData({
+        vehicle: income.vehicle || '',
+        date: income.date || new Date().toISOString().split('T')[0],
+        lessee: income.lessee || '',
+        amount: String(income.amount || ''),
+        reference: income.reference || 'Aluguel Semanal',
+        payment_method: income.payment_method || 'PIX',
+        period_from: income.period_from || '',
+        period_to: income.period_to || '',
+        observations: income.observations || '',
+      });
+    } else {
+      setCurrentIncome(null);
+      setFormData(FORM_INICIAL);
+    }
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
+  /** @description Fecha o modal de criação/edição e limpa o estado. */
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setCurrentIncome(null);
+    setFormData(FORM_INICIAL);
+    setFormErrors({});
+  };
+
+  /**
+   * @description Abre o modal de confirmação de exclusão.
+   * @param income — Entrada que será excluída.
+   */
+  const handleOpenDeleteModal = (income: Income) => {
+    setCurrentIncome(income);
+    setIsDeleteModalOpen(true);
+  };
+
+  /** @description Fecha o modal de confirmação de exclusão. */
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setCurrentIncome(null);
+  };
+
+  // --- HANDLERS DE FORMULÁRIO ---
+
+  /** @description Handler genérico para campos input e textarea do formulário. */
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  /** @description Handler genérico para campos select do formulário. */
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // --- OPERAÇÕES CRUD ---
+
+  /**
+   * @description Valida os campos obrigatórios antes de salvar.
+   * @returns true se o formulário for válido, false caso contrário.
+   */
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!formData.vehicle) errors.vehicle = 'A placa é obrigatória';
+    if (!formData.date) errors.date = 'A data é obrigatória';
+    if (!formData.lessee) errors.lessee = 'O locatário é obrigatório';
+    if (!formData.amount || isNaN(Number(formData.amount))) errors.amount = 'Informe um valor válido';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  /**
+   * @description Salva os dados do formulário no Supabase (INSERT ou UPDATE).
+   */
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+    try {
+      const payload = {
+        vehicle: formData.vehicle.toUpperCase(),
+        date: formData.date,
+        lessee: formData.lessee,
+        amount: Number(formData.amount),
+        reference: formData.reference,
+        payment_method: formData.payment_method,
+        period_from: formData.period_from || null,
+        period_to: formData.period_to || null,
+        observations: formData.observations || null,
+      };
+
+      if (currentIncome) {
+        const { error } = await supabase
+          .from('incomes')
+          .update(payload)
+          .eq('id', currentIncome.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('incomes').insert([payload]);
+        if (error) throw error;
+      }
+
+      handleCloseModal();
+      fetchData();
+    } catch (error) {
+      console.error('Erro ao salvar entrada:', error);
+      alert('Erro ao salvar os dados. Verifique e tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * @description Executa a exclusão definitiva da entrada selecionada.
+   */
+  const handleDelete = async () => {
+    if (!currentIncome) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('incomes')
+        .delete()
+        .eq('id', currentIncome.id);
+
+      if (error) throw error;
+
+      handleCloseDeleteModal();
+      fetchData();
+    } catch (error) {
+      console.error('Erro ao excluir entrada:', error);
+      alert('Erro ao excluir a entrada.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // --- DEFINIÇÃO DE COLUNAS DA TABELA ---
+
+  /** @description Configuração das colunas da tabela de entradas. */
   const columns = [
-    {
-      key: 'id',
-      header: '#',
-      render: (row: Income) => (
-        <span className="text-[#A0A0A0] text-xs">{row.id}</span>
-      ),
-    },
-    {
-      key: 'vehicle',
-      header: 'Veículo',
-      render: (row: Income) => (
-        <span className="font-mono text-sm font-semibold text-white bg-[#2a2a2a] px-2 py-0.5 rounded">
-          {row.vehicle}
-        </span>
-      ),
-    },
     {
       key: 'date',
       header: 'Data',
-      render: (row: Income) => (
-        <div>
-          <p className="text-white text-sm">{formatDate(row.date)}</p>
-          {row.period_from && row.period_to && (
-            <p className="text-xs text-[#A0A0A0] mt-0.5">
-              {formatDate(row.period_from)} a {formatDate(row.period_to)}
-            </p>
-          )}
-        </div>
+      render: (item: Income) => formatDate(item.date),
+    },
+    {
+      key: 'vehicle',
+      header: 'Placa',
+      render: (item: Income) => (
+        <span className="bg-[#323232] text-[#BAFF1A] px-2 py-0.5 rounded text-xs font-mono">
+          {item.vehicle}
+        </span>
       ),
     },
     {
       key: 'lessee',
       header: 'Locatário',
-      render: (row: Income) => (
-        <p className="text-white text-sm max-w-[180px] truncate" title={row.lessee}>
-          {row.lessee}
-        </p>
+      render: (item: Income) => (
+        <span className="font-medium text-[#f5f5f5]">{item.lessee}</span>
       ),
     },
     {
       key: 'reference',
-      header: 'Referência',
-      render: (row: Income) => (
-        <Badge variant={referenceBadge[row.reference] ?? 'muted'}>{row.reference}</Badge>
-      ),
+      header: 'Tipo',
+      render: (item: Income) => <Badge variant="muted">{item.reference}</Badge>,
+    },
+    {
+      key: 'period',
+      header: 'Período',
+      render: (item: Income) =>
+        item.period_from && item.period_to
+          ? `${formatDate(item.period_from)} - ${formatDate(item.period_to)}`
+          : '—',
     },
     {
       key: 'payment_method',
       header: 'Método',
-      render: (row: Income) => (
-        <span className="text-sm text-[#A0A0A0]">{row.payment_method || '—'}</span>
-      ),
+      render: (item: Income) => item.payment_method,
     },
     {
       key: 'amount',
       header: 'Valor',
-      render: (row: Income) => (
-        <span className="font-semibold text-[#BAFF1A]">{formatCurrency(row.amount)}</span>
-      ),
-    },
-    {
-      key: 'observations',
-      header: 'Observação',
-      render: (row: Income) => (
-        <p className="text-xs text-[#A0A0A0] max-w-[220px] truncate" title={row.observations}>
-          {row.observations || '—'}
-        </p>
+      render: (item: Income) => (
+        <span className="text-[#BAFF1A] font-semibold">
+          {formatCurrency(Number(item.amount))}
+        </span>
       ),
     },
     {
       key: 'actions',
-      header: '',
-      render: (row: Income) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => openEdit(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
-            title="Editar"
+      header: 'Ações',
+      className: 'text-right',
+      render: (item: Income) => (
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenModal(item)}
+            aria-label="Editar entrada"
           >
             <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeleting(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
-            title="Excluir"
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleOpenDeleteModal(item)}
+            aria-label="Excluir entrada"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       ),
     },
-  ]
+  ];
+
+  // --- RENDERIZAÇÃO ---
 
   return (
-    <div className="flex flex-col min-h-full">
-      {/* Cabeçalho da página com integração de botões de ação global */}
+    <div className="bg-[#121212] min-h-screen">
+      {/* Cabeçalho da página com botão de nova entrada */}
       <Header
         title="Entradas"
-        subtitle="Registro de recebimentos"
         actions={
-          <Button onClick={openNew}>
-            <Plus className="w-4 h-4" />
+          <Button onClick={() => handleOpenModal()} variant="primary">
+            <Plus className="w-4 h-4 mr-1" />
             Nova Entrada
           </Button>
         }
       />
 
-      <div className="p-6 space-y-5">
-        {/* Painel de Estatísticas Superiores (Cards Informativos) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-          {/* Card 1: Resumo Financeiro Histórico */}
-          <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total Geral</p>
-              <p className="text-2xl font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalOverall)}</p>
-              <div className="flex items-center gap-3 mt-1">
-                <p className="text-xs text-[#A0A0A0]">{incomes.length} registros · ticket médio {formatCurrency(averageTicket)}</p>
-              </div>
+        {/* Cards de Estatísticas do Mês */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Total do mês em destaque com barra lateral verde limão */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-[#c7c7c7] font-medium">Total do Mês</p>
+              <TrendingUp className="w-5 h-5 text-[#BAFF1A]" />
             </div>
-            <div className="p-4 space-y-2">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por referência (Geral)</p>
-              {getBreakdownByReference(incomes).map(([ref, { amount, count }]) => (
-                <div key={ref} className="flex items-center justify-between">
-                  <span className="text-xs text-[#A0A0A0]">{ref}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#A0A0A0]">{count}x</span>
-                    <span className="text-xs font-medium text-white">{formatCurrency(amount)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-3xl font-bold text-[#BAFF1A]">{formatCurrency(totalAmount)}</p>
           </Card>
 
-          {/* Card 2: Performance Financeira Mensal e Variação */}
-          <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total do Mês</p>
-              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(currentMonthTotal)}</p>
-              <div className="flex items-center gap-2 mt-1">
-                {monthlyVariation !== null ? (
-                  <span className={`text-xs font-medium ${monthlyVariation >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {monthlyVariation >= 0 ? '▲' : '▼'} {Math.abs(monthlyVariation).toFixed(1)}% vs mês anterior
-                  </span>
-                ) : (
-                  <span className="text-xs text-[#A0A0A0]">{currentMonthIncomes.length} registros</span>
-                )}
-              </div>
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-[#c7c7c7] font-medium">Lançamentos no Mês</p>
+              <Calendar className="w-5 h-5 text-[#c7c7c7]" />
             </div>
-            <div className="p-4 space-y-2">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Por referência (Mês)</p>
-              {getBreakdownByReference(currentMonthIncomes).length === 0
-                ? <p className="text-xs text-[#A0A0A0]">Sem entradas este mês</p>
-                : getBreakdownByReference(currentMonthIncomes).map(([ref, { amount, count }]) => (
-                  <div key={ref} className="flex items-center justify-between">
-                    <span className="text-xs text-[#A0A0A0]">{ref}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#A0A0A0]">{count}x</span>
-                      <span className="text-xs font-medium text-white">{formatCurrency(amount)}</span>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
+            <p className="text-3xl font-bold text-[#f5f5f5]">{launchCount}</p>
           </Card>
 
-          {/* Card 3: Análise de Operações (Métodos e Veículos) */}
-          <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Volume de Operações</p>
-              <p className="text-2xl font-bold text-white mt-1">{incomes.length}</p>
-              <p className="text-xs text-[#A0A0A0] mt-1">{currentMonthIncomes.length} lançamentos em {today.toLocaleString('pt-BR', { month: 'long' })}</p>
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-[#c7c7c7] font-medium">Ticket Médio</p>
+              <DollarSign className="w-5 h-5 text-[#c7c7c7]" />
             </div>
-            <div className="p-4 space-y-2 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Métodos de pagamento (mês)</p>
-              {getBreakdownByMethod(currentMonthIncomes).length === 0
-                ? <p className="text-xs text-[#A0A0A0]">Sem entradas este mês</p>
-                : getBreakdownByMethod(currentMonthIncomes).map(([method, { amount, count }]) => (
-                  <div key={method} className="flex items-center justify-between">
-                    <span className="text-xs text-[#A0A0A0]">{method}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#A0A0A0]">{count}x</span>
-                      <span className="text-xs font-medium text-white">{formatCurrency(amount)}</span>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-            <div className="p-4">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">Moto mais rentável (mês)</p>
-              {topMotorcycle ? (
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-semibold text-white bg-[#2a2a2a] px-2 py-0.5 rounded">{topMotorcycle[0]}</span>
-                  <span className="text-sm font-semibold text-[#BAFF1A]">{formatCurrency(topMotorcycle[1])}</span>
-                </div>
-              ) : (
-                <p className="text-xs text-[#A0A0A0]">Sem dados suficientes</p>
-              )}
-            </div>
+            <p className="text-3xl font-bold text-[#f5f5f5]">{formatCurrency(averageTicket)}</p>
           </Card>
-
         </div>
 
-        {/* Barra de Filtros e Ferramentas de Pesquisa */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex gap-2 flex-wrap">
-            {referenceTabs.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => handleReferenceFilter(tab.value)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  referenceFilter === tab.value
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
-                }`}
-              >
-                {tab.label}
-                {tab.value !== 'all' && (
-                  <span className="ml-1.5 opacity-70">
-                    ({tab.value === 'others'
-                      ? incomes.filter((e) => !['Semanal', 'Quinzenal', 'Proporcional', 'Caução', 'Pagamento de Multa'].includes(e.reference)).length
-                      : incomes.filter((e) => e.reference === tab.value).length})
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="ml-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+        {/* Filtros: Busca e Seleção de Mês */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-[#616161]" />
+            </div>
             <input
               type="text"
-              placeholder="Buscar por locatário, veículo ou referência..."
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
+              placeholder="Buscar por placa, locatário ou tipo..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-3 h-12 rounded-lg text-sm text-[#f5f5f5] bg-[#323232] border border-[#323232] placeholder:text-[#616161] focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30 transition-colors"
+            />
+          </div>
+
+          <div className="relative">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="block w-full sm:w-48 px-3 h-12 rounded-lg text-sm text-[#f5f5f5] bg-[#323232] border border-[#323232] focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30 transition-colors"
             />
           </div>
         </div>
 
-        {/* Listagem Principal com Tabela e Controles de Paginação */}
-        <Card padding="none">
+        {/* Linha de resumo acima da tabela */}
+        <div className="flex items-center justify-between text-sm text-[#c7c7c7] mb-3 px-1">
+          <span>{filteredIncomes.length} {filteredIncomes.length === 1 ? 'entrada encontrada' : 'entradas encontradas'}</span>
+          <span>
+            Total:{' '}
+            <span className="font-semibold text-[#BAFF1A]">{formatCurrency(totalAmount)}</span>
+          </span>
+        </div>
+
+        {/* Tabela de Entradas */}
+        <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
           <Table
             columns={columns}
-            data={pageIncomes}
+            data={filteredIncomes}
             keyExtractor={(row) => row.id}
-            emptyMessage="Nenhuma entrada encontrada"
+            loading={loading}
+            emptyMessage="Nenhuma entrada encontrada para este período."
           />
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={totalItems}
-            onPageChange={setPage}
-          />
-        </Card>
-      </div>
-
-      {/* Modal de Confirmação para Exclusão de Registro */}
-      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Confirmar Exclusão" size="sm">
-        <div className="space-y-4">
-          <div className="p-4 bg-red-500/8 border border-red-500/20 rounded-lg">
-            <p className="text-sm text-white font-medium">Tem certeza que deseja excluir esta entrada?</p>
-            <p className="text-xs text-[#A0A0A0] mt-2">Esta ação é irreversível e afetará os relatórios financeiros.</p>
-          </div>
-          {deleting && (
-            <div className="p-3 bg-[#2a2a2a] rounded-lg space-y-1">
-              <p className="text-xs text-[#A0A0A0]">Entrada a ser excluída:</p>
-              <p className="text-sm text-white font-medium">{deleting.lessee}</p>
-              <p className="text-xs text-[#A0A0A0]">{deleting.vehicle} · {formatCurrency(deleting.amount)} · {formatDate(deleting.date)}</p>
-            </div>
-          )}
-          <div className="flex gap-3 justify-end pt-1">
-            <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              <Trash2 className="w-4 h-4" />
-              Sim, excluir
-            </Button>
-          </div>
         </div>
-      </Modal>
+      </main>
 
-      {/* Modal: Formulário de Inserção e Edição de Entradas */}
+      {/* Modal de Nova Entrada / Edição */}
       <Modal
-        open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditing(null) }}
-        title={editing ? 'Editar Entrada' : 'Nova Entrada'}
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        title={currentIncome ? 'Editar Entrada' : 'Nova Entrada'}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Veículo (Placa)"
-              options={vehicleOptions}
-              value={form.vehicle}
-              onChange={(e) => setForm({ ...form, vehicle: e.target.value })}
-              required
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Placa com datalist para autocomplete */}
+          <div>
             <Input
-              label="Data do Pagamento"
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              label="Placa da Moto *"
+              name="vehicle"
+              value={formData.vehicle}
+              onChange={handleInputChange}
+              list="motos-list"
+              placeholder="Ex: ABC-1234"
+              error={formErrors.vehicle}
               required
             />
+            <datalist id="motos-list">
+              {motos.map((moto) => (
+                <option key={moto.id} value={moto.license_plate}>
+                  {moto.license_plate} — {moto.make} {moto.model}
+                </option>
+              ))}
+            </datalist>
           </div>
 
           <Input
-            label="Locatário (Nome completo)"
-            placeholder="NOME DO LOCATÁRIO"
-            value={form.lessee}
-            onChange={(e) => setForm({ ...form, lessee: e.target.value })}
+            label="Data do Pagamento *"
+            name="date"
+            type="date"
+            value={formData.date}
+            onChange={handleInputChange}
+            error={formErrors.date}
             required
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Referência"
-              options={referenceOptions}
-              value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-              required
-            />
-            <Input
-              label="Valor Recebido (R$)"
-              type="number"
-              step="0.01"
-              placeholder="350.00"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              required
-            />
-          </div>
+          <Input
+            label="Locatário *"
+            name="lessee"
+            value={formData.lessee}
+            onChange={handleInputChange}
+            placeholder="Nome completo"
+            error={formErrors.lessee}
+            required
+          />
+
+          <Input
+            label="Valor (R$) *"
+            name="amount"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.amount}
+            onChange={handleInputChange}
+            placeholder="0.00"
+            error={formErrors.amount}
+            required
+          />
 
           <Select
-            label="Método de Pagamento"
-            options={paymentMethodOptions}
-            value={form.payment_method}
-            onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
-            required
+            label="Tipo de Referência *"
+            name="reference"
+            value={formData.reference}
+            onChange={handleSelectChange}
+            options={REFERENCIAS.map((r) => ({ value: r, label: r }))}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Período — De (opcional)"
-              type="date"
-              value={form.period_from}
-              onChange={(e) => setForm({ ...form, period_from: e.target.value })}
-              hint="Início da vigência do pagamento"
-            />
-            <Input
-              label="Período — Até (opcional)"
-              type="date"
-              value={form.period_to}
-              onChange={(e) => setForm({ ...form, period_to: e.target.value })}
-              hint="Fim da vigência do pagamento"
-            />
-          </div>
-
-          <Textarea
-            label="Observação"
-            placeholder="Detalhes adicionais sobre o recebimento..."
-            rows={3}
-            value={form.observations}
-            onChange={(e) => setForm({ ...form, observations: e.target.value })}
+          <Select
+            label="Método de Pagamento *"
+            name="payment_method"
+            value={formData.payment_method}
+            onChange={handleSelectChange}
+            options={METODOS_PAGAMENTO.map((m) => ({ value: m, label: m }))}
           />
 
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => { setModalOpen(false); setEditing(null) }}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              <TrendingUp className="w-4 h-4" />
-              {editing ? 'Salvar Alterações' : 'Registrar Entrada'}
-            </Button>
+          <Input
+            label="Período De (opcional)"
+            name="period_from"
+            type="date"
+            value={formData.period_from}
+            onChange={handleInputChange}
+          />
+
+          <Input
+            label="Período Até (opcional)"
+            name="period_to"
+            type="date"
+            value={formData.period_to}
+            onChange={handleInputChange}
+          />
+
+          <div className="md:col-span-2">
+            <Textarea
+              label="Descrição / Observações (opcional)"
+              name="observations"
+              rows={3}
+              value={formData.observations}
+              onChange={handleInputChange}
+              placeholder="Detalhes adicionais sobre este recebimento..."
+            />
           </div>
-        </form>
+        </div>
+
+        {/* Rodapé do Modal */}
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="secondary" onClick={handleCloseModal} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleSave} loading={saving}>
+            {currentIncome ? 'Salvar Alterações' : 'Salvar Entrada'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal
+        open={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        title="Confirmar Exclusão"
+        size="sm"
+      >
+        <div className="mb-6">
+          <p className="text-[#c7c7c7] text-sm leading-relaxed">
+            Tem certeza que deseja excluir a entrada de{' '}
+            <span className="font-semibold text-[#BAFF1A]">
+              {currentIncome ? formatCurrency(Number(currentIncome.amount)) : ''}
+            </span>{' '}
+            do locatário{' '}
+            <span className="font-semibold text-[#f5f5f5]">{currentIncome?.lessee}</span>?
+            Esta ação não pode ser desfeita.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            onClick={handleCloseDeleteModal}
+            disabled={deleting}
+          >
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleDelete} loading={deleting}>
+            Excluir
+          </Button>
+        </div>
       </Modal>
     </div>
-  )
+  );
 }

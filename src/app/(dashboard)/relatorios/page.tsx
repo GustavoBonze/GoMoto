@@ -153,7 +153,7 @@ export default function ReportsPage() {
       <div className="p-6 space-y-6">
         {/* SEÇÃO: Resumo do Mês Atual */}
         <div>
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">
+          <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-3">
             Resumo — {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
           </p>
           
@@ -178,18 +178,18 @@ export default function ReportsPage() {
               color="brand"
             />
             <Card>
-              <p className="text-xs text-[#A0A0A0] truncate">Contratos Ativos</p>
-              <p className="text-2xl font-bold text-white mt-0.5">{monthlyStats.activeContracts}</p>
+              <p className="text-xs text-[#9e9e9e] truncate">Contratos Ativos</p>
+              <p className="text-2xl font-bold text-[#f5f5f5] mt-0.5">{monthlyStats.activeContracts}</p>
             </Card>
             <Card>
-              <p className="text-xs text-[#A0A0A0] truncate">Cobranças Pendentes</p>
-              <p className="text-2xl font-bold text-amber-400 mt-0.5">
+              <p className="text-xs text-[#9e9e9e] truncate">Cobranças Pendentes</p>
+              <p className="text-2xl font-bold text-[#e65e24] mt-0.5">
                 {monthlyStats.pendingCharges}
               </p>
             </Card>
             <Card>
-              <p className="text-xs text-[#A0A0A0] truncate">Multas</p>
-              <p className="text-2xl font-bold text-red-400 mt-0.5">
+              <p className="text-xs text-[#9e9e9e] truncate">Multas</p>
+              <p className="text-2xl font-bold text-[#ff9c9a] mt-0.5">
                 {formatCurrency(monthlyStats.totalFines)}
               </p>
             </Card>
@@ -198,7 +198,7 @@ export default function ReportsPage() {
 
         {/* SEÇÃO: Lista de Cards de Relatórios disponíveis para geração. */}
         <div>
-          <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-3">
+          <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-3">
             Relatórios disponíveis
           </p>
           
@@ -212,17 +212,17 @@ export default function ReportsPage() {
                */
               const colorMap = {
                 brand: { bg: 'bg-[#BAFF1A]/10', text: 'text-[#BAFF1A]', border: 'border-[#BAFF1A]/20' },
-                success: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' },
-                warning: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' },
-                danger: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
-                info: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
+                success: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]', border: 'border-[#28b438]/20' },
+                warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]', border: 'border-[#e65e24]/20' },
+                danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]', border: 'border-[#ff9c9a]/20' },
+                info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]', border: 'border-[#a880ff]/20' },
               }
               const styles = colorMap[report.color]
 
               return (
                 <div
                   key={report.id}
-                  className="bg-[#202020] border border-[#333333] rounded-xl p-5 flex items-start gap-4 hover:border-[#444444] transition-colors"
+                  className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-start gap-4 hover:border-[#616161] transition-colors"
                 >
                   {/* Container do Ícone com cores dinâmicas */}
                   <div className={`p-3 rounded-xl flex-shrink-0 ${styles.bg} border ${styles.border}`}>
@@ -232,7 +232,7 @@ export default function ReportsPage() {
                   <div className="flex-1 min-w-0">
                     {/* Título e Badge de disponibilidade */}
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-white text-sm">{report.title}</h3>
+                      <h3 className="font-semibold text-[#f5f5f5] text-sm">{report.title}</h3>
                       {!report.available && (
                         <Badge variant="muted" className="text-xs">
                           Em breve
@@ -240,7 +240,7 @@ export default function ReportsPage() {
                       )}
                     </div>
                     
-                    <p className="text-xs text-[#A0A0A0] mb-4 leading-relaxed">{report.description}</p>
+                    <p className="text-xs text-[#9e9e9e] mb-4 leading-relaxed">{report.description}</p>
                     
                     {/* Botão de ação (desabilitado se o relatório não estiver disponível) */}
                     <Button
@@ -269,9 +269,9 @@ export default function ReportsPage() {
 
         {/* SEÇÃO: Aviso de rodapé sobre o estado de desenvolvimento dos relatórios. */}
         <Card className="text-center py-8">
-          <BarChart2 className="w-12 h-12 text-[#888888] mx-auto mb-3" />
-          <p className="text-white font-medium mb-1">Relatórios em desenvolvimento</p>
-          <p className="text-sm text-[#A0A0A0] max-w-md mx-auto">
+          <BarChart2 className="w-12 h-12 text-[#616161] mx-auto mb-3" />
+          <p className="text-[#f5f5f5] font-medium mb-1">Relatórios em desenvolvimento</p>
+          <p className="text-sm text-[#9e9e9e] max-w-md mx-auto">
             Os relatórios completos com exportação em PDF e Excel estão sendo desenvolvidos e estarão
             disponíveis em breve.
           </p>
@@ -282,7 +282,7 @@ export default function ReportsPage() {
       {showToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#202020] border border-[#BAFF1A]/30 shadow-2xl animate-in fade-in slide-in-from-bottom">
           <div className="w-2 h-2 rounded-full bg-[#BAFF1A]" />
-          <p className="text-sm text-white">Este relatório ainda não está disponível.</p>
+          <p className="text-sm text-[#f5f5f5]">Este relatório ainda não está disponível.</p>
         </div>
       )}
     </div>

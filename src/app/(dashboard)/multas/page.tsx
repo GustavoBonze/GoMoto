@@ -3,25 +3,16 @@
  * @description Página de Controle de Multas e Infrações de Trânsito do Sistema GoMoto.
  *
  * @summary
- * Este componente é crucial para a gestão de riscos e responsabilidades da frota.
- * O "porquê" desta página existir é para centralizar o registro de infrações,
- * permitindo uma rápida identificação do infrator (cliente), a cobrança dos valores
- * e o controle de pagamentos junto aos órgãos de trânsito, evitando que a empresa
- * arque com custos que não são seus e mantendo os veículos regularizados.
- *
- * @funcionalidades
- * 1.  **Cadastro de Infrações**: Permite registrar multas com AIT, valor, data e descrição.
- * 2.  **Atribuição de Responsabilidade**: Associa a infração a um cliente e uma moto específicos.
- * 3.  **Controle Financeiro**: Define se o custo é do cliente ou da empresa.
- * 4.  **Gestão de Pagamentos**: Controla o status de quitação (Pendente vs. Pago).
- * 5.  **Painel de Resumo**: Exibe totais de multas, pendências e valores a receber/pagar.
- * 6.  **Filtros e Busca**: Facilita a localização de multas por status, responsável, cliente ou placa.
+ * Conecta ao Supabase para realizar operações CRUD na tabela `multas`,
+ * com joins para `clientes` e `motos`. Permite registrar, editar, quitar e
+ * excluir multas, além de filtrar por status e responsável.
  */
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, CheckCircle, AlertTriangle, Search } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -30,124 +21,48 @@ import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Fine, FineStatus } from '@/types'
 
 /**
- * @interface FineWithRelations
- * @description Estende a interface `Fine` base com dados denormalizados.
- * O "porquê": Para a UI, é mais performático ter os nomes do cliente e a placa da moto
- * diretamente no objeto da multa, evitando a necessidade de buscar essas informações
- * em outras listas (simulando um `JOIN` de banco de dados no front-end).
+ * @type FineWithRelations
+ * @description Tipo local que representa uma multa com os dados relacionados
+ * de cliente e moto já embutidos (resultado do JOIN do Supabase).
  */
-type FineWithRelations = Fine & {
-  customer_name: string
-  motorcycle_plate: string
-  motorcycle_model: string
+type FineWithRelations = {
+  id: string
+  customer_id: string
+  motorcycle_id: string
+  description: string
+  amount: number
+  infraction_date: string
+  status: 'pending' | 'paid'
+  payment_date?: string | null
+  responsible: 'customer' | 'company'
+  observations?: string | null
+  created_at: string
+  customers: { name: string; phone: string } | null
+  motorcycles: { license_plate: string; model: string; make: string } | null
 }
 
 /**
- * @constant mockFines
- * @description Dados fictícios para simular o histórico de multas.
- * O "porquê": Permite o desenvolvimento e teste da interface sem depender de uma API real,
- * demonstrando cenários como multas pagas, pendentes e com diferentes responsáveis.
+ * @constant commonInfractions
+ * @description Lista das infrações mais comuns do CTB para preenchimento rápido no formulário.
  */
-const mockFines: FineWithRelations[] = [
-  {
-    id: '1',
-    customer_id: '2',
-    motorcycle_id: '2',
-    description: 'Excesso de velocidade — Av. Paulista',
-    amount: 293.47,
-    infraction_date: '2024-02-20',
-    status: 'pending',
-    responsible: 'customer',
-    observations: 'AIT nº 12345678. Infração registrada pelo DETRAN.',
-    created_at: '2024-02-25T10:00:00Z',
-    customer_name: 'Fernanda Lima Oliveira',
-    motorcycle_plate: 'DEF-5678',
-    motorcycle_model: 'Honda Biz 125',
-  },
-  {
-    id: '2',
-    customer_id: '4',
-    motorcycle_id: '4',
-    description: 'Estacionamento irregular',
-    amount: 195.23,
-    infraction_date: '2024-01-10',
-    status: 'paid',
-    payment_date: '2024-01-20',
-    responsible: 'customer',
-    observations: '',
-    created_at: '2024-01-15T10:00:00Z',
-    customer_name: 'Juliana Costa Mendes',
-    motorcycle_plate: 'JKL-3456',
-    motorcycle_model: 'Honda NXR 160 Bros',
-  },
-  {
-    id: '3',
-    customer_id: '1',
-    motorcycle_id: '1',
-    description: 'Licenciamento atrasado — responsabilidade da empresa',
-    amount: 130.16,
-    infraction_date: '2024-03-01',
-    status: 'pending',
-    responsible: 'company',
-    observations: 'Empresa responsável pelo atraso no licenciamento.',
-    created_at: '2024-03-05T10:00:00Z',
-    customer_name: 'Carlos Eduardo Santos',
-    motorcycle_plate: 'ABC-1234',
-    motorcycle_model: 'Honda CG 160 Titan',
-  },
+const commonInfractions = [
+  { description: 'Excesso de velocidade até 20% acima do limite', amount: 88.38 },
+  { description: 'Não sinalizar mudança de faixa', amount: 88.38 },
+  { description: 'Conduzir sem documentos do veículo', amount: 130.16 },
+  { description: 'Conduzir sem capacete de proteção', amount: 195.23 },
+  { description: 'Estacionamento irregular', amount: 195.23 },
+  { description: 'Excesso de velocidade entre 20% e 50% acima do limite', amount: 195.23 },
+  { description: 'Avançar sinal vermelho ou parada obrigatória', amount: 293.47 },
+  { description: 'Habilitação (CNH) vencida', amount: 293.47 },
+  { description: 'Licenciamento do veículo vencido', amount: 293.47 },
+  { description: 'Uso de celular ao volante', amount: 293.47 },
+  { description: 'Conduzir sem habilitação (CNH)', amount: 880.41 },
+  { description: 'Embriaguez ao volante', amount: 2934.70 },
 ]
 
-/** @constant customerOptions - Lista de clientes simulada para seleção no formulário. */
-const customerOptions = [
-  { value: '', label: 'Selecione um cliente' },
-  { value: '1', label: 'Carlos Eduardo Santos' },
-  { value: '2', label: 'Fernanda Lima Oliveira' },
-  { value: '3', label: 'Roberto Alves Pereira' },
-  { value: '4', label: 'Juliana Costa Mendes' },
-]
-
-/** @constant motorcycleOptions - Lista de motocicletas simulada para seleção no formulário. */
-const motorcycleOptions = [
-  { value: '', label: 'Selecione uma moto' },
-  { value: '1', label: 'ABC-1234 — Honda CG 160 Titan' },
-  { value: '2', label: 'DEF-5678 — Honda Biz 125' },
-  { value: '3', label: 'GHI-9012 — Yamaha Factor 150' },
-  { value: '4', label: 'JKL-3456 — Honda NXR 160 Bros' },
-  { value: '5', label: 'MNO-7890 — Yamaha Crosser 150' },
-]
-
-/**
- * @constant clientToMoto
- * @description Mapeamento cliente → moto (baseado nos contratos ativos mockados)
- */
-const clientToMoto: Record<string, string> = {
-  '1': '1', // Carlos → ABC-1234
-  '2': '2', // Fernanda → DEF-5678
-  '3': '3', // Roberto → GHI-9012
-  '4': '4', // Juliana → JKL-3456
-}
-
-/**
- * @constant motoToClient
- * @description Mapeamento moto → cliente (baseado nos contratos ativos mockados)
- */
-const motoToClient: Record<string, string> = {
-  '1': '1',
-  '2': '2',
-  '3': '3',
-  '4': '4',
-}
-
-/** @constant responsibleOptions - Define as opções de quem deve arcar com o custo da multa. */
-const responsibleOptions = [
-  { value: 'customer', label: 'Cliente' },
-  { value: 'company', label: 'Empresa' },
-]
-
-/** @constant defaultForm - Estado inicial para o formulário de multas, garantindo que ele sempre abra limpo. */
+/** @constant defaultForm - Estado inicial do formulário de multa. */
 const defaultForm = {
   customer_id: '',
   motorcycle_id: '',
@@ -159,128 +74,105 @@ const defaultForm = {
 }
 
 /**
- * @constant commonInfractions
- * @description Lista de infrações mais comuns do CTB para preenchimento rápido.
+ * @component MultasPage
+ * @description Componente principal da página de multas.
+ * Orquestra busca de dados no Supabase, filtros, modais e operações CRUD.
  */
-const commonInfractions = [
-  { description: 'Excesso de velocidade até 20% acima do limite', amount: 88.38, severity: 'Leve' },
-  { description: 'Não sinalizar mudança de faixa', amount: 88.38, severity: 'Leve' },
-  { description: 'Conduzir sem documentos do veículo', amount: 130.16, severity: 'Média' },
-  { description: 'Conduzir sem capacete de proteção', amount: 195.23, severity: 'Grave' },
-  { description: 'Estacionamento irregular', amount: 195.23, severity: 'Grave' },
-  { description: 'Excesso de velocidade entre 20% e 50% acima do limite', amount: 195.23, severity: 'Grave' },
-  { description: 'Passageiro sem capacete de proteção', amount: 195.23, severity: 'Grave' },
-  { description: 'Avançar sinal vermelho ou parada obrigatória', amount: 293.47, severity: 'Gravíssima' },
-  { description: 'Habilitação (CNH) vencida', amount: 293.47, severity: 'Grave' },
-  { description: 'Licenciamento do veículo vencido', amount: 293.47, severity: 'Grave' },
-  { description: 'Transitar pela calçada ou acostamento', amount: 293.47, severity: 'Gravíssima' },
-  { description: 'Ultrapassagem em local proibido', amount: 293.47, severity: 'Gravíssima' },
-  { description: 'Uso de celular ao volante', amount: 293.47, severity: 'Gravíssima' },
-  { description: 'Conduzir sem habilitação (CNH)', amount: 880.41, severity: 'Gravíssima' },
-  { description: 'Excesso de velocidade acima de 50% do limite', amount: 880.41, severity: 'Gravíssima' },
-  { description: 'Manobra perigosa ou acrobática', amount: 880.41, severity: 'Gravíssima' },
-  { description: 'Trafegar na contramão', amount: 880.41, severity: 'Gravíssima' },
-  { description: 'Embriaguez ao volante', amount: 2934.70, severity: 'Gravíssima' },
-]
+export default function MultasPage() {
+  // --- ESTADOS DE DADOS ---
+  /** @state fines - Lista completa de multas buscada do Supabase. */
+  const [fines, setFines] = useState<FineWithRelations[]>([])
+  /** @state customers - Lista de clientes ativos para os selects do formulário. */
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([])
+  /** @state motorcycles - Lista de motos para os selects do formulário. */
+  const [motorcycles, setMotorcycles] = useState<{ id: string; license_plate: string; model: string; make: string }[]>([])
 
-/**
- * @component FinesPage
- * @description Componente principal da página de multas. Orquestra o estado,
- * a lógica de negócios e a renderização da interface de gerenciamento de infrações.
- */
-export default function FinesPage() {
-  // --- ESTADOS DE DADOS E UI ---
-  /**
-   * @state fines
-   * @description Armazena a lista completa de multas. É a fonte da verdade para a tabela.
-   */
-  const [fines, setFines] = useState<FineWithRelations[]>(mockFines)
-  /**
-   * @state modalOpen
-   * @description Controla a visibilidade do modal de cadastro/edição.
-   */
+  // --- ESTADOS DE UI ---
+  /** @state loading - Indica se os dados estão sendo carregados. */
+  const [loading, setLoading] = useState(true)
+  /** @state error - Mensagem de erro, se houver falha ao buscar ou salvar dados. */
+  const [error, setError] = useState<string | null>(null)
+  /** @state saving - Indica se uma operação de gravação está em andamento. */
+  const [saving, setSaving] = useState(false)
+  /** @state modalOpen - Controla a visibilidade do modal de criar/editar. */
   const [modalOpen, setModalOpen] = useState(false)
-  /**
-   * @state editingId
-   * @description Guarda o ID da multa em edição. Se `null`, o modal está em modo de "criação".
-   * O "porquê": Permite reutilizar o mesmo formulário para duas ações distintas.
-   */
+  /** @state editingId - ID da multa sendo editada; null indica criação. */
   const [editingId, setEditingId] = useState<string | null>(null)
-  /**
-   * @state form
-   * @description Armazena os valores atuais do formulário de multa.
-   */
+  /** @state form - Valores atuais do formulário de multa. */
   const [form, setForm] = useState(defaultForm)
-  /**
-   * @state deleting
-   * @description Guarda o objeto da multa selecionada para exclusão, para exibição no modal de confirmação.
-   */
+  /** @state deleting - Multa selecionada para exclusão (abre modal de confirmação). */
   const [deleting, setDeleting] = useState<FineWithRelations | null>(null)
-  /**
-   * @state payingFine
-   * @description Guarda a multa selecionada para ser baixada (pagamento), exibida no modal de confirmação.
-   * O "porquê": Permite ao usuário informar a data real do pagamento antes de confirmar a baixa.
-   */
+  /** @state payingFine - Multa selecionada para registrar pagamento. */
   const [payingFine, setPayingFine] = useState<FineWithRelations | null>(null)
-  /**
-   * @state paymentDateInput
-   * @description Armazena a data de pagamento inserida pelo usuário no modal de baixa de multa.
-   */
+  /** @state paymentDateInput - Data de pagamento informada pelo usuário no modal de baixa. */
   const [paymentDateInput, setPaymentDateInput] = useState('')
-  /**
-   * @state search
-   * @description Armazena o termo de busca digitado pelo usuário.
-   */
+
+  // --- ESTADOS DE FILTROS ---
+  /** @state search - Termo de busca textual. */
   const [search, setSearch] = useState('')
-  /**
-   * @state statusFilter
-   * @description Armazena o valor do filtro rápido selecionado (ex: 'pending', 'paid').
-   */
+  /** @state statusFilter - Aba de filtro ativa: all | pending | paid | customer | company. */
   const [statusFilter, setStatusFilter] = useState('all')
 
-  /**
-   * @const statusTabs
-   * @description Configuração das abas de filtro, combinando status de pagamento e responsável.
-   */
-  const statusTabs = [
-    { label: 'Todas', value: 'all' },
-    { label: 'Pendentes', value: 'pending' },
-    { label: 'Pagas', value: 'paid' },
-    { label: 'Cliente', value: 'customer' },
-    { label: 'Empresa', value: 'company' },
-  ]
+  // --- SUPABASE CLIENT ---
+  const supabase = createClient()
+
+  // ============================================================
+  // BUSCA DE DADOS
+  // ============================================================
 
   /**
-   * @const filteredFines
-   * @description Deriva a lista de multas a serem exibidas, aplicando os filtros de busca e de status.
-   * O "porquê": É mais eficiente recalcular esta lista derivada a cada renderização do que
-   * manter um estado separado para ela, que precisaria ser sincronizado manualmente.
+   * @function fetchAllData
+   * @description Busca multas (com join), clientes e motos de forma concorrente no Supabase.
+   * Chamada na montagem do componente e após cada operação CRUD.
    */
-  const filteredFines = fines.filter((m) => {
-    // Lógica de busca textual (case-insensitive)
-    const matchesSearch = !search || (() => {
-      const q = search.toLowerCase()
-      return (
-        m.customer_name.toLowerCase().includes(q) ||
-        m.motorcycle_plate.toLowerCase().includes(q) ||
-        m.description.toLowerCase().includes(q)
-      )
-    })()
+  const fetchAllData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [finesRes, customersRes, motosRes] = await Promise.all([
+        supabase
+          .from('fines')
+          .select('*, customers(name, phone), motorcycles(license_plate, model, make)')
+          .order('infraction_date', { ascending: false }),
+        supabase
+          .from('customers')
+          .select('id, name')
+          .eq('active', true)
+          .order('name'),
+        supabase
+          .from('motorcycles')
+          .select('id, license_plate, model, make')
+          .order('license_plate'),
+      ])
 
-    // Lógica de filtro por aba (status ou responsável)
-    const matchesFilter =
-      statusFilter === 'all' ? true :
-      statusFilter === 'customer' || statusFilter === 'company' ? m.responsible === statusFilter :
-      m.status === statusFilter
+      if (finesRes.error) throw finesRes.error
+      if (customersRes.error) throw customersRes.error
+      if (motosRes.error) throw motosRes.error
 
-    return matchesSearch && matchesFilter
-  })
+      setFines(finesRes.data as FineWithRelations[])
+      setCustomers(customersRes.data ?? [])
+      setMotorcycles(motosRes.data ?? [])
+    } catch (err) {
+      console.error('Erro ao buscar dados de multas:', err)
+      setError('Não foi possível carregar os dados. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  // --- HANDLERS DE AÇÕES ---
+  /** Carrega os dados ao montar o componente. */
+  useEffect(() => {
+    fetchAllData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ============================================================
+  // HANDLERS DE MODAL
+  // ============================================================
 
   /**
    * @function openNew
-   * @description Prepara o estado para abrir o modal de um novo registro.
+   * @description Abre o modal em modo de criação com o formulário limpo.
    */
   function openNew() {
     setEditingId(null)
@@ -290,7 +182,7 @@ export default function FinesPage() {
 
   /**
    * @function openEdit
-   * @description Prepara o estado para abrir o modal de edição com os dados de uma multa existente.
+   * @description Abre o modal em modo de edição com os dados da multa selecionada.
    */
   function openEdit(row: FineWithRelations) {
     setEditingId(row.id)
@@ -307,11 +199,68 @@ export default function FinesPage() {
   }
 
   /**
+   * @function handleCloseModal
+   * @description Fecha e reseta o modal de criar/editar.
+   */
+  function handleCloseModal() {
+    setModalOpen(false)
+    setEditingId(null)
+    setForm(defaultForm)
+  }
+
+  // ============================================================
+  // OPERAÇÕES CRUD
+  // ============================================================
+
+  /**
+   * @function handleSubmit
+   * @description Salva a multa no Supabase (INSERT para criação, UPDATE para edição).
+   */
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+
+    const payload = {
+      customer_id: form.customer_id,
+      motorcycle_id: form.motorcycle_id,
+      description: form.description,
+      amount: parseFloat(form.amount),
+      infraction_date: form.infraction_date,
+      responsible: form.responsible,
+      observations: form.observations || null,
+    }
+
+    try {
+      if (editingId) {
+        /** Edição: atualiza o registro existente pelo ID. */
+        const { error: updateError } = await supabase
+          .from('fines')
+          .update(payload)
+          .eq('id', editingId)
+        if (updateError) throw updateError
+      } else {
+        /** Criação: insere novo registro com status padrão 'pending'. */
+        const { error: insertError } = await supabase
+          .from('fines')
+          .insert({ ...payload, status: 'pending' })
+        if (insertError) throw insertError
+      }
+
+      handleCloseModal()
+      await fetchAllData()
+    } catch (err) {
+      console.error('Erro ao salvar multa:', err)
+      setError('Erro ao salvar. Verifique os dados e tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /**
    * @function handleMarkAsPaid
-   * @description Abre o modal de confirmação de pagamento para que o usuário informe a data real.
-   * O "porquê": Em vez de usar a data de hoje automaticamente, permite registrar a data exata
-   * em que o pagamento foi efetivado, garantindo precisão no histórico financeiro.
-   * @param row - A multa a ser baixada.
+   * @description Abre o modal de confirmação de pagamento para a multa selecionada,
+   * pré-preenchendo a data com o dia de hoje.
    */
   function handleMarkAsPaid(row: FineWithRelations) {
     setPayingFine(row)
@@ -320,132 +269,135 @@ export default function FinesPage() {
 
   /**
    * @function confirmPayment
-   * @description Efetiva o pagamento da multa, atualizando o status e registrando a data informada pelo usuário.
+   * @description Atualiza o status da multa para 'paid' e registra a data de pagamento.
    */
-  function confirmPayment() {
+  async function confirmPayment() {
     if (!payingFine) return
-    setFines((prev) =>
-      prev.map((m) =>
-        m.id === payingFine.id
-          ? { ...m, status: 'paid' as FineStatus, payment_date: paymentDateInput }
-          : m
-      )
-    )
-    setPayingFine(null)
-    setPaymentDateInput('')
-  }
+    setSaving(true)
+    setError(null)
+    try {
+      const { error: payError } = await supabase
+        .from('fines')
+        .update({ status: 'paid', payment_date: paymentDateInput })
+        .eq('id', payingFine.id)
+      if (payError) throw payError
 
-  /**
-   * @function handleSubmit
-   * @description Processa o salvamento dos dados do formulário, diferenciando entre criação e edição.
-   */
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    // Busca os nomes legíveis baseados nos IDs para manter a denormalização local.
-    const customerLabel = customerOptions.find((o) => o.value === form.customer_id)?.label ?? ''
-    const motorcycleLabel = motorcycleOptions.find((o) => o.value === form.motorcycle_id)?.label ?? ''
-    const [platePart, modelPart] = motorcycleLabel.split(' — ')
-
-    if (editingId) {
-      // Lógica de Edição: Atualiza a multa existente no array.
-      setFines((prev) =>
-        prev.map((m) =>
-          m.id === editingId
-            ? {
-                ...m,
-                customer_id: form.customer_id,
-                motorcycle_id: form.motorcycle_id,
-                description: form.description,
-                amount: parseFloat(form.amount),
-                infraction_date: form.infraction_date,
-                responsible: form.responsible as 'customer' | 'company',
-                observations: form.observations,
-                customer_name: customerLabel,
-                motorcycle_plate: platePart ?? m.motorcycle_plate,
-                motorcycle_model: modelPart ?? m.motorcycle_model,
-              }
-            : m
-        )
-      )
-    } else {
-      // Lógica de Criação: Adiciona uma nova multa ao início do array.
-      const newFine: FineWithRelations = {
-        id: String(Date.now()), // ID temporário
-        customer_id: form.customer_id,
-        motorcycle_id: form.motorcycle_id,
-        description: form.description,
-        amount: parseFloat(form.amount),
-        infraction_date: form.infraction_date,
-        status: 'pending',
-        responsible: form.responsible as 'customer' | 'company',
-        observations: form.observations,
-        created_at: new Date().toISOString(),
-        customer_name: customerLabel,
-        motorcycle_plate: platePart ?? '',
-        motorcycle_model: modelPart ?? '',
-      }
-      setFines((prev) => [newFine, ...prev])
+      setPayingFine(null)
+      setPaymentDateInput('')
+      await fetchAllData()
+    } catch (err) {
+      console.error('Erro ao registrar pagamento:', err)
+      setError('Erro ao registrar pagamento. Tente novamente.')
+    } finally {
+      setSaving(false)
     }
-
-    setForm(defaultForm)
-    setModalOpen(false)
   }
 
   /**
    * @function confirmDeletion
-   * @description Executa a remoção do registro de multa do estado.
+   * @description Remove a multa permanentemente do banco de dados.
    */
-  function confirmDeletion() {
+  async function confirmDeletion() {
     if (!deleting) return
-    setFines((prev) => prev.filter((m) => m.id !== deleting.id))
-    setDeleting(null)
+    setSaving(true)
+    setError(null)
+    try {
+      const { error: deleteError } = await supabase
+        .from('fines')
+        .delete()
+        .eq('id', deleting.id)
+      if (deleteError) throw deleteError
+
+      setDeleting(null)
+      await fetchAllData()
+    } catch (err) {
+      console.error('Erro ao excluir multa:', err)
+      setError('Erro ao excluir multa. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  /**
-   * @const totalPending
-   * @description Calcula o valor total de todas as multas com status "pendente".
-   */
-  const totalPending = fines
-    .filter((m) => m.status === 'pending')
-    .reduce((sum, m) => sum + m.amount, 0)
+  // ============================================================
+  // DADOS DERIVADOS E CÁLCULOS
+  // ============================================================
+
+  /** @const filteredFines - Lista de multas após aplicar filtros de busca e aba. */
+  const filteredFines = fines.filter((m) => {
+    const matchesSearch = !search || (() => {
+      const q = search.toLowerCase()
+      return (
+        (m.customers?.name ?? '').toLowerCase().includes(q) ||
+        (m.motorcycles?.license_plate ?? '').toLowerCase().includes(q) ||
+        m.description.toLowerCase().includes(q)
+      )
+    })()
+
+    const matchesFilter =
+      statusFilter === 'all' ? true :
+      statusFilter === 'customer' || statusFilter === 'company' ? m.responsible === statusFilter :
+      m.status === statusFilter
+
+    return matchesSearch && matchesFilter
+  })
+
+  /** @const pendingFines - Multas com status pendente. */
+  const pendingFines = fines.filter((f) => f.status === 'pending')
+  /** @const pendingAmount - Soma total das multas pendentes. */
+  const pendingAmount = pendingFines.reduce((acc, f) => acc + Number(f.amount), 0)
+  /** @const companyFines - Multas de responsabilidade da empresa. */
+  const companyFines = fines.filter((f) => f.responsible === 'company')
+  /** @const companyAmount - Soma total das multas da empresa. */
+  const companyAmount = companyFines.reduce((acc, f) => acc + Number(f.amount), 0)
+
+  /** @const statusTabs - Configuração das abas de filtro de status/responsável. */
+  const statusTabs = [
+    { label: 'Todas', value: 'all' },
+    { label: 'Pendentes', value: 'pending' },
+    { label: 'Pagas', value: 'paid' },
+    { label: 'Cliente', value: 'customer' },
+    { label: 'Empresa', value: 'company' },
+  ]
 
   /**
    * @const columns
-   * @description Configuração das colunas para o componente `Table`.
-   * O "porquê": Desacopla a definição da estrutura da tabela de sua renderização,
-   * permitindo customizar a exibição de cada célula com componentes (como Badges) e formatação.
+   * @description Configuração das colunas da tabela de multas.
    */
   const columns = [
     {
-      key: 'customer_name',
-      header: 'Cliente',
+      key: 'infraction_date',
+      header: 'Data',
       render: (row: FineWithRelations) => (
-        <span
-          className="font-medium text-white"
-          title="Cliente ativo no contrato de locação desta moto"
-        >
-          {row.customer_name}
-        </span>
-      ),
-    },
-    {
-      key: 'motorcycle_plate',
-      header: 'Moto',
-      render: (row: FineWithRelations) => (
-        <div>
-          <span className="block font-mono font-bold text-white">{row.motorcycle_plate}</span>
-          <span className="block text-xs text-[#A0A0A0]">{row.motorcycle_model}</span>
-        </div>
+        <span className="text-[#f5f5f5]">{formatDate(row.infraction_date)}</span>
       ),
     },
     {
       key: 'description',
-      header: 'Descrição',
+      header: 'Infração',
       render: (row: FineWithRelations) => (
         <div className="max-w-xs">
-          <p className="text-white line-clamp-1">{row.description}</p>
+          <p className="text-[#f5f5f5] line-clamp-1">{row.description}</p>
           {row.observations && (
-            <p className="text-xs text-[#A0A0A0] mt-0.5 line-clamp-1">{row.observations}</p>
+            <p className="text-xs text-[#9e9e9e] mt-0.5 line-clamp-1">{row.observations}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'cliente',
+      header: 'Cliente',
+      render: (row: FineWithRelations) => (
+        <span className="font-medium text-[#f5f5f5]">{row.customers?.name ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'moto',
+      header: 'Moto',
+      render: (row: FineWithRelations) => (
+        <div>
+          <span className="block font-mono font-bold text-[#f5f5f5]">{row.motorcycles?.license_plate ?? '—'}</span>
+          {row.motorcycles && (
+            <span className="block text-xs text-[#9e9e9e]">{row.motorcycles.make} {row.motorcycles.model}</span>
           )}
         </div>
       ),
@@ -454,13 +406,8 @@ export default function FinesPage() {
       key: 'amount',
       header: 'Valor',
       render: (row: FineWithRelations) => (
-        <span className="font-semibold text-red-400">{formatCurrency(row.amount)}</span>
+        <span className="font-semibold text-[#ff9c9a]">{formatCurrency(Number(row.amount))}</span>
       ),
-    },
-    {
-      key: 'infraction_date',
-      header: 'Data da Infração',
-      render: (row: FineWithRelations) => <span>{formatDate(row.infraction_date)}</span>,
     },
     {
       key: 'responsible',
@@ -474,9 +421,7 @@ export default function FinesPage() {
         <div>
           <StatusBadge status={row.status} />
           {row.status === 'paid' && row.payment_date && (
-            <span className="block mt-1 text-xs text-[#A0A0A0]">
-              {formatDate(row.payment_date)}
-            </span>
+            <span className="block mt-1 text-xs text-[#9e9e9e]">{formatDate(row.payment_date)}</span>
           )}
         </div>
       ),
@@ -486,28 +431,29 @@ export default function FinesPage() {
       header: 'Ações',
       render: (row: FineWithRelations) => (
         <div className="flex items-center gap-1">
-          {/* Botão para liquidação de multa pendente */}
+          {/* Botão para quitar multa pendente */}
           {row.status === 'pending' && (
             <button
               onClick={() => handleMarkAsPaid(row)}
               title="Marcar como pago"
-              className="p-1.5 rounded-lg text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-[#28b438] hover:bg-[#0e2f13] transition-colors"
             >
               <CheckCircle className="w-4 h-4" />
             </button>
           )}
-          {/* Ações padrões de edição e exclusão */}
+          {/* Editar */}
           <button
             onClick={() => openEdit(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
             title="Editar"
+            className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-colors"
           >
             <Edit2 className="w-4 h-4" />
           </button>
+          {/* Excluir */}
           <button
             onClick={() => setDeleting(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
             title="Excluir"
+            className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#ff9c9a]/10 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -516,9 +462,40 @@ export default function FinesPage() {
     },
   ]
 
+  // ============================================================
+  // OPÇÕES DOS SELECTS DO FORMULÁRIO
+  // ============================================================
+
+  const customerOptions = [
+    { value: '', label: 'Selecione um cliente' },
+    ...customers.map((c) => ({ value: c.id, label: c.name })),
+  ]
+
+  const motorcycleOptions = [
+    { value: '', label: 'Selecione uma moto' },
+    ...motorcycles.map((m) => ({ value: m.id, label: `${m.license_plate} — ${m.make} ${m.model}` })),
+  ]
+
+  const responsibleOptions = [
+    { value: 'customer', label: 'Cliente' },
+    { value: 'company', label: 'Empresa' },
+  ]
+
+  const infractionQuickfillOptions = [
+    { value: '', label: 'Selecione uma infração comum...' },
+    ...commonInfractions.map((i) => ({
+      value: i.description,
+      label: `${i.description} — ${formatCurrency(i.amount)}`,
+    })),
+  ]
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
     <div className="flex flex-col min-h-full">
-      {/* Cabeçalho da página com título e chamada para ação principal */}
+      {/* Cabeçalho com título e botão de ação principal */}
       <Header
         title="Multas"
         subtitle="Controle de infrações de trânsito"
@@ -531,127 +508,124 @@ export default function FinesPage() {
       />
 
       <div className="p-6 space-y-4">
+        {/* Exibe mensagem de erro global, se houver */}
+        {error && (
+          <div className="p-3 rounded-lg bg-[#7c1c1c]/30 border border-[#ff9c9a]/30 text-sm text-[#ff9c9a]">
+            {error}
+          </div>
+        )}
 
-        {/* Painel de Resumo Financeiro das Multas */}
+        {/* Stats cards: resumo financeiro das multas */}
         <div className="grid grid-cols-3 gap-4">
           <Card>
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total de Multas</p>
-            <p className="text-2xl font-bold text-white mt-1">{fines.length}</p>
+            <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Total de Multas</p>
+            <p className="text-2xl font-bold text-[#f5f5f5] mt-1">{fines.length}</p>
           </Card>
           <Card>
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Pendentes</p>
-            <p className="text-2xl font-bold text-amber-400 mt-1">
-              {fines.filter((m) => m.status === 'pending').length}
-            </p>
-            <p className="text-xs text-amber-400/70 mt-0.5">{formatCurrency(totalPending)}</p>
+            <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Pendentes</p>
+            <p className="text-2xl font-bold text-[#e65e24] mt-1">{pendingFines.length}</p>
+            <p className="text-xs text-[#e65e24]/70 mt-0.5">{formatCurrency(pendingAmount)}</p>
           </Card>
           <Card>
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Pagas</p>
-            <p className="text-2xl font-bold text-green-400 mt-1">
-              {fines.filter((m) => m.status === 'paid').length}
-            </p>
+            <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Da Empresa</p>
+            <p className="text-2xl font-bold text-[#a880ff] mt-1">{companyFines.length}</p>
+            <p className="text-xs text-[#a880ff]/70 mt-0.5">{formatCurrency(companyAmount)}</p>
           </Card>
         </div>
 
-        {/* Alerta Visual: Exibido apenas se houver multas pendentes */}
-        {fines.some((m) => m.status === 'pending') && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-            <p className="text-sm text-amber-400">
-              Você tem {fines.filter((m) => m.status === 'pending').length} multa(s) pendente(s) no total de{' '}
-              <strong>{formatCurrency(totalPending)}</strong>.
+        {/* Alerta visual se houver multas pendentes */}
+        {pendingFines.length > 0 && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-[#3a180f] border border-[#e65e24]/30">
+            <AlertTriangle className="w-4 h-4 text-[#e65e24] flex-shrink-0" />
+            <p className="text-sm text-[#e65e24]">
+              Há <strong>{pendingFines.length}</strong> multa(s) pendente(s) totalizando{' '}
+              <strong>{formatCurrency(pendingAmount)}</strong>.
             </p>
           </div>
         )}
 
-        {/* Barra de Ferramentas: Filtros de Status e Campo de Busca */}
+        {/* Barra de filtros e busca */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-2 flex-wrap">
             {statusTabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
                   statusFilter === tab.value
                     ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
                 {tab.value !== 'all' && (
                   <span className="ml-1.5 opacity-70">
-                    ({tab.value === 'customer' || tab.value === 'company'
+                    (
+                    {tab.value === 'customer' || tab.value === 'company'
                       ? fines.filter((m) => m.responsible === tab.value).length
-                      : fines.filter((m) => m.status === tab.value).length})
+                      : fines.filter((m) => m.status === tab.value).length}
+                    )
                   </span>
                 )}
               </button>
             ))}
           </div>
           <div className="ml-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9e9e9e]" />
             <input
               type="text"
-              placeholder="Buscar por cliente, placa ou descrição..."
+              placeholder="Buscar por cliente, placa ou infração..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
             />
           </div>
         </div>
 
-        {/* Tabela de Listagem: Renderização dos dados filtrados */}
+        {/* Tabela de multas */}
         <Card padding="none">
           <Table
             columns={columns}
             data={filteredFines}
             keyExtractor={(row) => row.id}
+            loading={loading}
             emptyMessage="Nenhuma multa encontrada para os filtros aplicados"
           />
         </Card>
       </div>
 
-      {/* Modal: Formulário de Inclusão e Edição de Multas */}
+      {/* ======================================================
+          Modal: Criar / Editar Multa
+      ====================================================== */}
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={handleCloseModal}
         title={editingId ? 'Editar Multa' : 'Registrar Multa'}
         size="xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Linha 1: Cliente e Moto */}
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Cliente"
               options={customerOptions}
               value={form.customer_id}
-              onChange={(e) => {
-                const value = e.target.value;
-                setForm({ ...form, customer_id: value, motorcycle_id: clientToMoto[value] || '' });
-              }}
+              onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
               required
             />
             <Select
               label="Moto"
               options={motorcycleOptions}
               value={form.motorcycle_id}
-              onChange={(e) => {
-                const value = e.target.value;
-                setForm({ ...form, motorcycle_id: value, customer_id: motoToClient[value] || '' });
-              }}
+              onChange={(e) => setForm({ ...form, motorcycle_id: e.target.value })}
               required
             />
           </div>
-          
-          {/* Select de infrações comuns — preenche descrição e valor automaticamente */}
+
+          {/* Preenchimento rápido com infrações comuns do CTB */}
           <Select
-            label="Infrações Comuns (CTB)"
-            options={[
-              { value: '', label: 'Selecione uma infração comum...' },
-              ...commonInfractions.map((item) => ({
-                value: item.description,
-                label: `[${item.severity}] ${item.description} — R$ ${item.amount.toFixed(2).replace('.', ',')}`,
-              })),
-            ]}
+            label="Infrações Comuns (CTB) — preenchimento rápido"
+            options={infractionQuickfillOptions}
             value={commonInfractions.find((i) => i.description === form.description)?.description ?? ''}
             onChange={(e) => {
               const selected = commonInfractions.find((i) => i.description === e.target.value)
@@ -661,18 +635,22 @@ export default function FinesPage() {
             }}
           />
 
+          {/* Descrição da infração */}
           <Input
             label="Descrição da Infração"
-            placeholder="Excesso de velocidade — Av. Paulista"
+            placeholder="Ex: Excesso de velocidade — Av. Paulista"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             required
           />
+
+          {/* Linha 3: Valor, Data, Responsável */}
           <div className="grid grid-cols-3 gap-4">
             <Input
               label="Valor (R$)"
               type="number"
               step="0.01"
+              min="0"
               placeholder="293.47"
               value={form.amount}
               onChange={(e) => setForm({ ...form, amount: e.target.value })}
@@ -692,46 +670,31 @@ export default function FinesPage() {
               onChange={(e) => setForm({ ...form, responsible: e.target.value })}
             />
           </div>
+
+          {/* Observações */}
           <Textarea
             label="Observações (opcional)"
-            placeholder="AIT nº, local da infração, detalhes do recurso..."
+            placeholder="AIT nº, local da infração, recurso em andamento..."
             rows={3}
             value={form.observations}
             onChange={(e) => setForm({ ...form, observations: e.target.value })}
           />
+
+          {/* Botões do formulário */}
           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+            <Button type="button" variant="ghost" onClick={handleCloseModal}>
               Cancelar
             </Button>
-            <Button type="submit">
-              <AlertTriangle className="w-4 h-4" />
+            <Button type="submit" loading={saving}>
               {editingId ? 'Salvar Alterações' : 'Registrar Multa'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal de Confirmação: Exclusão de Multa */}
-      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Multa" size="sm">
-        <div className="space-y-4">
-          <p className="text-[#A0A0A0] text-sm">
-            Tem certeza que deseja excluir a multa{' '}
-            <span className="text-white font-medium">{deleting?.description}</span>?
-            Esta ação removerá permanentemente o histórico da infração.
-          </p>
-          <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={confirmDeletion}>
-              <Trash2 className="w-4 h-4" />
-              Excluir
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal de Confirmação: Pagamento de Multa */}
+      {/* ======================================================
+          Modal: Confirmar Pagamento
+      ====================================================== */}
       <Modal
         open={!!payingFine}
         onClose={() => { setPayingFine(null); setPaymentDateInput('') }}
@@ -739,19 +702,14 @@ export default function FinesPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-[#A0A0A0] text-sm">
-            Informe a data em que a multa foi paga:
-          </p>
-
-          <div className="p-3 bg-[#202020] border border-[#333333] rounded-lg space-y-1">
-            <p className="text-sm text-[#A0A0A0]">
-              Cliente: <span className="text-white font-medium">{payingFine?.customer_name}</span>
+          <div className="p-3 bg-[#323232] border border-[#474747] rounded-lg space-y-1">
+            <p className="text-sm text-[#9e9e9e]">
+              Cliente: <span className="text-[#f5f5f5] font-medium">{payingFine?.customers?.name ?? '—'}</span>
             </p>
-            <p className="text-sm text-[#A0A0A0]">
-              Valor: <span className="text-red-400 font-semibold">{payingFine ? formatCurrency(payingFine.amount) : ''}</span>
+            <p className="text-sm text-[#9e9e9e]">
+              Valor: <span className="text-[#ff9c9a] font-semibold">{payingFine ? formatCurrency(Number(payingFine.amount)) : ''}</span>
             </p>
           </div>
-
           <Input
             label="Data do Pagamento"
             type="date"
@@ -759,14 +717,35 @@ export default function FinesPage() {
             onChange={(e) => setPaymentDateInput(e.target.value)}
             required
           />
-
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="ghost" onClick={() => { setPayingFine(null); setPaymentDateInput('') }}>
               Cancelar
             </Button>
-            <Button onClick={confirmPayment}>
+            <Button loading={saving} onClick={confirmPayment}>
               <CheckCircle className="w-4 h-4" />
               Confirmar Pagamento
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ======================================================
+          Modal: Confirmar Exclusão
+      ====================================================== */}
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Multa" size="sm">
+        <div className="space-y-4">
+          <p className="text-[#9e9e9e] text-sm">
+            Tem certeza que deseja excluir a multa{' '}
+            <span className="text-[#f5f5f5] font-medium">{deleting?.description}</span>?
+            Esta ação removerá permanentemente o histórico da infração.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" loading={saving} onClick={confirmDeletion}>
+              <Trash2 className="w-4 h-4" />
+              Excluir
             </Button>
           </div>
         </div>

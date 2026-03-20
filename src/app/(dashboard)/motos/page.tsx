@@ -17,7 +17,7 @@
  * 
  * @arquitetura
  * - **Client Component**: A página é interativa, usando estado do React para filtros, modais e formulários.
- * - **Estrutura de Dados Mock**: Simula a tabela `motos` do Supabase para desenvolvimento ágil.
+ * - **Integração Real com Supabase**: Consome a tabela `motos` real do banco PostgreSQL via cliente Supabase.
  * - **Componentização**: A ficha técnica e os cards são componentizados para reutilização e clareza.
  * - **Cores Semânticas**: O status de cada moto é refletido visualmente na borda do card,
  *   permitindo uma identificação rápida do estado operacional da frota.
@@ -25,8 +25,8 @@
 
 'use client' // Diretiva para indicar que este é um Client Component (interatividade React)
 
-// Importação de hooks do React para gerenciamento de estado local
-import { useState } from 'react'
+// Importação de hooks do React para gerenciamento de estado local e efeitos colaterais
+import { useState, useEffect } from 'react'
 // Importação de ícones da biblioteca Lucide para auxílio visual na interface
 import { 
   Plus,          // Ícone de adição para novo cadastro
@@ -47,104 +47,14 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 
+// Importação do cliente Supabase para acesso ao banco de dados
+import { createClient } from '@/lib/supabase/client'
+
 // Importação de funções utilitárias
 import { formatCurrency } from '@/lib/utils'
 
 // Importação de definições de tipos TypeScript globais
 import type { Motorcycle, MotorcycleStatus } from '@/types'
-
-/**
- * @constant mockMotorcycles
- * @description Lista estática de motos para popular a interface durante o desenvolvimento.
- * O "porquê": Permite construir e testar a UI sem depender de uma conexão real com o banco de dados,
- * agilizando o desenvolvimento do front-end. Reflete a estrutura da tabela `motos` no Supabase.
- */
-const mockMotorcycles: Motorcycle[] = [
-  {
-    id: '1',                                      // Identificador único (UUID no banco real)
-    renavam: '1373480839',                       // Código RENAVAM do veículo
-    license_plate: 'AAA0A00',                            // Placa Mercosul
-    make: 'HONDA',                              // Fabricante
-    model: 'CG 160 START',                      // Modelo comercial
-    year: '23/24',                                // Ano de fabricação e modelo
-    chassis: '9C2KC2500RR028495',                 // Número de chassi para conferência
-    color: 'VERMELHA',                             // Cor predominante
-    fuel: 'GASOLINA',                     // Tipo de combustível
-    engine_capacity: '0CV/149',              // Especificações técnicas do motor
-    previous_owner: 'BRUNO CESAR SOUZA DA COSTA',   // Nome do proprietário anterior (compra usada)
-    previous_owner_cpf: '114.967.617-58',           // Documento do vendedor
-    purchase_date: '2025-01-10',                   // Data em que a GoMoto adquiriu o bem
-    fipe_value: 15791,                           // Valor de mercado na data da compra
-    maintenance_up_to_date: true,                     // Flag de controle de revisão
-    status: 'rented',                           // Estado operacional atual
-    observations: 'Veículo em excelentes condições, com a quilometragem atual de aproximadamente 2.500 km rodados.',
-    created_at: '2025-01-10T10:00:00Z',          // Timestamp de criação do registro
-    updated_at: '2025-01-10T10:00:00Z',          // Timestamp de última alteração
-  },
-  {
-    id: '2',
-    renavam: '1141548353',
-    license_plate: 'BBB1B11',
-    make: 'YAMAHA',
-    model: 'YS150 FAZER SED',
-    year: '17/18',
-    chassis: '9C6RG3810J0015498',
-    color: 'VERMELHA',
-    fuel: 'ÁLCOOL/GASOLINA',
-    engine_capacity: '0CV/149',
-    previous_owner: 'JUAREZ RIBEIRO DE SOUZA FILHO',
-    previous_owner_cpf: '738.321.897-34',
-    purchase_date: '2025-01-16',
-    fipe_value: 12865,
-    maintenance_up_to_date: false,
-    status: 'rented',
-    observations: 'O veículo teve o painel substituído. Atualmente, possui 1.700 km rodados. O antigo proprietário informou que, no momento da troca, o veículo registrava 35.000 km.',
-    created_at: '2025-01-16T10:00:00Z',
-    updated_at: '2025-01-16T10:00:00Z',
-  },
-  {
-    id: '3',
-    renavam: '1353627230',
-    license_plate: 'CCC2C22',
-    make: 'YAMAHA',
-    model: 'YS150 FAZER SED',
-    year: '23/24',
-    chassis: '9C6RG3850R0048746',
-    color: 'VERMELHA',
-    fuel: 'ÁLCOOL/GASOLINA',
-    engine_capacity: '0CV/149',
-    previous_owner: 'LUIZ ADRIANO GOMES',
-    previous_owner_cpf: '009.523.047-59',
-    purchase_date: '2025-05-22',
-    fipe_value: 13000,
-    maintenance_up_to_date: false,
-    status: 'rented',
-    observations: 'Veículo em excelentes condições, com a quilometragem atual de aproximadamente 24.360 km rodados.',
-    created_at: '2026-05-22T10:00:00Z',
-    updated_at: '2026-05-22T10:00:00Z',
-  },
-  {
-    id: '4',
-    renavam: '1291640719',
-    license_plate: 'DDD3D33',
-    make: 'YAMAHA',
-    model: 'YBR150 FACTOR SED',
-    year: '22/22',
-    chassis: '9C6RG3160N0035522',
-    color: 'VERMELHA',
-    fuel: 'ÁLCOOL/GASOLINA',
-    engine_capacity: '0CV/149',
-    previous_owner: 'VANIO DA SILVA LUCENA',
-    previous_owner_cpf: '099.559.627-12',
-    purchase_date: '2025-09-04',
-    fipe_value: 13500,
-    maintenance_up_to_date: true,
-    status: 'rented',
-    observations: 'Veículo em excelentes condições, com a quilometragem atual de aproximadamente 19.750 km rodados.',
-    created_at: '2025-01-01T10:00:00Z',
-    updated_at: '2025-01-01T10:00:00Z',
-  },
-]
 
 /**
  * @constant filterOptions
@@ -232,10 +142,10 @@ const defaultFormState = {
  * usando cores semânticas para uma identificação rápida do estado operacional da frota.
  */
 const cardBorderMap: Record<string, string> = {
-  available: 'border-green-500/20', // Borda sutil verde
-  rented: 'border-blue-500/20',     // Borda sutil azul
-  maintenance: 'border-amber-500/20', // Borda sutil laranja
-  inactive: 'border-white/10',        // Borda cinza neutra
+  available: 'border-[#28b438]/30', // Borda sutil verde (success)
+  rented: 'border-[#a880ff]/30',    // Borda sutil info (info)
+  maintenance: 'border-[#e65e24]/30', // Borda sutil laranja (warning)
+  inactive: 'border-[#474747]',       // Borda cinza neutra
 }
 
 /**
@@ -275,7 +185,11 @@ export default function MotorcyclesPage() {
    * GERENCIAMENTO DE ESTADOS (React State):
    */
   // Lista principal de motos exibida na tela.
-  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(mockMotorcycles)
+  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([])
+  // Estado de carregamento inicial dos dados.
+  const [loading, setLoading] = useState(true)
+  // Estado de salvamento/deleção para os botões.
+  const [saving, setSaving] = useState(false)
   // Valor atual do filtro de status (todas, disponivel, etc).
   const [filter, setFilter] = useState('all')
   // Texto digitado no campo de busca para filtragem dinâmica.
@@ -294,6 +208,29 @@ export default function MotorcyclesPage() {
   const [step, setStep] = useState<1 | 2>(1)
   // Mapa de valores (KM ou Data) informados no passo 2 do cadastro.
   const [bootstrapItems, setBootstrapItems] = useState<Record<string, string>>({})
+
+  /**
+   * @function fetchMotorcycles
+   * @description Busca a lista de motos do Supabase.
+   */
+  async function fetchMotorcycles() {
+    setLoading(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('motorcycles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (!error && data) {
+      setMotorcycles(data as Motorcycle[])
+    }
+    setLoading(false)
+  }
+
+  // Busca inicial das motos na montagem do componente
+  useEffect(() => {
+    fetchMotorcycles()
+  }, [])
 
   /**
    * @const filteredMotorcycles
@@ -359,11 +296,14 @@ export default function MotorcyclesPage() {
 
   /**
    * @function handleSubmitFinal
-   * @description Consolida os dados do formulário e salva no estado global (simula o DB).
+   * @description Consolida os dados do formulário e salva no banco de dados Supabase.
    */
-  function handleSubmitFinal() {
+  async function handleSubmitFinal() {
+    setSaving(true)
+    const supabase = createClient()
+    
     // Criação do objeto de dados higienizado
-    const motorcycleData: Partial<Motorcycle> = {
+    const motorcycleData = {
       license_plate: form.licensePlate.toUpperCase(),          // Placa sempre em maiúscula
       model: form.model,
       make: form.make.toUpperCase(),
@@ -373,45 +313,43 @@ export default function MotorcyclesPage() {
       chassis: form.chassis.toUpperCase(),
       fuel: form.fuel,
       engine_capacity: form.engineCapacity,
-      previous_owner: form.previousOwnerName,
-      previous_owner_cpf: form.previousOwnerDocument,
-      purchase_date: form.purchaseDate,
+      previous_owner: form.previousOwnerName || null,
+      previous_owner_cpf: form.previousOwnerDocument || null,
+      purchase_date: form.purchaseDate || null,
       // Converte string monetária para número decimal
-      fipe_value: form.fipeValue ? parseFloat(form.fipeValue.replace(',', '.')) : undefined,
+      fipe_value: form.fipeValue ? parseFloat(form.fipeValue.replace(',', '.')) : null,
       maintenance_up_to_date: form.maintenanceUpToDate === 'true',
       status: form.status as MotorcycleStatus,
-      observations: form.observations,
-      updated_at: new Date().toISOString(),
+      km_current: form.currentKm ? parseInt(form.currentKm) : 0,
+      observations: form.observations || null,
     }
 
     if (editingId) {
-      // CASO EDIÇÃO: Atualiza o item correspondente no array
-      setMotorcycles((prev) =>
-        prev.map((m) => (m.id === editingId ? { ...m, ...motorcycleData } : m))
-      )
+      // CASO EDIÇÃO: Atualiza o registro no banco
+      await supabase.from('motorcycles').update(motorcycleData).eq('id', editingId)
     } else {
-      // CASO CRIAÇÃO: Adiciona novo item ao início da lista
-      const newMotorcycle: Motorcycle = {
-        id: String(Date.now()), // Gera ID temporário baseado no timestamp
-        created_at: new Date().toISOString(),
-        ...motorcycleData,
-      } as Motorcycle
-      setMotorcycles((prev) => [newMotorcycle, ...prev])
+      // CASO CRIAÇÃO: Adiciona novo registro no banco
+      await supabase.from('motorcycles').insert(motorcycleData)
       
-      // LÓGICA FUTURA: Aqui os 'bootstrapItems' seriam enviados para uma API
-      // para criar os registros iniciais na tabela de histórico de manutenção.
+      // TODO: salvar bootstrapItems na tabela manutencoes quando implementado
     }
 
+    await fetchMotorcycles() // Recarrega os dados do banco
+    setSaving(false)
     closeModal() // Fecha modal e limpa estados
   }
 
   /**
    * @function confirmDeletion
-   * @description Executa a remoção definitiva da moto da lista.
+   * @description Executa a remoção definitiva da moto do banco de dados.
    */
-  function confirmDeletion() {
+  async function confirmDeletion() {
     if (!deletingMotorcycle) return
-    setMotorcycles((prev) => prev.filter((m) => m.id !== deletingMotorcycle.id))
+    setSaving(true)
+    const supabase = createClient()
+    await supabase.from('motorcycles').delete().eq('id', deletingMotorcycle.id)
+    await fetchMotorcycles()
+    setSaving(false)
     setDeletingMotorcycle(null) // Fecha modal de confirmação
   }
 
@@ -448,16 +386,16 @@ export default function MotorcyclesPage() {
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
                   filter === opt.value
-                    ? 'bg-[#BAFF1A] text-[#121212] shadow-md shadow-[#BAFF1A]/20 scale-[1.02]'
-                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                    ? 'bg-[#474747] border border-[#323232] text-[#f5f5f5] scale-[1.02]'
+                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
                 }`}
               >
                 {opt.label}
                 {/* Contador específico por categoria de status */}
                 {opt.value !== 'all' && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     filter === opt.value ? 'bg-black/10' : 'bg-white/5'
                   }`}>
                     {motorcycles.filter((m) => m.status === opt.value).length}
@@ -469,28 +407,35 @@ export default function MotorcyclesPage() {
           
           {/* CAMPO DE PESQUISA DINÂMICA */}
           <div className="ml-auto relative min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9e9e9e]" />
             <input
               type="text"
               placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#606060] focus:outline-none focus:border-[#BAFF1A]/50 focus:ring-1 focus:ring-[#BAFF1A]/20 transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A]/50 focus:ring-1 focus:ring-[#BAFF1A]/20 transition-all"
             />
           </div>
         </div>
 
         {/* 
           * LISTAGEM DE MOTOS (GRID)
-          * Renderiza os cards das motos filtradas ou uma mensagem de "vazio".
+          * Renderiza os cards das motos filtradas, loading state, ou uma mensagem de "vazio".
           */}
-        {filteredMotorcycles.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-8 h-8 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
+              <p className="text-[#9e9e9e] text-sm">Carregando frota...</p>
+            </div>
+          </div>
+        ) : filteredMotorcycles.length === 0 ? (
           /* ESTADO VAZIO: Quando a busca/filtro não retorna resultados */
-          <div className="flex flex-col items-center justify-center py-24 bg-[#1a1a1a]/50 rounded-2xl border border-dashed border-[#333333]">
-            <div className="w-16 h-16 bg-[#252525] rounded-full flex items-center justify-center text-[#555555] mb-4">
+          <div className="flex flex-col items-center justify-center py-24 bg-[#202020]/50 rounded-2xl border border-dashed border-[#474747]">
+            <div className="w-16 h-16 bg-[#323232] rounded-full flex items-center justify-center text-[#616161] mb-4">
               <Bike className="w-8 h-8" />
             </div>
-            <p className="text-[#A0A0A0] font-medium">Nenhum veículo encontrado para os filtros atuais.</p>
+            <p className="text-[#9e9e9e] font-medium">Nenhum veículo encontrado para os filtros atuais.</p>
             <button 
               onClick={() => {setFilter('all'); setSearch('');}}
               className="text-xs text-[#BAFF1A] mt-2 hover:underline"
@@ -505,25 +450,25 @@ export default function MotorcyclesPage() {
               <div
                 key={moto.id}
                 className={`bg-[#202020] border rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-1 group ${
-                  cardBorderMap[moto.status] ?? 'border-[#333333]'
+                  cardBorderMap[moto.status] ?? 'border-[#474747]'
                 }`}
               >
                 {/* ÁREA SUPERIOR: Imagem/Placeholder e Selos de Status */}
-                <div className="h-40 bg-gradient-to-b from-[#2a2a2a] to-[#202020] flex items-center justify-center border-b border-[#333333] relative">
-                  <div className="flex flex-col items-center gap-2 text-[#444444] group-hover:text-[#666666] transition-colors">
+                <div className="h-40 bg-gradient-to-b from-[#323232] to-[#202020] flex items-center justify-center border-b border-[#474747] relative">
+                  <div className="flex flex-col items-center gap-2 text-[#616161] group-hover:text-[#9e9e9e] transition-colors">
                     <Bike className="w-14 h-14" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Sem Imagem</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">Sem Imagem</span>
                   </div>
-                  
+
                   {/* SELO DE MANUTENÇÃO: Indicativo crítico de segurança */}
                   <div className="absolute top-3 right-3">
                     {moto.maintenance_up_to_date ? (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-tight">
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0e2f13] border border-[#28b438]/30 text-[#28b438] text-xs font-bold uppercase tracking-tight">
                         <CheckCircle className="w-3 h-3" />
                         Manutenção em Dia
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-tight">
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#3a180f] border border-[#e65e24]/30 text-[#e65e24] text-xs font-bold uppercase tracking-tight">
                         <AlertCircle className="w-3 h-3" />
                         Revisão Pendente
                       </span>
@@ -536,30 +481,30 @@ export default function MotorcyclesPage() {
                   {/* Título e Status Badge */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h4 className="font-bold text-white text-base leading-tight truncate group-hover:text-[#BAFF1A] transition-colors">
+                      <h4 className="font-bold text-[#f5f5f5] text-base leading-tight truncate group-hover:text-[#BAFF1A] transition-colors">
                         {moto.make} {moto.model}
                       </h4>
-                      <p className="text-xs text-[#606060] mt-1 font-medium">Fab/Mod: {moto.year}</p>
+                      <p className="text-xs text-[#616161] mt-1 font-medium">Fab/Mod: {moto.year}</p>
                     </div>
                     <StatusBadge status={moto.status} />
                   </div>
 
                   {/* Detalhes Técnicos Secundários */}
-                  <div className="grid grid-cols-2 gap-4 py-3 border-y border-white/5">
+                  <div className="grid grid-cols-2 gap-4 py-3 border-y border-[#474747]/30">
                     <div>
-                      <p className="text-[10px] font-bold text-[#606060] uppercase tracking-wider">Placa</p>
-                      <p className="text-sm font-mono font-bold text-white mt-0.5">{moto.license_plate}</p>
+                      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider">Placa</p>
+                      <p className="text-sm font-mono font-bold text-[#f5f5f5] mt-0.5">{moto.license_plate}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-[#606060] uppercase tracking-wider">Cor Principal</p>
-                      <p className="text-sm text-[#A0A0A0] mt-0.5 font-medium">{moto.color}</p>
+                      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider">Cor Principal</p>
+                      <p className="text-sm text-[#9e9e9e] mt-0.5 font-medium">{moto.color}</p>
                     </div>
                   </div>
 
                   {/* Informação Financeira (Opcional) */}
                   {moto.fipe_value && (
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-bold text-[#606060] uppercase tracking-wider">Valor de Mercado (FIPE)</p>
+                      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider">Valor de Mercado (FIPE)</p>
                       <p className="text-sm text-[#BAFF1A] font-bold">{formatCurrency(moto.fipe_value)}</p>
                     </div>
                   )}
@@ -569,7 +514,7 @@ export default function MotorcyclesPage() {
                     {/* Botão de Detalhes Completo */}
                     <button
                       onClick={() => setMotorcycleDetails(moto)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-all font-bold border border-transparent hover:border-white/10"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-all font-bold border border-transparent hover:border-[#474747]"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       DETALHES
@@ -577,7 +522,7 @@ export default function MotorcyclesPage() {
                     {/* Botão de Edição */}
                     <button
                       onClick={() => openEditMotorcycle(moto)}
-                      className="p-2.5 rounded-xl text-[#A0A0A0] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-all border border-transparent hover:border-[#BAFF1A]/20"
+                      className="p-2.5 rounded-full text-[#9e9e9e] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-all border border-transparent hover:border-[#BAFF1A]/20"
                       title="Editar informações do veículo"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -585,7 +530,7 @@ export default function MotorcyclesPage() {
                     {/* Botão de Exclusão */}
                     <button
                       onClick={() => setDeletingMotorcycle(moto)}
-                      className="p-2.5 rounded-xl text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-all border border-transparent hover:border-red-500/20"
+                      className="p-2.5 rounded-full text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-all border border-transparent hover:border-[#bf1d1e]/20"
                       title="Remover veículo da frota"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -690,7 +635,7 @@ export default function MotorcyclesPage() {
 
           {/* HISTÓRICO DE AQUISIÇÃO: Detalhes de quem a GoMoto comprou o veículo */}
           <div className="border-t border-white/5 pt-4 mt-2">
-            <h5 className="text-[10px] font-bold text-[#BAFF1A] uppercase tracking-widest mb-4">Informações da Compra</h5>
+            <h5 className="text-xs font-bold text-[#BAFF1A] uppercase tracking-widest mb-4">Informações da Compra</h5>
             <div className="grid grid-cols-2 gap-5">
               <Input
                 label="Dono Anterior (Vendedor)"
@@ -752,7 +697,7 @@ export default function MotorcyclesPage() {
             <Button type="button" variant="ghost" onClick={closeModal}>
               CANCELAR
             </Button>
-            <Button type="submit" className="min-w-[180px]">
+            <Button type="submit" className="min-w-[180px]" loading={saving}>
               {editingId ? (
                 /* Botão se estiver editando */
                 <>
@@ -774,19 +719,19 @@ export default function MotorcyclesPage() {
         {!editingId && step === 2 && (
           <div className="space-y-6 p-1">
             <div className="bg-[#BAFF1A]/5 border border-[#BAFF1A]/10 rounded-xl p-4">
-              <p className="text-sm text-[#A0A0A0] leading-relaxed">
-                Para o sistema prever as próximas revisões, informe a <strong className="text-white">última vez</strong> que cada item abaixo foi trocado ou revisado. 
-                <br /><span className="text-[10px] text-[#606060]">DICA: Se não souber, deixe em branco e o sistema marcará como "Revisão Imediata".</span>
+              <p className="text-sm text-[#9e9e9e] leading-relaxed">
+                Para o sistema prever as próximas revisões, informe a <strong className="text-[#f5f5f5]">última vez</strong> que cada item abaixo foi trocado ou revisado.
+                <br /><span className="text-xs text-[#616161]">DICA: Se não souber, deixe em branco e o sistema marcará como "Revisão Imediata".</span>
               </p>
             </div>
 
             {/* LISTAGEM DOS ITENS DE MANUTENÇÃO PREVENTIVA */}
             <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
               {BOOTSTRAP_MAINTENANCE_ITEMS.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 bg-[#1A1A1A] rounded-xl px-4 py-3 hover:bg-[#222222] transition-colors border border-transparent hover:border-white/5">
+                <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#474747]/30">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white uppercase tracking-tight">{item.name}</p>
-                    <p className="text-[10px] text-[#606060] font-medium">{item.hint}</p>
+                    <p className="text-sm font-bold text-[#f5f5f5] uppercase tracking-tight">{item.name}</p>
+                    <p className="text-xs text-[#616161] font-medium">{item.hint}</p>
                   </div>
                   
                   {/* INPUT DINÂMICO: KM ou DATA dependendo do tipo da métrica */}
@@ -798,16 +743,16 @@ export default function MotorcyclesPage() {
                           placeholder="KM da Última Troca"
                           value={bootstrapItems[item.id] ?? ''}
                           onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          className="w-36 px-4 py-2 rounded-lg bg-[#2A2A2A] border border-[#333333] text-sm text-white placeholder-[#555555] focus:outline-none focus:border-[#BAFF1A]/40 text-right font-mono"
+                          className="w-36 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A]/40 text-right font-mono"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-[#555555] font-bold">KM</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#616161] font-bold">KM</span>
                       </div>
                     ) : (
                       <input
                         type="date"
                         value={bootstrapItems[item.id] ?? ''}
                         onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                        className="w-44 px-4 py-2 rounded-lg bg-[#2A2A2A] border border-[#333333] text-sm text-white focus:outline-none focus:border-[#BAFF1A]/40"
+                        className="w-44 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] focus:outline-none focus:border-[#BAFF1A]/40"
                       />
                     )}
                   </div>
@@ -817,9 +762,9 @@ export default function MotorcyclesPage() {
 
             {/* FEEDBACK DE CONFIGURAÇÃO */}
             {Object.keys(bootstrapItems).filter((k) => bootstrapItems[k]).length > 0 && (
-              <div className="flex items-center gap-3 px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <p className="text-[11px] text-blue-400 font-medium">
+              <div className="flex items-center gap-3 px-4 py-3 bg-[#2d0363] border border-[#a880ff]/20 rounded-xl">
+                <div className="w-2 h-2 bg-[#a880ff] rounded-full animate-pulse" />
+                <p className="text-xs text-[#a880ff] font-medium">
                   {Object.keys(bootstrapItems).filter((k) => bootstrapItems[k]).length} itens de manutenção serão programados automaticamente.
                 </p>
               </div>
@@ -830,7 +775,7 @@ export default function MotorcyclesPage() {
               <Button variant="ghost" onClick={() => setStep(1)} className="px-6">
                 ← VOLTAR AOS DADOS
               </Button>
-              <Button onClick={handleSubmitFinal} className="px-10 shadow-lg shadow-[#BAFF1A]/20">
+              <Button onClick={handleSubmitFinal} className="px-10 shadow-lg shadow-[#BAFF1A]/20" loading={saving}>
                 <Plus className="w-4 h-4" />
                 CONCLUIR CADASTRO
               </Button>
@@ -845,12 +790,12 @@ export default function MotorcyclesPage() {
         */}
       <Modal open={!!deletingMotorcycle} onClose={() => setDeletingMotorcycle(null)} title="Confirmar Exclusão Permanente" size="sm">
         <div className="space-y-6">
-          <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl">
-            <p className="text-[#A0A0A0] text-sm leading-relaxed text-center">
+          <div className="p-4 bg-[#7c1c1c]/20 border border-[#bf1d1e]/20 rounded-xl">
+            <p className="text-[#9e9e9e] text-sm leading-relaxed text-center">
               Você está prestes a remover a moto <br />
-              <strong className="text-white text-base font-bold">{deletingMotorcycle?.make} {deletingMotorcycle?.model} — Placa {deletingMotorcycle?.license_plate}</strong>
+              <strong className="text-[#f5f5f5] text-base font-bold">{deletingMotorcycle?.make} {deletingMotorcycle?.model} — Placa {deletingMotorcycle?.license_plate}</strong>
               <br /><br />
-              Esta operação <span className="text-red-400 font-bold underline">não pode ser desfeita</span> e todos os históricos vinculados serão perdidos.
+              Esta operação <span className="text-[#ff9c9a] font-bold underline">não pode ser desfeita</span> e todos os históricos vinculados serão perdidos.
             </p>
           </div>
           
@@ -858,7 +803,7 @@ export default function MotorcyclesPage() {
             <Button variant="ghost" onClick={() => setDeletingMotorcycle(null)} className="flex-1">
               CANCELAR
             </Button>
-            <Button variant="danger" onClick={confirmDeletion} className="flex-1 shadow-lg shadow-red-500/20">
+            <Button variant="danger" onClick={confirmDeletion} className="flex-1 shadow-lg shadow-red-500/20" loading={saving}>
               <Trash2 className="w-4 h-4" />
               CONFIRMAR EXCLUSÃO
             </Button>
@@ -881,24 +826,24 @@ export default function MotorcyclesPage() {
             {/* CABEÇALHO DO MODAL: Título e Status Principal */}
             <div className="flex items-start justify-between gap-6 pb-6 border-b border-white/5">
               <div>
-                <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">
+                <h3 className="text-2xl font-black text-[#f5f5f5] tracking-tight uppercase italic">
                   {motorcycleDetails.make} {motorcycleDetails.model}
                 </h3>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-sm font-bold text-[#606060] bg-white/5 px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
-                  <span className="text-sm font-bold text-[#606060] bg-white/5 px-2 py-0.5 rounded uppercase">{motorcycleDetails.color}</span>
+                  <span className="text-sm font-bold text-[#616161] bg-white/5 px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
+                  <span className="text-sm font-bold text-[#616161] bg-white/5 px-2 py-0.5 rounded uppercase">{motorcycleDetails.color}</span>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-3">
                 <StatusBadge status={motorcycleDetails.status} />
                 {/* Repetição do selo de manutenção para ênfase */}
                 {motorcycleDetails.maintenance_up_to_date ? (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-black uppercase">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438]/30 text-[#28b438] text-xs font-black uppercase">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Manutenção em Dia
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#3a180f] border border-[#e65e24]/30 text-[#e65e24] text-xs font-black uppercase">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Revisão Pendente
                   </span>
@@ -909,7 +854,7 @@ export default function MotorcyclesPage() {
             {/* SEÇÃO: INFORMAÇÕES TÉCNICAS E LEGAIS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <section className="space-y-4">
-                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Dados de Registro</h5>
+                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Dados de Registro</h5>
                 <div className="space-y-4">
                   <DetailRow label="Placa do Veículo" value={motorcycleDetails.license_plate} mono />
                   <DetailRow label="Código RENAVAM" value={motorcycleDetails.renavam} mono />
@@ -918,7 +863,7 @@ export default function MotorcyclesPage() {
               </section>
 
               <section className="space-y-4">
-                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Especificações do Motor</h5>
+                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Especificações do Motor</h5>
                 <div className="space-y-4">
                   <DetailRow label="Tipo de Combustível" value={motorcycleDetails.fuel} />
                   <DetailRow label="Potência / Cilindrada" value={motorcycleDetails.engine_capacity} />
@@ -929,8 +874,8 @@ export default function MotorcyclesPage() {
 
             {/* SEÇÃO: HISTÓRICO DE PROPRIEDADE (Renderização Condicional) */}
             {(motorcycleDetails.previous_owner || motorcycleDetails.purchase_date || motorcycleDetails.fipe_value) && (
-              <div className="bg-[#1a1a1a] rounded-2xl p-6 border border-white/5">
-                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-6">Informações de Aquisição GoMoto</h5>
+              <div className="bg-[#282828] rounded-2xl p-6 border border-[#474747]/30">
+                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-6">Informações de Aquisição GoMoto</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                   {motorcycleDetails.previous_owner && (
                     <DetailRow label="Vendedor / Dono Anterior" value={motorcycleDetails.previous_owner} fullWidth />
@@ -958,9 +903,9 @@ export default function MotorcyclesPage() {
             {/* SEÇÃO: OBSERVAÇÕES E NOTAS DE VISTORIA */}
             {motorcycleDetails.observations && (
               <div className="space-y-3">
-                <h5 className="text-[10px] font-black text-[#BAFF1A] uppercase tracking-[0.2em]">Notas do Veículo & Vistoria</h5>
-                <div className="bg-[#2a2a2a]/30 rounded-xl p-5 border border-white/5">
-                  <p className="text-sm text-[#A0A0A0] leading-relaxed italic">
+                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em]">Notas do Veículo & Vistoria</h5>
+                <div className="bg-[#282828] rounded-xl p-5 border border-[#474747]/30">
+                  <p className="text-sm text-[#9e9e9e] leading-relaxed italic">
                     "{motorcycleDetails.observations}"
                   </p>
                 </div>
@@ -1023,10 +968,10 @@ function DetailRow({
   
   return (
     <div className={fullWidth ? 'col-span-full' : ''}>
-      <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1.5">{label}</p>
+      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider mb-1.5">{label}</p>
       <p
-        className={`text-[13px] leading-tight ${mono ? 'font-mono tracking-tighter' : 'font-medium'} ${
-          highlight ? 'text-[#BAFF1A]' : 'text-white'
+        className={`text-sm leading-tight ${mono ? 'font-mono tracking-tighter' : 'font-medium'} ${
+          highlight ? 'text-[#BAFF1A]' : 'text-[#f5f5f5]'
         }`}
       >
         {value}

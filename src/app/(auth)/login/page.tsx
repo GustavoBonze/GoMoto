@@ -102,10 +102,8 @@ export default function LoginPage() {
     /**
      * Sucesso no Login:
      * Redireciona o usuário para a página principal do sistema.
-     * O router.refresh() garante que o middleware de segurança reconheça os novos cookies.
      */
     router.push('/dashboard')
-    router.refresh()
   }
 
   return (
@@ -122,8 +120,8 @@ export default function LoginPage() {
             <Bike className="w-7 h-7 text-[#121212]" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-white">GoMoto</h1>
-            <p className="text-sm text-[#A0A0A0] mt-1">Sistema de Gestão</p>
+            <h1 className="text-2xl font-bold text-[#f5f5f5]">GoMoto</h1>
+            <p className="text-sm text-[#9e9e9e] mt-1">Sistema de Gestão</p>
           </div>
         </div>
 
@@ -131,8 +129,8 @@ export default function LoginPage() {
             Card de Formulário:
             Concentra os campos de interação do usuário com bordas e fundo destacados.
         */}
-        <div className="bg-[#202020] border border-[#333333] rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-5">Entrar na conta</h2>
+        <div className="bg-[#202020] border border-[#474747] rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-[#f5f5f5] mb-5">Entrar na conta</h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Campo de entrada para o E-mail. */}
@@ -161,8 +159,8 @@ export default function LoginPage() {
                 Renderização condicional de um alerta caso a autenticação falhe.
             */}
             {error && (
-              <div className="px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-sm text-red-400">{error}</p>
+              <div className="px-3 py-2.5 bg-[#7c1c1c] border border-[#7c1c1c] rounded-lg">
+                <p className="text-sm text-[#ff9c9a]">{error}</p>
               </div>
             )}
 
@@ -171,13 +169,13 @@ export default function LoginPage() {
                 Inicia o processo de login. Exibe spinner se estiver em estado de loading.
             */}
             <Button type="submit" className="w-full mt-2" loading={loading} size="lg">
-              Entrar
+              {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
         </div>
 
         {/* Rodapé com Direitos Autorais e Ano Dinâmico. */}
-        <p className="text-center text-xs text-[#A0A0A0] mt-6">
+        <p className="text-center text-xs text-[#9e9e9e] mt-6">
           GoMoto © {new Date().getFullYear()}
         </p>
       </div>

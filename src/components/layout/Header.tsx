@@ -49,7 +49,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
   return (
     // <header> define a seção de cabeçalho com posicionamento 'sticky' (fixo) no topo do eixo Z (z-20).
     // Estilização utiliza Tailwind CSS para bordas, cores de fundo e alinhamento flexível.
-    <header className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a2a] bg-[#121212] sticky top-0 z-20">
+    <header className="flex items-center justify-between px-6 py-4 border-b border-[#474747] bg-[#121212] sticky top-0 z-20">
       
       {/* 
           Container do Título:
@@ -57,9 +57,9 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
           O título usa fonte negrito e cor branca para máximo contraste.
       */}
       <div>
-        <h1 className="text-xl font-bold text-white">{title}</h1>
+        <h1 className="text-xl font-bold text-[#f5f5f5]">{title}</h1>
         {/* Renderização condicional do subtítulo: só aparece se a prop 'subtitle' for enviada. */}
-        {subtitle && <p className="text-sm text-[#A0A0A0] mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-[#c7c7c7] mt-0.5">{subtitle}</p>}
       </div>
 
       {/* 
@@ -79,7 +79,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             Componente interativo com estados de hover para feedback visual.
             Atualmente estático, preparado para integração com sistema de alertas.
         */}
-        <button className="p-2 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors">
+        <button className="p-2 rounded-lg text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors">
           <Bell className="w-5 h-5" />
         </button>
       </div>
