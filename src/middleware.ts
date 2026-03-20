@@ -74,7 +74,9 @@ export async function middleware(request: NextRequest) {
        * Garante que o usuário permaneça logado ao renovar o token de acesso.
        */
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        // Atualiza a requisição com os cookies renovados
+        cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+        // Cria nova resposta e aplica os cookies com as opções completas
         supabaseResponse = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)

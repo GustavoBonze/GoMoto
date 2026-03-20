@@ -47,7 +47,7 @@ export function Card({ children, className, padding = 'md' }: CardProps) {
     <div
       className={cn(
         // Estilo base do card: cor de fundo, arredondamento e borda.
-        'bg-[#202020] rounded-xl border border-[#333333]',
+        'bg-[#202020] rounded-2xl border border-[#474747]',
         // Aplica o padding selecionado a partir do mapeamento.
         paddings[padding],
         // Permite que classes externas sobrescrevam ou estendam o estilo.
@@ -87,10 +87,10 @@ interface StatCardProps {
  */
 const colorMap = {
   brand: { bg: 'bg-[#BAFF1A]/10', text: 'text-[#BAFF1A]' },
-  success: { bg: 'bg-green-500/10', text: 'text-green-400' },
-  warning: { bg: 'bg-amber-500/10', text: 'text-amber-400' },
-  danger: { bg: 'bg-red-500/10', text: 'text-red-400' },
-  info: { bg: 'bg-blue-500/10', text: 'text-blue-400' },
+  success: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]' },
+  warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]' },
+  danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]' },
+  info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]' },
 }
 
 /**
@@ -111,11 +111,11 @@ export function StatCard({ title, value, subtitle, icon, color = 'brand', classN
       
       {/* Seção de textos: Título, Valor principal e Subtítulo (opcional). */}
       <div className="min-w-0">
-        <p className="text-sm text-[#A0A0A0] truncate">{title}</p>
-        <p className="text-2xl font-bold text-white mt-0.5">{value}</p>
-        
+        <p className="text-sm text-[#c7c7c7] truncate">{title}</p>
+        <p className="text-2xl font-bold text-[#f5f5f5] mt-0.5">{value}</p>
+
         {/* Renderiza o subtítulo apenas se ele for fornecido. */}
-        {subtitle && <p className="text-xs text-[#A0A0A0] mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-[#9e9e9e] mt-0.5">{subtitle}</p>}
       </div>
     </Card>
   )

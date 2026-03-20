@@ -86,7 +86,7 @@ export function Table<T>({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <p className="text-sm text-[#A0A0A0]">Carregando dados...</p>
+          <p className="text-sm text-[#c7c7c7]">Carregando dados...</p>
         </div>
       </div>
     )
@@ -98,7 +98,7 @@ export function Table<T>({
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-[#A0A0A0] text-sm italic">{emptyMessage}</p>
+        <p className="text-[#c7c7c7] text-sm italic">{emptyMessage}</p>
       </div>
     )
   }
@@ -110,12 +110,12 @@ export function Table<T>({
       <table className="w-full border-collapse">
         {/* Cabeçalho da Tabela */}
         <thead>
-          <tr className="border-b border-[#333333]">
+          <tr className="border-b border-[#474747]">
             {columns.map((column) => (
               <th
                 key={column.key}
                 className={cn(
-                  'px-4 py-3 text-left text-xs font-medium text-[#A0A0A0] uppercase tracking-wider',
+                  'px-4 py-3 text-left text-xs font-medium text-[#9e9e9e] uppercase tracking-wider',
                   column.className
                 )}
               >
@@ -126,22 +126,22 @@ export function Table<T>({
         </thead>
         
         {/* Corpo da Tabela */}
-        <tbody className="divide-y divide-[#2a2a2a]">
+        <tbody className="divide-y divide-[#474747]">
           {data.map((rowData) => (
             <tr
               key={keyExtractor(rowData)}
               onClick={() => onRowClick?.(rowData)}
               className={cn(
-                'transition-colors duration-100',
+                'transition-colors duration-100 even:bg-[#323232]',
                 // Estilo interativo (cursor e hover) aplicado apenas se a linha for clicável.
-                onRowClick && 'cursor-pointer hover:bg-white/[0.03]'
+                onRowClick && 'cursor-pointer hover:bg-[#474747]'
               )}
             >
               {/* Células da linha */}
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={cn('px-4 py-3 text-sm text-[#A0A0A0]', column.className)}
+                  className={cn('px-4 py-3 text-sm text-[#c7c7c7]', column.className)}
                 >
                   {/**
                    * Lógica de renderização da célula:

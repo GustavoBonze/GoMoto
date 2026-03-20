@@ -48,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="flex flex-col gap-1.5">
         {/* Renderiza o rótulo (label) se a prop for fornecida. */}
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[#A0A0A0]">
+          <label htmlFor={inputId} className="text-sm font-medium text-[#c7c7c7]">
             {label}
           </label>
         )}
@@ -59,14 +59,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           className={cn(
             // Estilos base: dimensões, cores, fontes e bordas.
-            'w-full px-3 py-2.5 rounded-lg text-sm text-white',
-            'bg-[#2a2a2a] border border-[#333333]',
-            'placeholder:text-[#A0A0A0]',
+            'w-full px-3 py-3 rounded-lg text-sm text-[#f5f5f5] h-12',
+            'bg-[#323232] border border-[#323232]',
+            'placeholder:text-[#616161]',
             // Estilos de estado: foco, desabilitado, etc.
             'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
             'transition-colors duration-150',
             // Estilo condicional: aplicado apenas se houver um erro.
-            error && 'border-red-500 focus:border-red-500 focus:ring-red-500/30',
+            error && 'border-[#ff9c9a] focus:border-[#ff9c9a] focus:ring-[#ff9c9a]/30',
             // Permite a passagem de classes customizadas de fora.
             className
           )}
@@ -74,10 +74,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         />
         
         {/* Mensagem de erro: tem prioridade sobre a dica. */}
-        {error && <p className="text-xs text-red-400">{error}</p>}
-        
+        {error && <p className="text-xs text-[#ff9c9a]">{error}</p>}
+
         {/* Dica de ajuda: exibida apenas se não houver um erro. */}
-        {hint && !error && <p className="text-xs text-[#A0A0A0]">{hint}</p>}
+        {hint && !error && <p className="text-xs text-[#9e9e9e]">{hint}</p>}
       </div>
     )
   }
@@ -108,7 +108,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-[#A0A0A0]">
+          <label htmlFor={selectId} className="text-sm font-medium text-[#c7c7c7]">
             {label}
           </label>
         )}
@@ -117,24 +117,24 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={cn(
-            'w-full px-3 py-2.5 rounded-lg text-sm text-white appearance-none', // `appearance-none` remove o estilo padrão do navegador.
-            'bg-[#2a2a2a] border border-[#333333]',
+            'w-full px-3 py-3 rounded-lg text-sm text-[#f5f5f5] h-12 appearance-none', // `appearance-none` remove o estilo padrão do navegador.
+            'bg-[#323232] border border-[#323232]',
             'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
             'transition-colors duration-150',
-            error && 'border-red-500',
+            error && 'border-[#ff9c9a]',
             className
           )}
           {...props}
         >
           {/* Mapeia o array de `options` para elementos <option> do HTML. */}
           {options.map((option) => (
-            <option key={option.value} value={option.value} className="bg-[#2a2a2a]">
+            <option key={option.value} value={option.value} className="bg-[#323232]">
               {option.label}
             </option>
           ))}
         </select>
         
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-[#ff9c9a]">{error}</p>}
       </div>
     )
   }
@@ -162,7 +162,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={textareaId} className="text-sm font-medium text-[#A0A0A0]">
+          <label htmlFor={textareaId} className="text-sm font-medium text-[#c7c7c7]">
             {label}
           </label>
         )}
@@ -171,18 +171,18 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           className={cn(
-            'w-full px-3 py-2.5 rounded-lg text-sm text-white min-h-[100px]', // Altura mínima padrão.
-            'bg-[#2a2a2a] border border-[#333333]',
-            'placeholder:text-[#A0A0A0]',
+            'w-full px-3 py-3 rounded-lg text-sm text-[#f5f5f5] min-h-[100px]', // Altura mínima padrão.
+            'bg-[#323232] border border-[#323232]',
+            'placeholder:text-[#616161]',
             'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
             'transition-colors duration-150 resize-none', // `resize-none` impede que o usuário redimensione o campo.
-            error && 'border-red-500',
+            error && 'border-[#ff9c9a]',
             className
           )}
           {...props}
         />
         
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-[#ff9c9a]">{error}</p>}
       </div>
     )
   }

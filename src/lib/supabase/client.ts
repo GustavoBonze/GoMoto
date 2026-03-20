@@ -20,9 +20,18 @@ export function createClient() {
    * através das variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.
    * Essas variáveis devem estar presentes no arquivo .env.local para que a conexão funcione.
    */
-  return createBrowserClient(
-    // A exclamação (!) ao final indica ao TypeScript que garantimos a existência dessas variáveis.
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  /**
+   * Fallback de URL e key usados apenas durante o build estático do Next.js,
+   * quando o .env.local ainda não foi configurado com os dados reais do Supabase.
+   * Em produção, as variáveis de ambiente devem conter URLs válidas do Supabase.
+   * A verificação usa uma regex simples para detectar se a URL configurada é um placeholder.
+   */
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+  const isValidUrl = rawUrl.startsWith('https://') || rawUrl.startsWith('http://');
+  const supabaseUrl = isValidUrl ? rawUrl : 'https://placeholder.supabase.co';
+  const supabaseKey = rawKey.startsWith('ey') ? rawKey : 'placeholder-anon-key';
+
+  return createBrowserClient(supabaseUrl, supabaseKey);
 }

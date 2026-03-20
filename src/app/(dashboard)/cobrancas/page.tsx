@@ -1,350 +1,69 @@
 /**
  * @file page.tsx
  * @description Página de Gerenciamento de Cobranças do Sistema GoMoto.
- * 
- * Este arquivo é responsável por renderizar a interface de controle financeiro de recebíveis.
- * Ele permite visualizar, criar, editar, excluir e gerenciar o status de cobranças
- * vinculadas aos contratos de locação de motocicletas.
- * 
+ *
+ * Este arquivo é responsável por renderizar a interface de controle financeiro de recebíveis,
+ * conectando-se ao banco de dados Supabase em tempo real para buscar, criar, editar e
+ * gerenciar o status de cobranças vinculadas aos contratos de locação.
+ *
  * Funcionalidades principais:
- * - Listagem de cobranças com filtros por status (Pendente, Pago, Vencido, Prejuízo).
- * - Busca textual por cliente, placa ou descrição.
- * - Painel de métricas financeiras (Total Recebido, A Receber, Inadimplência, etc.).
- * - Gestão de status: marcação de pagamentos e contabilização de perdas (prejuízo).
- * - Integração visual preparada para futura conexão com o gateway InfinitePay.
- * 
+ * - Listagem de cobranças em tempo real com filtros por status.
+ * - Painel de métricas financeiras calculado sobre os dados reais.
+ * - CRUD completo: criar, editar, marcar como pago, marcar como prejuízo e excluir.
+ * - Link direto para WhatsApp do cliente em cada linha da tabela.
+ *
  * O código segue o padrão internacional com identificadores em Inglês,
  * enquanto a interface e os comentários são em Português Brasil.
  */
 
 'use client'
 
-import { useState } from 'react'
-import { Plus, Edit2, Trash2, CheckCircle, DollarSign, Zap, Info, AlertTriangle, Search } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Edit2, Trash2, CheckCircle, AlertTriangle, Search, MessageCircle, CheckCircle2, Zap, DollarSign } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
-import { Badge, StatusBadge } from '@/components/ui/Badge'
+import { StatusBadge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Table } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Charge, ChargeStatus } from '@/types'
+import { createClient } from '@/lib/supabase/client'
+import type { ChargeStatus } from '@/types'
 
 /**
- * @interface ChargeWithRelations
- * @description Extensão da interface Charge para incluir dados relacionais
- * necessários para a exibição na tabela (nome do cliente e placa da moto).
+ * @type ChargeWithRelations
+ * @description Representa uma cobrança retornada pelo Supabase com joins de clientes e contratos.
  */
-type ChargeWithRelations = Charge & {
-  customer_name: string
-  motorcycle_plate: string
+type ChargeWithRelations = {
+  id: string
+  contract_id: string | null
+  customer_id: string
+  description: string
+  amount: number
+  due_date: string
+  status: ChargeStatus
+  payment_date: string | null
+  observations: string | null
+  created_at: string
+  updated_at: string
+  /** Dados do cliente vinculado via join */
+  customers: { name: string; phone: string } | null
+  /** Dados do contrato vinculado via join */
+  contracts: { id: string } | null
 }
 
 /**
- * @constant mockCharges
- * @description Conjunto de dados fictícios para simular a resposta de uma API.
- * Contém o histórico de cobranças de diversos clientes com diferentes estados.
+ * @type ContratoOption
+ * @description Contrato com dados do cliente para exibição no select do formulário.
  */
-const mockCharges: ChargeWithRelations[] = [
-  {
-    id: '141',
-    contract_id: 'SYF1C42',
-    customer_id: 'alexandre',
-    description: 'Proporcional — 09/03 a 10/03 (SYF1C42)',
-    amount: 150.00,
-    due_date: '2026-03-11',
-    status: 'paid',
-    payment_date: '2026-03-11',
-    created_at: '2026-03-11T10:00:00Z',
-    updated_at: '2026-03-11T10:00:00Z',
-    customer_name: 'ALEXANDRE DANTAS DAS SILVA',
-    motorcycle_plate: 'SYF1C42',
-  },
-  {
-    id: '142',
-    contract_id: 'SYF1C42',
-    customer_id: 'alexandre',
-    description: 'Caução — Entrada do contrato (SYF1C42)',
-    amount: 500.00,
-    due_date: '2026-03-09',
-    status: 'paid',
-    payment_date: '2026-03-09',
-    created_at: '2026-03-09T10:00:00Z',
-    updated_at: '2026-03-09T10:00:00Z',
-    customer_name: 'ALEXANDRE DANTAS DAS SILVA',
-    motorcycle_plate: 'SYF1C42',
-  },
-  {
-    id: '140',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 04/03 a 10/03 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-03-11',
-    status: 'paid',
-    payment_date: '2026-03-11',
-    created_at: '2026-03-11T10:00:00Z',
-    updated_at: '2026-03-11T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: '139',
-    contract_id: 'RJA5J85',
-    customer_id: 'flavio',
-    description: 'Semanal — 04/03 a 10/03 (RJA5J85)',
-    amount: 337.50,
-    due_date: '2026-03-11',
-    status: 'paid',
-    payment_date: '2026-03-11',
-    created_at: '2026-03-11T10:00:00Z',
-    updated_at: '2026-03-11T10:00:00Z',
-    customer_name: 'FLAVIO SILVA COUTINHO',
-    motorcycle_plate: 'RJA5J85',
-  },
-  {
-    id: '138',
-    contract_id: 'RJA5J85',
-    customer_id: 'flavio',
-    description: 'Semanal — 25/02 a 03/03 (RJA5J85)',
-    amount: 304.25,
-    due_date: '2026-03-04',
-    status: 'paid',
-    payment_date: '2026-03-04',
-    created_at: '2026-03-04T10:00:00Z',
-    updated_at: '2026-03-04T10:00:00Z',
-    customer_name: 'FLAVIO SILVA COUTINHO',
-    motorcycle_plate: 'RJA5J85',
-  },
-  {
-    id: '137',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 25/02 a 03/03 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-03-04',
-    status: 'paid',
-    payment_date: '2026-03-04',
-    created_at: '2026-03-04T10:00:00Z',
-    updated_at: '2026-03-04T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: '136',
-    contract_id: 'RJA5J85',
-    customer_id: 'flavio',
-    description: 'Semanal — 18/02 a 24/02 (RJA5J85)',
-    amount: 335.55,
-    due_date: '2026-02-25',
-    status: 'paid',
-    payment_date: '2026-02-25',
-    created_at: '2026-02-25T10:00:00Z',
-    updated_at: '2026-02-25T10:00:00Z',
-    customer_name: 'FLAVIO SILVA COUTINHO',
-    motorcycle_plate: 'RJA5J85',
-  },
-  {
-    id: '135',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 18/02 a 24/02 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-02-25',
-    status: 'paid',
-    payment_date: '2026-02-25',
-    created_at: '2026-02-25T10:00:00Z',
-    updated_at: '2026-02-25T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: '134',
-    contract_id: 'RJA5J85',
-    customer_id: 'flavio',
-    description: 'Semanal — 11/02 a 17/02 (RJA5J85)',
-    amount: 330.00,
-    due_date: '2026-02-18',
-    status: 'paid',
-    payment_date: '2026-02-18',
-    created_at: '2026-02-18T10:00:00Z',
-    updated_at: '2026-02-18T10:00:00Z',
-    customer_name: 'FLAVIO SILVA COUTINHO',
-    motorcycle_plate: 'RJA5J85',
-  },
-  {
-    id: '133',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 11/02 a 17/02 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-02-18',
-    status: 'paid',
-    payment_date: '2026-02-18',
-    created_at: '2026-02-18T10:00:00Z',
-    updated_at: '2026-02-18T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: '132',
-    contract_id: 'KYN9J41',
-    customer_id: 'douglas',
-    description: 'Quinzenal — 01/02 a 15/02 (KYN9J41)',
-    amount: 630.00,
-    due_date: '2026-02-16',
-    status: 'paid',
-    payment_date: '2026-02-16',
-    created_at: '2026-02-16T10:00:00Z',
-    updated_at: '2026-02-16T10:00:00Z',
-    customer_name: 'DOUGLAS DOS SANTOS SIMÕES',
-    motorcycle_plate: 'KYN9J41',
-  },
-  {
-    id: '131',
-    contract_id: 'RJA5J85',
-    customer_id: 'flavio',
-    description: 'Proporcional — 06/02 a 10/02 (RJA5J85)',
-    amount: 173.00,
-    due_date: '2026-02-11',
-    status: 'paid',
-    payment_date: '2026-02-11',
-    created_at: '2026-02-11T10:00:00Z',
-    updated_at: '2026-02-11T10:00:00Z',
-    customer_name: 'FLAVIO SILVA COUTINHO',
-    motorcycle_plate: 'RJA5J85',
-  },
-  {
-    id: '130',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 04/02 a 10/02 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-02-11',
-    status: 'paid',
-    payment_date: '2026-02-11',
-    created_at: '2026-02-11T10:00:00Z',
-    updated_at: '2026-02-11T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: '129',
-    contract_id: 'RJA5J85',
-    customer_id: 'flavio',
-    description: 'Caução — Entrada do contrato (RJA5J85)',
-    amount: 500.00,
-    due_date: '2026-02-06',
-    status: 'paid',
-    payment_date: '2026-02-06',
-    created_at: '2026-02-06T10:00:00Z',
-    updated_at: '2026-02-06T10:00:00Z',
-    customer_name: 'FLAVIO SILVA COUTINHO',
-    motorcycle_plate: 'RJA5J85',
-  },
-  {
-    id: '128',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 28/01 a 03/02 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-02-04',
-    status: 'paid',
-    payment_date: '2026-02-04',
-    created_at: '2026-02-04T10:00:00Z',
-    updated_at: '2026-02-04T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: '127',
-    contract_id: 'SYF1C42',
-    customer_id: 'thiago',
-    description: 'Semanal — 28/01 a 03/02 (SYF1C42)',
-    amount: 350.00,
-    due_date: '2026-02-04',
-    status: 'paid',
-    payment_date: '2026-02-04',
-    created_at: '2026-02-04T10:00:00Z',
-    updated_at: '2026-02-04T10:00:00Z',
-    customer_name: 'THIAGO ALVES CARLOS',
-    motorcycle_plate: 'SYF1C42',
-  },
-  {
-    id: '126',
-    contract_id: 'KYN9J41',
-    customer_id: 'douglas',
-    description: 'Quinzenal — 16/01 a 31/01 (KYN9J41)',
-    amount: 630.00,
-    due_date: '2026-01-31',
-    status: 'paid',
-    payment_date: '2026-01-31',
-    created_at: '2026-01-31T10:00:00Z',
-    updated_at: '2026-01-31T10:00:00Z',
-    customer_name: 'DOUGLAS DOS SANTOS SIMÕES',
-    motorcycle_plate: 'KYN9J41',
-  },
-  {
-    id: '23',
-    contract_id: 'SYF1C42',
-    customer_id: 'marcos',
-    description: 'Pagamento de Multa — Parcela 2/3 (SYF1C42)',
-    amount: 100.00,
-    due_date: '2025-05-07',
-    status: 'paid',
-    payment_date: '2025-05-07',
-    created_at: '2025-05-07T10:00:00Z',
-    updated_at: '2025-05-07T10:00:00Z',
-    customer_name: 'MARCOS FELIPE NEVES LOUREIRO',
-    motorcycle_plate: 'SYF1C42',
-  },
-  {
-    id: '19',
-    contract_id: 'SYF1C42',
-    customer_id: 'marcos',
-    description: 'Pagamento de Multa — Parcela 1/3 (SYF1C42)',
-    amount: 100.00,
-    due_date: '2025-05-04',
-    status: 'paid',
-    payment_date: '2025-05-04',
-    created_at: '2025-05-04T10:00:00Z',
-    updated_at: '2025-05-04T10:00:00Z',
-    customer_name: 'MARCOS FELIPE NEVES LOUREIRO',
-    motorcycle_plate: 'SYF1C42',
-  },
-  {
-    id: '143',
-    contract_id: 'RIW4J89',
-    customer_id: 'fabricio',
-    description: 'Semanal — 11/03 a 17/03 (RIW4J89)',
-    amount: 350.00,
-    due_date: '2026-03-18',
-    status: 'pending',
-    created_at: '2026-03-18T10:00:00Z',
-    updated_at: '2026-03-18T10:00:00Z',
-    customer_name: 'FABRICIO DO VALE NEPOMUCENO',
-    motorcycle_plate: 'RIW4J89',
-  },
-  {
-    id: 'test-prejuizo',
-    contract_id: 'TESTE',
-    customer_id: 'johnny',
-    description: 'Aluguel — Janeiro/2026 (TESTE)',
-    amount: 800.00,
-    due_date: '2026-01-15',
-    status: 'loss',
-    created_at: '2026-01-01T10:00:00Z',
-    updated_at: '2026-01-15T10:00:00Z',
-    customer_name: 'JOHNNY TESTE',
-    motorcycle_plate: '—',
-  },
-]
+type ContratoOption = {
+  id: string
+  customer_id: string
+  customers: { name: string } | null
+}
 
-/**
- * @constant tabs
- * @description Opções de filtragem por status para os botões de aba (tabs).
- */
+/** @constant tabs - Opções de filtragem por status para os botões de aba. */
 const tabs = [
   { label: 'Todas', value: 'all' },
   { label: 'Pendentes', value: 'pending' },
@@ -353,36 +72,7 @@ const tabs = [
   { label: 'Prejuízo', value: 'loss' },
 ]
 
-/**
- * @constant customerOptions
- * @description Lista de clientes para seleção no formulário de criação/edição.
- */
-const customerOptions = [
-  { value: '', label: 'Selecione um cliente' },
-  { value: 'alexandre', label: 'ALEXANDRE DANTAS DAS SILVA' },
-  { value: 'fabricio', label: 'FABRICIO DO VALE NEPOMUCENO' },
-  { value: 'flavio', label: 'FLAVIO SILVA COUTINHO' },
-  { value: 'douglas', label: 'DOUGLAS DOS SANTOS SIMÕES' },
-  { value: 'thiago', label: 'THIAGO ALVES CARLOS' },
-  { value: 'marcos', label: 'MARCOS FELIPE NEVES LOUREIRO' },
-]
-
-/**
- * @constant contractOptions
- * @description Lista de contratos e veículos vinculados para seleção.
- */
-const contractOptions = [
-  { value: '', label: 'Selecione um contrato / veículo' },
-  { value: 'KYN9J41', label: 'KYN9J41 — Douglas' },
-  { value: 'SYF1C42', label: 'SYF1C42 — Alexandre / Thiago / Marcos' },
-  { value: 'RIW4J89', label: 'RIW4J89 — Fabrício' },
-  { value: 'RJA5J85', label: 'RJA5J85 — Flávio' },
-]
-
-/**
- * @constant defaultForm
- * @description Estado inicial limpo para o formulário de cobrança.
- */
+/** @constant defaultForm - Estado inicial limpo para o formulário de cobrança. */
 const defaultForm = {
   customer_id: '',
   contract_id: '',
@@ -393,45 +83,96 @@ const defaultForm = {
 }
 
 /**
- * @component ChargesPage
+ * @component CobrancasPage
  * @description Componente principal da página de cobranças.
- * Gerencia todo o estado da interface, desde dados da tabela até modais de confirmação.
+ * Gerencia todo o estado da interface, busca dados reais do Supabase e
+ * realiza operações de escrita em tempo real.
  */
-export default function ChargesPage() {
-  /** @state charges - Lista principal de cobranças gerenciada no estado local. */
-  const [charges, setCharges] = useState<ChargeWithRelations[]>(mockCharges)
-  /** @state activeTab - Status de filtro selecionado nas abas. */
+export default function CobrancasPage() {
+  /** @state charges - Lista de cobranças carregada do Supabase. */
+  const [charges, setCharges] = useState<ChargeWithRelations[]>([])
+  /** @state clientes - Lista de clientes ativos para o select do formulário. */
+  const [clientes, setClientes] = useState<{ id: string; name: string }[]>([])
+  /** @state contratos - Lista de contratos ativos para o select do formulário. */
+  const [contratos, setContratos] = useState<ContratoOption[]>([])
+
+  /** @state loading - Indica se os dados principais estão sendo carregados. */
+  const [loading, setLoading] = useState(true)
+  /** @state saving - Bloqueia botões durante operações de escrita. */
+  const [saving, setSaving] = useState(false)
+  /** @state fetchError - Mensagem de erro caso o carregamento falhe. */
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  /** @state activeTab - Filtro de status selecionado. */
   const [activeTab, setActiveTab] = useState('all')
-  /** @state modalOpen - Controla a visibilidade do modal de criação/edição. */
-  const [modalOpen, setModalOpen] = useState(false)
-  /** @state editingId - Armazena o ID da cobrança que está sendo editada (null se for nova). */
-  const [editingId, setEditingId] = useState<string | null>(null)
-  /** @state form - Dados capturados pelos campos do formulário. */
-  const [form, setForm] = useState(defaultForm)
-  /** @state deleting - Objeto da cobrança selecionada para exclusão. */
-  const [deleting, setDeleting] = useState<ChargeWithRelations | null>(null)
-  /** @state confirmingPaid - Objeto da cobrança selecionada para confirmar pagamento. */
-  const [confirmingPaid, setConfirmingPaid] = useState<ChargeWithRelations | null>(null)
-  /** @state confirmingLoss - Objeto da cobrança selecionada para marcar como prejuízo. */
-  const [confirmingLoss, setConfirmingLoss] = useState<ChargeWithRelations | null>(null)
-  /** @state search - Termo de busca digitado pelo usuário. */
+  /** @state search - Termo de busca textual. */
   const [search, setSearch] = useState('')
 
+  /** @state modalOpen - Controla o modal de criação/edição. */
+  const [modalOpen, setModalOpen] = useState(false)
+  /** @state editingId - ID da cobrança sendo editada (null = nova). */
+  const [editingId, setEditingId] = useState<string | null>(null)
+  /** @state form - Dados capturados pelo formulário. */
+  const [form, setForm] = useState(defaultForm)
+
+  /** @state confirmingPaid - Cobrança selecionada para confirmar pagamento. */
+  const [confirmingPaid, setConfirmingPaid] = useState<ChargeWithRelations | null>(null)
+  /** @state paymentMethod - Método de pagamento selecionado no modal. */
+  const [paymentMethod, setPaymentMethod] = useState('')
+  /** @state confirmingLoss - Cobrança selecionada para marcar como prejuízo. */
+  const [confirmingLoss, setConfirmingLoss] = useState<ChargeWithRelations | null>(null)
+  /** @state deleting - Cobrança selecionada para exclusão. */
+  const [deleting, setDeleting] = useState<ChargeWithRelations | null>(null)
+
   /**
-   * @variable filtered
-   * @description Processa a lista de cobranças aplicando filtros de aba e de busca textual.
+   * @function fetchCharges
+   * @description Busca todas as cobranças do Supabase com join de clientes e contratos.
+   * Chamada na montagem do componente e após cada operação de escrita.
    */
-  const filtered = charges
-    .filter((c) => activeTab === 'all' || c.status === activeTab)
-    .filter((c) => {
-      if (!search) return true
-      const q = search.toLowerCase()
-      return (
-        c.customer_name.toLowerCase().includes(q) ||
-        c.motorcycle_plate.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q)
-      )
-    })
+  const fetchCharges = useCallback(async () => {
+    const supabase = createClient()
+    setLoading(true)
+    setFetchError(null)
+    try {
+      const { data, error } = await supabase
+        .from('billings')
+        .select('*, customers(name, phone), contracts(id)')
+        .order('due_date', { ascending: false })
+
+      if (error) throw error
+      setCharges((data as ChargeWithRelations[]) ?? [])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      console.error('Erro ao buscar cobranças:', err)
+      setFetchError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  /**
+   * @function fetchDependencies
+   * @description Busca clientes ativos e contratos ativos para popular os selects do formulário.
+   */
+  const fetchDependencies = useCallback(async () => {
+    const supabase = createClient()
+    try {
+      const [{ data: clientesData }, { data: contratosData }] = await Promise.all([
+        supabase.from('customers').select('id, name').eq('active', true).order('name'),
+        supabase.from('contracts').select('id, customer_id, customers(name)').eq('status', 'active'),
+      ])
+      setClientes(clientesData ?? [])
+      setContratos((contratosData as unknown as ContratoOption[]) ?? [])
+    } catch (err) {
+      console.error('Erro ao carregar dependências do formulário:', err)
+    }
+  }, [])
+
+  /** Carrega os dados na montagem inicial do componente. */
+  useEffect(() => {
+    fetchCharges()
+    fetchDependencies()
+  }, [fetchCharges, fetchDependencies])
 
   /**
    * @function openNew
@@ -445,14 +186,14 @@ export default function ChargesPage() {
 
   /**
    * @function openEdit
-   * @description Preenche o formulário com dados existentes e abre o modal para edição.
+   * @description Preenche o formulário com os dados existentes e abre o modal para edição.
    * @param row - Objeto da cobrança a ser editada.
    */
   function openEdit(row: ChargeWithRelations) {
     setEditingId(row.id)
     setForm({
       customer_id: row.customer_id,
-      contract_id: row.contract_id,
+      contract_id: row.contract_id ?? '',
       description: row.description,
       amount: String(row.amount),
       due_date: row.due_date,
@@ -462,146 +203,173 @@ export default function ChargesPage() {
   }
 
   /**
-   * @function confirmPaid
-   * @description Atualiza o status da cobrança selecionada para 'paid' e define a data de pagamento como hoje.
+   * @function handleSubmit
+   * @description Envia os dados do formulário ao Supabase para inserção ou atualização.
+   * @param e - Evento de submissão do formulário.
    */
-  function confirmPaid() {
-    if (!confirmingPaid) return
-    setCharges((prev) =>
-      prev.map((c) =>
-        c.id === confirmingPaid.id
-          ? { ...c, status: 'paid' as ChargeStatus, payment_date: new Date().toISOString().split('T')[0] }
-          : c
-      )
-    )
-    setConfirmingPaid(null)
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    const supabase = createClient()
+    try {
+      if (editingId) {
+        /** Atualização de cobrança existente */
+        const { error } = await supabase.from('billings').update({
+          customer_id: form.customer_id,
+          contract_id: form.contract_id || null,
+          description: form.description,
+          amount: parseFloat(form.amount),
+          due_date: form.due_date,
+          observations: form.notes || null,
+        }).eq('id', editingId)
+        if (error) throw error
+      } else {
+        /** Inserção de nova cobrança */
+        const { error } = await supabase.from('billings').insert({
+          customer_id: form.customer_id,
+          contract_id: form.contract_id || null,
+          description: form.description,
+          amount: parseFloat(form.amount),
+          due_date: form.due_date,
+          status: 'pending',
+          observations: form.notes || null,
+        })
+        if (error) throw error
+      }
+      setModalOpen(false)
+      await fetchCharges()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar'
+      console.error('Erro ao salvar cobrança:', err)
+      alert('Erro ao salvar cobrança: ' + msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /**
+   * @function confirmPaid
+   * @description Atualiza o status para 'paid', registra a data de pagamento e o método utilizado.
+   */
+  async function confirmPaid() {
+    if (!confirmingPaid || !paymentMethod) return
+    setSaving(true)
+    const supabase = createClient()
+    try {
+      const obsAtual = confirmingPaid.observations ? confirmingPaid.observations + '\n' : ''
+      const { error } = await supabase.from('billings').update({
+        status: 'paid',
+        payment_date: new Date().toISOString().split('T')[0],
+        observations: `${obsAtual}Método: ${paymentMethod}`,
+      }).eq('id', confirmingPaid.id)
+      if (error) throw error
+      setConfirmingPaid(null)
+      setPaymentMethod('')
+      await fetchCharges()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao confirmar pagamento'
+      console.error('Erro ao confirmar pagamento:', err)
+      alert('Erro: ' + msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   /**
    * @function confirmLoss
-   * @description Atualiza o status da cobrança selecionada para 'loss' (prejuízo/perda).
+   * @description Atualiza o status da cobrança para 'loss' (prejuízo irrecuperável).
    */
-  function confirmLoss() {
+  async function confirmLoss() {
     if (!confirmingLoss) return
-    setCharges((prev) =>
-      prev.map((c) =>
-        c.id === confirmingLoss.id ? { ...c, status: 'loss' as ChargeStatus } : c
-      )
-    )
-    setConfirmingLoss(null)
-  }
-
-  /**
-   * @function handleSubmit
-   * @description Processa o envio do formulário, criando ou atualizando um registro no estado.
-   * @param e - Evento de submissão do formulário React.
-   */
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    /** @variable customerLabel - Localiza o nome legível do cliente baseado no ID selecionado. */
-    const customerLabel = customerOptions.find((o) => o.value === form.customer_id)?.label ?? ''
-
-    if (editingId) {
-      /** Lógica de atualização de registro existente */
-      setCharges((prev) =>
-        prev.map((c) =>
-          c.id === editingId
-            ? {
-                ...c,
-                customer_id: form.customer_id,
-                contract_id: form.contract_id,
-                description: form.description,
-                amount: parseFloat(form.amount),
-                due_date: form.due_date,
-                observations: form.notes,
-                customer_name: customerLabel,
-                motorcycle_plate: form.contract_id || c.motorcycle_plate,
-                updated_at: new Date().toISOString(),
-              }
-            : c
-        )
-      )
-    } else {
-      /** Lógica de criação de novo registro */
-      const newCharge: ChargeWithRelations = {
-        id: String(Date.now()),
-        contract_id: form.contract_id,
-        customer_id: form.customer_id,
-        description: form.description,
-        amount: parseFloat(form.amount),
-        due_date: form.due_date,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        customer_name: customerLabel,
-        motorcycle_plate: form.contract_id || '—',
-      }
-      setCharges((prev) => [newCharge, ...prev])
+    setSaving(true)
+    const supabase = createClient()
+    try {
+      const { error } = await supabase.from('billings').update({ status: 'loss' }).eq('id', confirmingLoss.id)
+      if (error) throw error
+      setConfirmingLoss(null)
+      await fetchCharges()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao marcar como prejuízo'
+      console.error('Erro ao marcar como prejuízo:', err)
+      alert('Erro: ' + msg)
+    } finally {
+      setSaving(false)
     }
-
-    setForm(defaultForm)
-    setModalOpen(false)
   }
 
   /**
    * @function confirmDeletion
-   * @description Remove permanentemente uma cobrança da lista do estado local.
+   * @description Remove permanentemente uma cobrança do banco de dados.
    */
-  function confirmDeletion() {
+  async function confirmDeletion() {
     if (!deleting) return
-    setCharges((prev) => prev.filter((c) => c.id !== deleting.id))
-    setDeleting(null)
+    setSaving(true)
+    const supabase = createClient()
+    try {
+      const { error } = await supabase.from('billings').delete().eq('id', deleting.id)
+      if (error) throw error
+      setDeleting(null)
+      await fetchCharges()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao excluir'
+      console.error('Erro ao excluir cobrança:', err)
+      alert('Erro: ' + msg)
+    } finally {
+      setSaving(false)
+    }
   }
+
+  /**
+   * @variable filtered
+   * @description Aplica filtros de aba e busca textual sobre a lista de cobranças.
+   */
+  const filtered = charges
+    .filter((c) => activeTab === 'all' || c.status === activeTab)
+    .filter((c) => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return (
+        (c.customers?.name ?? '').toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q)
+      )
+    })
 
   /** CÁLCULOS FINANCEIROS E MÉTRICAS */
 
-  /** @variable totalPaid - Soma de todos os valores das cobranças com status 'paid'. */
+  /** @variable totalPaid - Soma de cobranças com status 'paid'. */
   const totalPaid = charges.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
-  /** @variable totalPending - Soma de valores 'pending'. */
-  const totalPending = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
-  /** @variable totalOverdue - Soma de valores 'overdue'. */
-  const totalOverdue = charges.filter((c) => c.status === 'overdue').reduce((sum, c) => sum + c.amount, 0)
-  /** @variable totalLoss - Soma de valores 'loss'. */
-  const totalLoss = charges.filter((c) => c.status === 'loss').reduce((sum, c) => sum + c.amount, 0)
-  /** @variable totalUnpaid - Total que deveria ter sido recebido mas não foi (Pendente + Vencido). */
-  const totalUnpaid = totalPending + totalOverdue
-
-  /** @variable defaultersCount - Quantidade de itens em atraso ou perdidos. */
-  const defaultersCount = charges.filter((c) => c.status === 'overdue' || c.status === 'loss').length
-  /** @variable defaultRate - Percentual de inadimplência sobre o volume total de registros. */
-  const defaultRate = charges.length > 0 ? (defaultersCount / charges.length) * 100 : 0
-
-  /** @variable paidCharges - Lista filtrada de itens já liquidados. */
   const paidCharges = charges.filter((c) => c.status === 'paid')
   /** @variable averageTicket - Média de valor por cobrança paga. */
   const averageTicket = paidCharges.length > 0 ? totalPaid / paidCharges.length : 0
 
-  /** @variable today - Referência de data atual para cálculos de projeção. */
+  /** @variable totalPending - Soma de cobranças com status 'pending'. */
+  const totalPending = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+  /** @variable projection30Days - Cobranças pendentes que vencem nos próximos 30 dias. */
   const today = new Date()
-  /** @variable in30Days - Data limite para a projeção de fluxo de caixa futuro. */
   const in30Days = new Date(today); in30Days.setDate(today.getDate() + 30)
-  /** @variable projection30Days - Valor total de cobranças pendentes que vencem nos próximos 30 dias. */
   const projection30Days = charges
-    .filter((c) => c.status === 'pending' && new Date(c.due_date) <= in30Days)
+    .filter((c) => c.status === 'pending' && new Date(c.due_date + 'T00:00:00') <= in30Days)
     .reduce((sum, c) => sum + c.amount, 0)
 
-  /** @variable sortedOverdue - Cobranças vencidas ordenadas da mais antiga para a mais recente. */
+  /** @variable totalOverdue - Soma de cobranças com status 'overdue'. */
+  const totalOverdue = charges.filter((c) => c.status === 'overdue').reduce((sum, c) => sum + c.amount, 0)
   const sortedOverdue = charges
     .filter((c) => c.status === 'overdue')
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
-  /** @variable oldestCharge - O registro que está há mais tempo em atraso. */
   const oldestCharge = sortedOverdue[0]
-  /** @variable daysOverdue - Cálculo de quantos dias o registro mais antigo está vencido. */
   const daysOverdue = oldestCharge
-    ? Math.floor((today.getTime() - new Date(oldestCharge.due_date).getTime()) / 86400000)
+    ? Math.floor((today.getTime() - new Date(oldestCharge.due_date + 'T00:00:00').getTime()) / 86400000)
     : 0
 
-  /** @variable paidOnTime - Contagem de cobranças pagas na data de vencimento ou antes. */
+  /** @variable defaultersCount - Quantidade de itens em atraso ou perdidos. */
+  const defaultersCount = charges.filter((c) => c.status === 'overdue' || c.status === 'loss').length
+  const defaultRate = charges.length > 0 ? (defaultersCount / charges.length) * 100 : 0
+  /** @variable paidOnTime - Cobranças pagas no prazo ou antecipadas. */
   const paidOnTime = paidCharges.filter((c) => c.payment_date && c.payment_date <= c.due_date).length
-  /** @variable punctualityRate - Índice percentual de clientes que pagam no prazo. */
   const punctualityRate = paidCharges.length > 0 ? (paidOnTime / paidCharges.length) * 100 : 0
 
-  /** @variable averageTime - Tempo médio (em dias) decorrido entre o vencimento e o pagamento efetivo. */
+  /** @variable totalUnpaid - Pendentes + vencidas (tudo que não entrou no caixa). */
+  const totalUnpaid = totalPending + totalOverdue
   const averageTime = paidCharges.length > 0
     ? paidCharges.reduce((sum, c) => {
         const days = c.payment_date
@@ -611,41 +379,44 @@ export default function ChargesPage() {
       }, 0) / paidCharges.length
     : 0
 
-  /** @variable debtors - Agrupamento de valores devidos por nome de cliente. */
-  const debtors: Record<string, number> = {}
-  charges
-    .filter((c) => c.status === 'overdue' || c.status === 'pending')
-    .forEach((c) => { debtors[c.customer_name] = (debtors[c.customer_name] ?? 0) + c.amount })
-  /** @variable topDebtor - O cliente com maior montante acumulado a pagar. */
-  const topDebtor = Object.entries(debtors).sort((a, b) => b[1] - a[1])[0]
-
-  /** @variable lossByCustomer - Agrupamento de prejuízos contabilizados por cliente. */
+  /** @variable totalLoss - Soma dos prejuízos contabilizados. */
+  const totalLoss = charges.filter((c) => c.status === 'loss').reduce((sum, c) => sum + c.amount, 0)
   const lossByCustomer: Record<string, number> = {}
-  charges
-    .filter((c) => c.status === 'loss')
-    .forEach((c) => { lossByCustomer[c.customer_name] = (lossByCustomer[c.customer_name] ?? 0) + c.amount })
-  /** @variable topLoss - O cliente que gerou o maior prejuízo individual até o momento. */
+  charges.filter((c) => c.status === 'loss').forEach((c) => {
+    const name = c.customers?.name ?? 'Desconhecido'
+    lossByCustomer[name] = (lossByCustomer[name] ?? 0) + c.amount
+  })
   const topLoss = Object.entries(lossByCustomer).sort((a, b) => b[1] - a[1])[0]
 
   /**
    * @constant columns
    * @description Definição estrutural das colunas da tabela de cobranças.
-   * Cada objeto mapeia uma chave do dado para um cabeçalho e uma função de renderização JSX personalizada.
    */
   const columns = [
     {
-      key: 'customer_name',
+      key: 'cliente',
       header: 'Cliente',
-      render: (row: ChargeWithRelations) => (
-        <span className="font-medium text-white">{row.customer_name}</span>
-      ),
-    },
-    {
-      key: 'motorcycle_plate',
-      header: 'Placa',
-      render: (row: ChargeWithRelations) => (
-        <span className="font-mono text-sm text-[#A0A0A0]">{row.motorcycle_plate}</span>
-      ),
+      render: (row: ChargeWithRelations) => {
+        const phone = row.customers?.phone
+        const wpLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-[#f5f5f5]">{row.customers?.name ?? '—'}</span>
+            {wpLink && (
+              <a
+                href={wpLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir WhatsApp"
+                className="text-[#9e9e9e] hover:text-[#28b438] transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'description',
@@ -656,7 +427,7 @@ export default function ChargesPage() {
       key: 'amount',
       header: 'Valor',
       render: (row: ChargeWithRelations) => (
-        <span className="font-semibold text-white">{formatCurrency(row.amount)}</span>
+        <span className="font-semibold text-[#f5f5f5]">{formatCurrency(row.amount)}</span>
       ),
     },
     {
@@ -681,39 +452,39 @@ export default function ChargesPage() {
       header: 'Ações',
       render: (row: ChargeWithRelations) => (
         <div className="flex items-center gap-1">
-          {/* Botão de confirmação de pagamento: visível apenas para pendentes ou vencidas */}
+          {/* Botão de confirmar pagamento: visível apenas para pendentes ou vencidas */}
           {(row.status === 'pending' || row.status === 'overdue') && (
             <button
-              onClick={() => setConfirmingPaid(row)}
+              onClick={() => { setConfirmingPaid(row); setPaymentMethod('') }}
               title="Marcar como pago"
-              className="p-1.5 rounded-lg text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-[#28b438] hover:bg-[#0e2f13] transition-colors"
             >
               <CheckCircle className="w-4 h-4" />
             </button>
           )}
-          {/* Botão de marcação de prejuízo: permite dar baixa contábil em dívidas irrecuperáveis */}
+          {/* Botão de marcar como prejuízo */}
           {(row.status === 'pending' || row.status === 'overdue') && (
             <button
               onClick={() => setConfirmingLoss(row)}
               title="Contabilizar como prejuízo"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-[#ff9c9a] border border-[#ff9c9a]/20 hover:bg-[#ff9c9a]/10 transition-colors"
             >
               <AlertTriangle className="w-3 h-3" />
               Prejuízo
             </button>
           )}
-          {/* Botão de edição de dados */}
+          {/* Botão de edição */}
           <button
             onClick={() => openEdit(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
+            className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-colors"
             title="Editar"
           >
             <Edit2 className="w-4 h-4" />
           </button>
-          {/* Botão de exclusão definitiva */}
+          {/* Botão de exclusão */}
           <button
             onClick={() => setDeleting(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
+            className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#ff9c9a]/10 transition-colors"
             title="Excluir"
           >
             <Trash2 className="w-4 h-4" />
@@ -725,10 +496,10 @@ export default function ChargesPage() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Cabeçalho superior com título e ação global de nova cobrança */}
+      {/* Cabeçalho superior com título e ação global */}
       <Header
         title="Cobranças"
-        subtitle="Controle de recebimentos"
+        subtitle="Controle de recebimentos em tempo real"
         actions={
           <Button onClick={openNew}>
             <Plus className="w-4 h-4" />
@@ -739,7 +510,7 @@ export default function ChargesPage() {
 
       <div className="p-6 space-y-4">
 
-        {/* Banner Informativo sobre Integrações Futuras */}
+        {/* Banner sobre integração com InfinitePay */}
         <div className="rounded-xl border border-[#BAFF1A]/30 bg-[#BAFF1A]/5 px-4 py-4 space-y-3">
           <div className="flex items-start gap-3">
             <Zap className="w-5 h-5 text-[#BAFF1A] mt-0.5 shrink-0" />
@@ -747,20 +518,18 @@ export default function ChargesPage() {
               <p className="text-sm font-semibold text-[#BAFF1A]">
                 Integração com InfinitePay em breve
               </p>
-              <p className="text-sm text-[#A0A0A0] mt-0.5">
+              <p className="text-sm text-[#9e9e9e] mt-0.5">
                 Esta tela será integrada com a plataforma InfinitePay para geração e gestão automatizada de cobranças.
-                Os dados exibidos são <span className="text-white font-medium">ilustrativos</span> — o layout e campos poderão mudar com a integração.
+                Os dados abaixo são <span className="text-[#f5f5f5] font-medium">reais do seu banco de dados</span>.
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#BAFF1A]/10 border border-[#BAFF1A]/20 px-2.5 py-1 text-xs font-medium text-[#BAFF1A]">
-              <Info className="w-3 h-3" />
-              Dados ilustrativos
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#28b438]/10 border border-[#28b438]/20 px-2.5 py-1 text-xs font-medium text-[#28b438]">
+              <CheckCircle2 className="w-3 h-3" />
+              Dados em tempo real
             </span>
           </div>
-
-          {/* Lista de benefícios da futura integração */}
           <div className="border-t border-[#BAFF1A]/15 pt-3">
-            <p className="text-xs text-[#A0A0A0] uppercase tracking-wider mb-2">O que esta tela irá apresentar após a integração</p>
+            <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-2">O que esta tela irá apresentar após a integração</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
               {[
                 'Total recebido no período',
@@ -768,158 +537,172 @@ export default function ChargesPage() {
                 'Cobranças vencidas',
                 '% de inadimplência',
                 'Valores não pagos acumulados',
-                'Prejuízos contabilizados (dívidas irrecuperáveis)',
+                'Prejuízos contabilizados',
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#BAFF1A]/60 shrink-0" />
-                  <span className="text-xs text-[#A0A0A0]">{item}</span>
+                  <span className="text-xs text-[#9e9e9e]">{item}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Grid de Cards de Métricas — Fornece visão rápida da saúde financeira */}
+        {/* Mensagem de erro no carregamento */}
+        {fetchError && (
+          <div className="rounded-xl border border-[#ff9c9a]/30 bg-[#7c1c1c]/20 px-4 py-3 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-[#ff9c9a] shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[#ff9c9a]">Erro ao carregar cobranças</p>
+              <p className="text-xs text-[#9e9e9e] mt-0.5">{fetchError}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchCharges}>
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+
+        {/* Grid de Cards de Métricas */}
         <div className="grid grid-cols-3 gap-4">
 
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Total Recebido</p>
+            <div className="p-4 border-b border-[#474747]">
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Total Recebido</p>
               <p className="text-2xl font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">{paidCharges.length} cobranças pagas</p>
+              <p className="text-xs text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-[#A0A0A0]">Ticket médio</span>
-              <span className="text-xs font-semibold text-white">{formatCurrency(averageTicket)}</span>
+              <span className="text-xs text-[#9e9e9e]">Ticket médio</span>
+              <span className="text-xs font-semibold text-[#f5f5f5]">{formatCurrency(averageTicket)}</span>
             </div>
           </Card>
 
-          {/* Card 2: Montante A Receber e Projeção Próximos 30 dias */}
+          {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">A Receber</p>
-              <p className="text-2xl font-bold text-amber-400 mt-1">{formatCurrency(totalPending)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
+            <div className="p-4 border-b border-[#474747]">
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">A Receber</p>
+              <p className="text-2xl font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
+              <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-[#A0A0A0]">Vencem em 30 dias</span>
-              <span className="text-xs font-semibold text-amber-400">{formatCurrency(projection30Days)}</span>
+              <span className="text-xs text-[#9e9e9e]">Vencem em 30 dias</span>
+              <span className="text-xs font-semibold text-[#e65e24]">{formatCurrency(projection30Days)}</span>
             </div>
           </Card>
 
-          {/* Card 3: Valor Total Vencido e Destaque da Cobrança Mais Atrasada */}
+          {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Vencidas</p>
-              <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalOverdue)}</p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
+            <div className="p-4 border-b border-[#474747]">
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Vencidas</p>
+              <p className="text-2xl font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
+              <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
             <div className="px-4 py-3">
               {oldestCharge ? (
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-[#A0A0A0] truncate max-w-[130px]" title={oldestCharge.customer_name}>
-                    {oldestCharge.customer_name.split(' ')[0]}
+                  <span className="text-xs text-[#9e9e9e] truncate max-w-[130px]" title={oldestCharge.customers?.name ?? ''}>
+                    {(oldestCharge.customers?.name ?? '—').split(' ')[0]}
                   </span>
-                  <span className="text-xs font-semibold text-red-400 shrink-0">{daysOverdue}d atraso</span>
+                  <span className="text-xs font-semibold text-[#ff9c9a] shrink-0">{daysOverdue}d atraso</span>
                 </div>
               ) : (
-                <span className="text-xs text-green-400">Nenhuma em atraso</span>
+                <span className="text-xs text-[#28b438]">Nenhuma em atraso</span>
               )}
             </div>
           </Card>
 
-          {/* Card 4: Taxa de Inadimplência e Índice de Pontualidade */}
+          {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Inadimplência</p>
-              <p className={`text-2xl font-bold mt-1 ${defaultRate > 0 ? 'text-red-400' : 'text-green-400'}`}>
+            <div className="p-4 border-b border-[#474747]">
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Inadimplência</p>
+              <p className={`text-2xl font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {defaultRate.toFixed(1)}%
               </p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">
-                {defaultersCount} cobrança(s) vencida(s) ou perdida(s) do total de {charges.length}
+              <p className="text-xs text-[#9e9e9e] mt-0.5">
+                {defaultersCount} cobrança(s) vencida(s) ou perdida(s) de {charges.length}
               </p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
-                <p className="text-xs text-[#A0A0A0]">Pontualidade</p>
-                <p className="text-xs text-[#888888] mt-0.5">das {paidCharges.length} pagas</p>
+                <p className="text-xs text-[#9e9e9e]">Pontualidade</p>
+                <p className="text-xs text-[#616161] mt-0.5">das {paidCharges.length} pagas</p>
               </div>
-              <span className={`text-sm font-semibold ${punctualityRate >= 80 ? 'text-green-400' : punctualityRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+              <span className={`text-sm font-semibold ${punctualityRate >= 80 ? 'text-[#28b438]' : punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
                 {punctualityRate.toFixed(1)}%
               </span>
             </div>
           </Card>
 
-          {/* Card 5: Valores Totais Não Pagos e Tempo Médio de Recebimento */}
+          {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#2a2a2a]">
-              <p className="text-xs text-[#A0A0A0] uppercase tracking-wider">Valores Não Pagos</p>
-              <p className={`text-2xl font-bold mt-1 ${totalUnpaid > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+            <div className="p-4 border-b border-[#474747]">
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Valores Não Pagos</p>
+              <p className={`text-2xl font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalUnpaid)}
               </p>
-              <p className="text-xs text-[#A0A0A0] mt-0.5">Pendentes + vencidas</p>
+              <p className="text-xs text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-[#A0A0A0]">Tempo médio de receb.</span>
-              <span className="text-xs font-semibold text-white">
+              <span className="text-xs text-[#9e9e9e]">Tempo médio de receb.</span>
+              <span className="text-xs font-semibold text-[#f5f5f5]">
                 {averageTime === 0 ? 'No prazo' : averageTime > 0 ? `${averageTime.toFixed(0)}d após venc.` : `${Math.abs(averageTime).toFixed(0)}d antecipado`}
               </span>
             </div>
           </Card>
 
-          {/* Card 6: Prejuízos Contabilizados e Destaque de Maior Inadimplente */}
-          <Card padding="none" className={totalLoss > 0 ? 'border-red-500/40 bg-red-500/5' : ''}>
-            <div className={`p-4 border-b ${totalLoss > 0 ? 'border-red-500/20' : 'border-[#2a2a2a]'}`}>
+          {/* Card 6: Prejuízos Contabilizados */}
+          <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a]/40 bg-[#7c1c1c]/10' : ''}>
+            <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]/20' : 'border-[#474747]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-xs uppercase tracking-wider ${totalLoss > 0 ? 'text-red-400' : 'text-[#A0A0A0]'}`}>
+                <p className={`text-xs uppercase tracking-wider ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                   Prejuízos Contabilizados
                 </p>
                 {totalLoss > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 border border-red-500/30 px-2 py-0.5 text-xs font-medium text-red-400">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#7c1c1c]/30 border border-[#ff9c9a]/30 px-2 py-0.5 text-xs font-medium text-[#ff9c9a]">
                     Atenção
                   </span>
                 )}
               </div>
-              <p className={`text-2xl font-bold mt-1 ${totalLoss > 0 ? 'text-red-400' : 'text-green-400'}`}>
+              <p className={`text-2xl font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalLoss)}
               </p>
-              <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-red-400/70' : 'text-[#A0A0A0]'}`}>
+              <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]/70' : 'text-[#9e9e9e]'}`}>
                 {charges.filter((c) => c.status === 'loss').length === 0
                   ? 'Nenhum prejuízo registrado'
                   : `${charges.filter((c) => c.status === 'loss').length} cobrança(s) irrecuperável(is)`}
               </p>
             </div>
-            <div className={`px-4 py-3 ${totalLoss > 0 ? 'bg-red-500/5' : ''}`}>
+            <div className={`px-4 py-3 ${totalLoss > 0 ? 'bg-[#7c1c1c]/10' : ''}`}>
               {topLoss ? (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-[#A0A0A0]">Maior prejuízo</p>
-                    <p className="text-xs font-medium text-white truncate max-w-[130px]" title={topLoss[0]}>
+                    <p className="text-xs text-[#9e9e9e]">Maior prejuízo</p>
+                    <p className="text-xs font-medium text-[#f5f5f5] truncate max-w-[130px]" title={topLoss[0]}>
                       {topLoss[0].split(' ')[0]}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-red-400 shrink-0">{formatCurrency(topLoss[1])}</span>
+                  <span className="text-sm font-bold text-[#ff9c9a] shrink-0">{formatCurrency(topLoss[1])}</span>
                 </div>
               ) : (
-                <span className="text-xs text-green-400">Nenhum prejuízo registrado</span>
+                <span className="text-xs text-[#28b438]">Nenhum prejuízo registrado</span>
               )}
             </div>
           </Card>
 
         </div>
 
-        {/* Barra de Ações: Filtros por status e campo de busca global */}
+        {/* Barra de Filtros e Busca */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-2 flex-wrap">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
                   activeTab === tab.value
                     ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
@@ -932,29 +715,30 @@ export default function ChargesPage() {
             ))}
           </div>
           <div className="ml-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A0A0A0]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9e9e9e]" />
             <input
               type="text"
-              placeholder="Buscar por cliente, placa ou descrição..."
+              placeholder="Buscar por cliente ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#555555] w-72"
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
             />
           </div>
         </div>
 
-        {/* Tabela de Dados: Renderiza a lista filtrada de cobranças */}
+        {/* Tabela de Cobranças */}
         <Card padding="none">
           <Table
             columns={columns}
             data={filtered}
             keyExtractor={(row) => row.id}
+            loading={loading}
             emptyMessage="Nenhuma cobrança encontrada"
           />
         </Card>
       </div>
 
-      {/* Modal: Formulário para criação ou edição de cobrança */}
+      {/* Modal: Formulário de criação ou edição de cobrança */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -964,20 +748,31 @@ export default function ChargesPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Cliente"
-            options={customerOptions}
+            options={[
+              { value: '', label: 'Selecione um cliente' },
+              ...clientes.map((c) => ({ value: c.id, label: c.name })),
+            ]}
             value={form.customer_id}
             onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
             required
           />
           <Select
-            label="Contrato / Placa"
-            options={contractOptions}
+            label="Contrato (opcional)"
+            options={[
+              { value: '', label: 'Nenhum contrato vinculado' },
+              ...contratos
+                .filter((c) => !form.customer_id || c.customer_id === form.customer_id)
+                .map((c) => ({
+                  value: c.id,
+                  label: `${c.id.slice(0, 8)}... — ${c.customers?.name ?? 'Cliente'}`,
+                })),
+            ]}
             value={form.contract_id}
             onChange={(e) => setForm({ ...form, contract_id: e.target.value })}
           />
           <Input
             label="Descrição"
-            placeholder="Aluguel — Abril/2024"
+            placeholder="Ex: Semanal — 10/03 a 16/03"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             required
@@ -987,7 +782,7 @@ export default function ChargesPage() {
               label="Valor (R$)"
               type="number"
               step="0.01"
-              placeholder="1200.00"
+              placeholder="350.00"
               value={form.amount}
               onChange={(e) => setForm({ ...form, amount: e.target.value })}
               required
@@ -1011,7 +806,7 @@ export default function ChargesPage() {
             <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" loading={saving}>
               <DollarSign className="w-4 h-4" />
               {editingId ? 'Salvar Alterações' : 'Criar Cobrança'}
             </Button>
@@ -1019,23 +814,37 @@ export default function ChargesPage() {
         </form>
       </Modal>
 
-      {/* Modal de Confirmação: Registro de pagamento recebido */}
+      {/* Modal: Confirmar recebimento de pagamento */}
       <Modal open={!!confirmingPaid} onClose={() => setConfirmingPaid(null)} title="Confirmar Pagamento" size="sm">
         <div className="space-y-4">
-          <div className="p-4 bg-green-500/8 border border-green-500/20 rounded-lg space-y-2">
-            <p className="text-sm text-white font-medium">Confirmar recebimento desta cobrança?</p>
+          <div className="p-4 bg-[#0e2f13] border border-[#28b438]/20 rounded-lg space-y-2">
+            <p className="text-sm text-[#f5f5f5] font-medium">Confirmar recebimento desta cobrança?</p>
             {confirmingPaid && (
               <div className="space-y-0.5">
-                <p className="text-xs text-[#A0A0A0]">{confirmingPaid.customer_name}</p>
-                <p className="text-xs text-[#A0A0A0]">{confirmingPaid.description}</p>
-                <p className="text-sm font-semibold text-green-400">{formatCurrency(confirmingPaid.amount)}</p>
+                <p className="text-xs text-[#9e9e9e]">{confirmingPaid.customers?.name ?? '—'}</p>
+                <p className="text-xs text-[#9e9e9e]">{confirmingPaid.description}</p>
+                <p className="text-sm font-semibold text-[#28b438]">{formatCurrency(confirmingPaid.amount)}</p>
               </div>
             )}
           </div>
-          <p className="text-xs text-[#A0A0A0]">A data de pagamento será registrada como hoje.</p>
+          <Select
+            label="Método de Pagamento"
+            options={[
+              { value: '', label: 'Selecione o método' },
+              { value: 'PIX', label: 'PIX' },
+              { value: 'Dinheiro', label: 'Dinheiro' },
+              { value: 'Cartão de Crédito', label: 'Cartão de Crédito' },
+              { value: 'Cartão de Débito', label: 'Cartão de Débito' },
+              { value: 'Transferência', label: 'Transferência' },
+            ]}
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            required
+          />
+          <p className="text-xs text-[#9e9e9e]">A data de pagamento será registrada como hoje.</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setConfirmingPaid(null)}>Cancelar</Button>
-            <Button onClick={confirmPaid}>
+            <Button onClick={confirmPaid} loading={saving} disabled={!paymentMethod}>
               <CheckCircle className="w-4 h-4" />
               Confirmar Pagamento
             </Button>
@@ -1043,23 +852,23 @@ export default function ChargesPage() {
         </div>
       </Modal>
 
-      {/* Modal de Confirmação: Registro de perda (prejuízo) irremediável */}
+      {/* Modal: Contabilizar cobrança como prejuízo */}
       <Modal open={!!confirmingLoss} onClose={() => setConfirmingLoss(null)} title="Registrar como Prejuízo" size="sm">
         <div className="space-y-4">
-          <div className="p-4 bg-red-500/8 border border-red-500/20 rounded-lg space-y-2">
-            <p className="text-sm text-white font-medium">Tem certeza que deseja contabilizar esta cobrança como prejuízo?</p>
+          <div className="p-4 bg-[#7c1c1c]/30 border border-[#ff9c9a]/20 rounded-lg space-y-2">
+            <p className="text-sm text-[#f5f5f5] font-medium">Tem certeza que deseja contabilizar esta cobrança como prejuízo?</p>
             {confirmingLoss && (
               <div className="space-y-0.5">
-                <p className="text-xs text-[#A0A0A0]">{confirmingLoss.customer_name}</p>
-                <p className="text-xs text-[#A0A0A0]">{confirmingLoss.description}</p>
-                <p className="text-sm font-semibold text-red-400">{formatCurrency(confirmingLoss.amount)}</p>
+                <p className="text-xs text-[#9e9e9e]">{confirmingLoss.customers?.name ?? '—'}</p>
+                <p className="text-xs text-[#9e9e9e]">{confirmingLoss.description}</p>
+                <p className="text-sm font-semibold text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
               </div>
             )}
           </div>
-          <p className="text-xs text-red-400/80">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
+          <p className="text-xs text-[#ff9c9a]/80">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setConfirmingLoss(null)}>Cancelar</Button>
-            <Button variant="danger" onClick={confirmLoss}>
+            <Button variant="danger" onClick={confirmLoss} loading={saving}>
               <AlertTriangle className="w-4 h-4" />
               Confirmar Prejuízo
             </Button>
@@ -1067,19 +876,19 @@ export default function ChargesPage() {
         </div>
       </Modal>
 
-      {/* Modal de Confirmação: Exclusão lógica/física do registro */}
+      {/* Modal: Exclusão definitiva de cobrança */}
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Cobrança" size="sm">
         <div className="space-y-4">
-          <p className="text-[#A0A0A0] text-sm">
+          <p className="text-[#9e9e9e] text-sm">
             Tem certeza que deseja excluir a cobrança{' '}
-            <span className="text-white font-medium">{deleting?.description}</span>?
+            <span className="text-[#f5f5f5] font-medium">{deleting?.description}</span>?
             Esta ação não poderá ser desfeita.
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setDeleting(null)}>
               Cancelar
             </Button>
-            <Button variant="danger" onClick={confirmDeletion}>
+            <Button variant="danger" onClick={confirmDeletion} loading={saving}>
               <Trash2 className="w-4 h-4" />
               Excluir
             </Button>

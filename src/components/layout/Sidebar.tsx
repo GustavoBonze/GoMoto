@@ -73,14 +73,14 @@ export function Sidebar() {
   return (
     // <aside> define a barra lateral com largura fixa de 240px e altura total da tela (h-screen).
     // Posicionamento 'fixed' garante que ela não role junto com o conteúdo principal.
-    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-[#161616] border-r border-[#2a2a2a] flex flex-col z-30">
+    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-[#121212] border-r border-[#474747] flex flex-col z-30">
       
       {/* 
           Seção do Logo:
           Exibe o ícone de moto em um fundo verde-limão (cor de destaque do sistema) 
           junto com o nome da aplicação e o nicho de mercado.
       */}
-      <div className="px-5 py-5 border-b border-[#2a2a2a]">
+      <div className="px-5 py-5 border-b border-[#474747]">
         <div className="flex items-center gap-2.5">
           {/* Container do ícone com bordas arredondadas e cor vibrante. */}
           <div className="w-8 h-8 bg-[#BAFF1A] rounded-lg flex items-center justify-center flex-shrink-0">
@@ -88,8 +88,8 @@ export function Sidebar() {
           </div>
           {/* Textos de identificação da marca. */}
           <div>
-            <p className="text-sm font-bold text-white leading-none">GoMoto</p>
-            <p className="text-xs text-[#A0A0A0] mt-0.5">Gestão de Locadora</p>
+            <p className="text-sm font-bold text-[#f5f5f5] leading-none">GoMoto</p>
+            <p className="text-xs text-[#c7c7c7] mt-0.5">Gestão de Locadora</p>
           </div>
         </div>
       </div>
@@ -113,12 +113,12 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-[#BAFF1A]/10 text-[#BAFF1A]'
-                  : 'text-[#A0A0A0] hover:bg-white/5 hover:text-white'
+                  ? 'bg-[#d9ff80] text-[#323232]'
+                  : 'text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]'
               )}
             >
               {/* Renderização do ícone dinâmico com cor baseada no estado ativo. */}
-              <Icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-[#BAFF1A]' : '')} />
+              <Icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-[#323232]' : '')} />
               {label}
             </Link>
           )
@@ -130,11 +130,11 @@ export function Sidebar() {
           Contém o botão de saída da aplicação.
           Utiliza um formulário para realizar o POST para a rota de logout do servidor.
       */}
-      <div className="p-3 border-t border-[#2a2a2a]">
+      <div className="p-3 border-t border-[#474747]">
         <form action="/auth/logout" method="post">
           <button
             type="submit"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-all duration-150 w-full"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#c7c7c7] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-all duration-150 w-full"
           >
             {/* Ícone de LogOut com transição visual para vermelho no hover. */}
             <LogOut className="w-4 h-4 flex-shrink-0" />
