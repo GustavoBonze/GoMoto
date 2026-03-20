@@ -26,18 +26,21 @@
 'use client' // Diretiva para indicar que este é um Client Component (interatividade React)
 
 // Importação de hooks do React para gerenciamento de estado local e efeitos colaterais
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+// Importação dinâmica para componentes que não suportam SSR (como mapas com Leaflet)
+import dynamic from 'next/dynamic'
 // Importação de ícones da biblioteca Lucide para auxílio visual na interface
-import { 
+import {
   Plus,          // Ícone de adição para novo cadastro
   Edit2,         // Ícone de lápis para edição
   Trash2,        // Ícone de lixeira para exclusão
   Eye,           // Ícone de olho para visualização de detalhes
   Bike,          // Ícone representativo de motocicleta
-  X,             // Ícone de fechamento/cancelamento
   CheckCircle,   // Ícone de sucesso (manutenção em dia)
   AlertCircle,   // Ícone de alerta (revisão pendente)
-  Search         // Ícone de lupa para o campo de busca
+  Search,        // Ícone de lupa para o campo de busca
+  MapPin,        // Ícone de localização para o mapa
+  User,          // Ícone de usuário para o cliente
 } from 'lucide-react'
 
 // Importação de componentes de layout e UI personalizados do projeto
@@ -54,7 +57,26 @@ import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
 
 // Importação de definições de tipos TypeScript globais
-import type { Motorcycle, MotorcycleStatus } from '@/types'
+import type { Motorcycle, MotorcycleStatus, Contract, Customer } from '@/types'
+
+/**
+ * Importação dinâmica do mapa Leaflet sem SSR.
+ * O "porquê": Leaflet depende do objeto `window` do browser, que não existe no servidor.
+ */
+const DynamicMotorcycleMap = dynamic(() => import('@/components/MotorcycleMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-[#181818]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-[#9e9e9e]">Carregando mapa...</p>
+      </div>
+    </div>
+  ),
+})
+
+/** Tipo de contrato com customer embutido via join */
+type ContractWithCustomer = Contract & { customer?: Customer }
 
 /**
  * @constant filterOptions
@@ -136,16 +158,14 @@ const defaultFormState = {
 }
 
 /**
- * @constant cardBorderMap
- * @description Associa cada status de moto a uma classe de borda do Tailwind CSS.
- * O "porquê": Permite que a UI indique visualmente o status sem precisar ler o texto,
- * usando cores semânticas para uma identificação rápida do estado operacional da frota.
+ * @constant statusColorMap
+ * @description Associa cada status de moto a uma cor hex pura para o ponto indicador na tabela.
  */
-const cardBorderMap: Record<string, string> = {
-  available: 'border-[#28b438]/30', // Borda sutil verde (success)
-  rented: 'border-[#a880ff]/30',    // Borda sutil info (info)
-  maintenance: 'border-[#e65e24]/30', // Borda sutil laranja (warning)
-  inactive: 'border-[#474747]',       // Borda cinza neutra
+const statusColorMap: Record<string, string> = {
+  available:   '#28b438',
+  rented:      '#a880ff',
+  maintenance: '#e65e24',
+  inactive:    '#474747',
 }
 
 /**
@@ -186,8 +206,12 @@ export default function MotorcyclesPage() {
    */
   // Lista principal de motos exibida na tela.
   const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([])
+  // Contratos ativos com dados do cliente embutidos (para tabela e mapa).
+  const [contracts, setContracts] = useState<ContractWithCustomer[]>([])
   // Estado de carregamento inicial dos dados.
   const [loading, setLoading] = useState(true)
+  // Mensagem de erro caso a busca de dados falhe — exibida ao usuário em vez de lista vazia silenciosa.
+  const [fetchError, setFetchError] = useState<string | null>(null)
   // Estado de salvamento/deleção para os botões.
   const [saving, setSaving] = useState(false)
   // Valor atual do filtro de status (todas, disponivel, etc).
@@ -206,48 +230,88 @@ export default function MotorcyclesPage() {
   const [deletingMotorcycle, setDeletingMotorcycle] = useState<Motorcycle | null>(null)
   // Passo atual do Wizard de cadastro (1 = Dados Básicos, 2 = Manutenções Iniciais).
   const [step, setStep] = useState<1 | 2>(1)
+  // ID da moto selecionada na tabela para centralizar no mapa.
+  const [selectedMotoId, setSelectedMotoId] = useState<string | null>(null)
   // Mapa de valores (KM ou Data) informados no passo 2 do cadastro.
   const [bootstrapItems, setBootstrapItems] = useState<Record<string, string>>({})
 
   /**
    * @function fetchMotorcycles
-   * @description Busca a lista de motos do Supabase.
+   * @description Busca motos e contratos ativos do Supabase em paralelo com Promise.all.
+   *
+   * Usa useCallback para estabilizar a referência da função entre renders,
+   * permitindo seu uso seguro no useEffect sem causar loops infinitos.
+   *
+   * Em caso de falha na requisição de motos, exibe mensagem de erro ao usuário
+   * em vez de deixar a lista silenciosamente vazia (tratamento explícito de erros).
    */
-  async function fetchMotorcycles() {
+  const fetchMotorcycles = useCallback(async () => {
     setLoading(true)
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('motorcycles')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (!error && data) {
-      setMotorcycles(data as Motorcycle[])
-    }
-    setLoading(false)
-  }
+    setFetchError(null) // Limpa erro anterior antes de nova tentativa
 
-  // Busca inicial das motos na montagem do componente
+    const supabase = createClient()
+
+    // Executa ambas as queries em paralelo para reduzir o tempo total de carregamento
+    const [{ data: motoData, error: motoError }, { data: contractData }] = await Promise.all([
+      supabase.from('motorcycles').select('*').order('created_at', { ascending: false }),
+      supabase.from('contracts').select('*, customer:customers(*)').eq('status', 'active'),
+    ])
+
+    if (motoError) {
+      // Informa o usuário sobre a falha em vez de mostrar lista vazia sem explicação
+      setFetchError('Não foi possível carregar a frota. Verifique a conexão e tente novamente.')
+    } else if (motoData) {
+      setMotorcycles(motoData as Motorcycle[])
+    }
+
+    // Contratos: falha silenciosa intencional — a tabela ainda funciona, só sem dados de cliente
+    if (contractData) {
+      setContracts(contractData as ContractWithCustomer[])
+    }
+
+    setLoading(false)
+  }, []) // Sem dependências: createClient() é estável e os setters do useState são garantidamente estáveis
+
+  // Busca inicial ao montar o componente
   useEffect(() => {
     fetchMotorcycles()
-  }, [])
+  }, [fetchMotorcycles])
+
+  /**
+   * @const contractByMotoId
+   * @description Dicionário de lookup: motorcycle_id → contrato ativo com cliente.
+   *
+   * Por que useMemo + objeto (Map) em vez de Array.find() no render:
+   * - Array.find() dentro de um map() = O(N²) — cada linha da tabela percorre todos os contratos
+   * - Objeto como hash map = O(1) por lookup — independente do tamanho da frota
+   * - useMemo garante que o objeto só é recriado quando `contracts` muda de fato
+   */
+  const contractByMotoId = useMemo(
+    () => contracts.reduce<Record<string, ContractWithCustomer>>(
+      (acc, c) => { acc[c.motorcycle_id] = c; return acc },
+      {}
+    ),
+    [contracts]
+  )
 
   /**
    * @const filteredMotorcycles
    * @description Filtra a lista de motos em tempo real com base no status e busca.
-   * O "porquê" de ser uma constante derivada: Evita a necessidade de um estado
-   * separado para a lista filtrada, recalculando-a apenas quando as dependências
-   * (`motorcycles`, `filter`, `search`) mudam, o que é eficiente.
+   * O "porquê" de ser um useMemo: recalcula apenas quando motorcycles, filter ou search mudam,
+   * evitando reprocessar toda a lista a cada render causado por outros estados (ex: modal aberto).
    */
-  const filteredMotorcycles = motorcycles.filter((m) => {
-    // Verifica se a moto pertence à categoria de status selecionada.
-    const passesFilter = filter === 'all' || m.status === filter
-    // Verifica se algum campo da moto contém o texto da busca (case-insensitive).
-    const passesSearch = !search || [m.license_plate, m.model, m.make, m.color].some(
-      (v) => v?.toLowerCase().includes(search.toLowerCase())
-    )
-    return passesFilter && passesSearch
-  })
+  const filteredMotorcycles = useMemo(
+    () => motorcycles.filter((m) => {
+      // Verifica se a moto pertence à categoria de status selecionada
+      const passesFilter = filter === 'all' || m.status === filter
+      // Verifica se algum campo contém o texto buscado (case-insensitive)
+      const passesSearch = !search || [m.license_plate, m.model, m.make, m.color].some(
+        (v) => v?.toLowerCase().includes(search.toLowerCase())
+      )
+      return passesFilter && passesSearch
+    }),
+    [motorcycles, filter, search]
+  )
 
   /**
    * @function openNewMotorcycle
@@ -303,35 +367,54 @@ export default function MotorcyclesPage() {
     const supabase = createClient()
     
     // Criação do objeto de dados higienizado
+    /**
+     * Sanitização robusta do valor FIPE:
+     * Remove separadores de milhar (pontos) antes de converter a vírgula decimal,
+     * evitando NaN em entradas como "15.500,00" → correto: 15500.00
+     * A ordem importa: remove pontos de milhar ANTES de trocar vírgula por ponto.
+     */
+    const parsedFipeValue = form.fipeValue
+      ? parseFloat(form.fipeValue.replace(/\./g, '').replace(',', '.'))
+      : null
+
+    // Campos base que existem tanto na criação quanto na edição
     const motorcycleData = {
-      license_plate: form.licensePlate.toUpperCase(),          // Placa sempre em maiúscula
-      model: form.model,
-      make: form.make.toUpperCase(),
-      year: form.year,
-      color: form.color.toUpperCase(),
-      renavam: form.renavam,
-      chassis: form.chassis.toUpperCase(),
-      fuel: form.fuel,
-      engine_capacity: form.engineCapacity,
-      previous_owner: form.previousOwnerName || null,
-      previous_owner_cpf: form.previousOwnerDocument || null,
-      purchase_date: form.purchaseDate || null,
-      // Converte string monetária para número decimal
-      fipe_value: form.fipeValue ? parseFloat(form.fipeValue.replace(',', '.')) : null,
+      license_plate: form.licensePlate.toUpperCase(),   // Padrão Mercosul exige maiúsculas
+      model:         form.model,
+      make:          form.make.toUpperCase(),
+      year:          form.year,
+      color:         form.color.toUpperCase(),
+      renavam:       form.renavam,
+      chassis:       form.chassis.toUpperCase(),
+      fuel:          form.fuel,
+      engine_capacity:       form.engineCapacity || null,
+      previous_owner:        form.previousOwnerName || null,
+      previous_owner_cpf:    form.previousOwnerDocument || null,
+      purchase_date:         form.purchaseDate || null,
+      fipe_value:            isNaN(parsedFipeValue as number) ? null : parsedFipeValue,
       maintenance_up_to_date: form.maintenanceUpToDate === 'true',
-      status: form.status as MotorcycleStatus,
-      km_current: form.currentKm ? parseInt(form.currentKm) : 0,
-      observations: form.observations || null,
+      status:        form.status as MotorcycleStatus,
+      observations:  form.observations || null,
     }
 
     if (editingId) {
-      // CASO EDIÇÃO: Atualiza o registro no banco
+      /**
+       * CASO EDIÇÃO: Não inclui km_current no update.
+       * Motivo: o campo currentKm é zerado ao abrir o modal de edição (não há valor pré-carregado),
+       * então salvar km_current: 0 causaria regressão de quilometragem — dado crítico de manutenção.
+       * A quilometragem real é gerenciada pelo módulo de Manutenção.
+       */
       await supabase.from('motorcycles').update(motorcycleData).eq('id', editingId)
     } else {
-      // CASO CRIAÇÃO: Adiciona novo registro no banco
-      await supabase.from('motorcycles').insert(motorcycleData)
-      
-      // TODO: salvar bootstrapItems na tabela manutencoes quando implementado
+      /**
+       * CASO CRIAÇÃO: Inclui km_current como quilometragem inicial de entrada na frota.
+       * O padrão 0 é aceitável aqui pois é o ponto de partida do histórico do veículo.
+       */
+      await supabase.from('motorcycles').insert({
+        ...motorcycleData,
+        km_current: form.currentKm ? parseInt(form.currentKm, 10) : 0,
+      })
+      // TODO: salvar bootstrapItems na tabela manutencoes quando o módulo for implementado
     }
 
     await fetchMotorcycles() // Recarrega os dados do banco
@@ -372,175 +455,216 @@ export default function MotorcyclesPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
-        
-        {/* 
-          * ÁREA DE FILTROS E BUSCA
-          * Combina Tabs de status com um campo de busca textual.
-          */}
+      <div className="p-6 space-y-4">
+
+        {/* BANNER DE ERRO — exibido quando a busca de dados falha (rede, Supabase, etc) */}
+        {fetchError && (
+          <div className="flex items-center gap-3 px-4 py-3 bg-[#7c1c1c]/30 border border-[#bf1d1e]/30 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-[#ff9c9a] flex-shrink-0" />
+            <p className="text-sm text-[#ff9c9a]">{fetchError}</p>
+            {/* Botão de nova tentativa para o usuário não precisar recarregar a página */}
+            <button onClick={fetchMotorcycles} className="ml-auto text-xs text-[#BAFF1A] hover:underline font-semibold">
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
+        {/* ──────────────────────────────────────────────────────────────────
+          * SEÇÃO: MAPA DA FROTA
+          * Exibe as motos em posições geográficas (simuladas até integração GPS).
+          * Futuramente: integração com rastreadores para posição em tempo real.
+          * ────────────────────────────────────────────────────────────────── */}
+        <div className="rounded-2xl border border-[#474747] overflow-hidden" style={{ height: 460 }}>
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center bg-[#181818]">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-[#9e9e9e]">Carregando mapa da frota...</p>
+              </div>
+            </div>
+          ) : (
+            <DynamicMotorcycleMap
+              items={motorcycles.map((m) => ({
+                motorcycle: m,
+                contract: contractByMotoId[m.id],
+              }))}
+              selectedMotoId={selectedMotoId}
+              visibleMotoIds={filteredMotorcycles.map((m) => m.id)}
+            />
+          )}
+        </div>
+
+        {/* FILTROS E BUSCA — acima do grid */}
         <div className="flex items-center gap-3 flex-wrap">
-          
-          {/* BOTÕES DE FILTRO (TABS) */}
           <div className="flex gap-2 flex-wrap">
             {filterOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
                   filter === opt.value
                     ? 'bg-[#474747] border border-[#323232] text-[#f5f5f5] scale-[1.02]'
                     : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
                 }`}
               >
                 {opt.label}
-                {/* Contador específico por categoria de status */}
                 {opt.value !== 'all' && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    filter === opt.value ? 'bg-black/10' : 'bg-white/5'
-                  }`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${filter === opt.value ? 'bg-black/10' : 'bg-white/5'}`}>
                     {motorcycles.filter((m) => m.status === opt.value).length}
                   </span>
                 )}
               </button>
             ))}
           </div>
-          
-          {/* CAMPO DE PESQUISA DINÂMICA */}
-          <div className="ml-auto relative min-w-[300px]">
+          <div className="ml-auto relative min-w-[280px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9e9e9e]" />
             <input
               type="text"
               placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A]/50 focus:ring-1 focus:ring-[#BAFF1A]/20 transition-all"
+              className="w-full pl-10 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A]/50 focus:ring-1 focus:ring-[#BAFF1A]/20 transition-all"
             />
           </div>
         </div>
 
-        {/* 
-          * LISTAGEM DE MOTOS (GRID)
-          * Renderiza os cards das motos filtradas, loading state, ou uma mensagem de "vazio".
-          */}
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-8 h-8 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
-              <p className="text-[#9e9e9e] text-sm">Carregando frota...</p>
-            </div>
+        {/* ──────────────────────────────────────────────────────────────────
+          * SEÇÃO: TABELA DA FROTA
+          * Grid estilo tabela com todas as informações das motos e clientes.
+          * ────────────────────────────────────────────────────────────────── */}
+        <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
+
+          {/* Cabeçalho da tabela */}
+          <div className="grid grid-cols-[1fr_1.6fr_1.4fr_0.9fr_1.4fr_0.8fr_auto] gap-4 px-5 py-2 bg-[#181818] border-b border-[#474747]">
+            {['Placa', 'Motocicleta', 'Cliente', 'Valor/Semana', 'Endereço', 'Status', 'Ações'].map((col) => (
+              <p key={col} className="text-xs font-black text-[#616161] uppercase tracking-wider">{col}</p>
+            ))}
           </div>
-        ) : filteredMotorcycles.length === 0 ? (
-          /* ESTADO VAZIO: Quando a busca/filtro não retorna resultados */
-          <div className="flex flex-col items-center justify-center py-24 bg-[#202020]/50 rounded-2xl border border-dashed border-[#474747]">
-            <div className="w-16 h-16 bg-[#323232] rounded-full flex items-center justify-center text-[#616161] mb-4">
-              <Bike className="w-8 h-8" />
+
+          {/* Corpo da tabela */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
             </div>
-            <p className="text-[#9e9e9e] font-medium">Nenhum veículo encontrado para os filtros atuais.</p>
-            <button 
-              onClick={() => {setFilter('all'); setSearch('');}}
-              className="text-xs text-[#BAFF1A] mt-2 hover:underline"
-            >
-              Limpar todos os filtros
-            </button>
-          </div>
-        ) : (
-          /* GRADE DE RESULTADOS */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredMotorcycles.map((moto) => (
-              <div
-                key={moto.id}
-                className={`bg-[#202020] border rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-1 group ${
-                  cardBorderMap[moto.status] ?? 'border-[#474747]'
-                }`}
+          ) : filteredMotorcycles.length === 0 ? (
+            /* Estado vazio */
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-12 h-12 bg-[#323232] rounded-full flex items-center justify-center text-[#616161]">
+                <Bike className="w-6 h-6" />
+              </div>
+              <p className="text-sm text-[#9e9e9e]">Nenhum veículo encontrado.</p>
+              <button
+                onClick={() => { setFilter('all'); setSearch('') }}
+                className="text-xs text-[#BAFF1A] hover:underline"
               >
-                {/* ÁREA SUPERIOR: Imagem/Placeholder e Selos de Status */}
-                <div className="h-40 bg-gradient-to-b from-[#323232] to-[#202020] flex items-center justify-center border-b border-[#474747] relative">
-                  <div className="flex flex-col items-center gap-2 text-[#616161] group-hover:text-[#9e9e9e] transition-colors">
-                    <Bike className="w-14 h-14" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Sem Imagem</span>
+                Limpar filtros
+              </button>
+            </div>
+          ) : (
+            filteredMotorcycles.map((moto, idx) => {
+              const contract = contractByMotoId[moto.id]
+              const customer = contract?.customer
+              const weeklyValue = contract?.monthly_amount
+                ? formatCurrency(contract.monthly_amount / 4)
+                : null
+
+              return (
+                <div
+                  key={moto.id}
+                  onClick={() => setSelectedMotoId(moto.id === selectedMotoId ? null : moto.id)}
+                  className={`grid grid-cols-[1fr_1.6fr_1.4fr_0.9fr_1.4fr_0.8fr_auto] gap-4 items-center px-5 py-1.5 transition-colors cursor-pointer group ${
+                    idx < filteredMotorcycles.length - 1 ? 'border-b border-[#323232]' : ''
+                  } ${
+                    selectedMotoId === moto.id
+                      ? 'bg-[#BAFF1A]/5 border-l-2 border-l-[#BAFF1A]'
+                      : 'hover:bg-[#282828]'
+                  }`}
+                >
+                  {/* PLACA */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: statusColorMap[moto.status] ?? '#9e9e9e' }}
+                    />
+                    <span className="font-mono font-black text-xs text-[#f5f5f5] tracking-widest">
+                      {moto.license_plate}
+                    </span>
                   </div>
 
-                  {/* SELO DE MANUTENÇÃO: Indicativo crítico de segurança */}
-                  <div className="absolute top-3 right-3">
-                    {moto.maintenance_up_to_date ? (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0e2f13] border border-[#28b438]/30 text-[#28b438] text-xs font-bold uppercase tracking-tight">
-                        <CheckCircle className="w-3 h-3" />
-                        Manutenção em Dia
-                      </span>
+                  {/* MOTOCICLETA */}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#f5f5f5] truncate group-hover:text-[#BAFF1A] transition-colors">
+                      {moto.make} {moto.model}
+                    </p>
+                  </div>
+
+                  {/* CLIENTE */}
+                  <div className="min-w-0">
+                    {customer ? (
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3 h-3 text-[#a880ff] flex-shrink-0" />
+                        <p className="text-xs font-medium text-[#f5f5f5] truncate">{customer.name}</p>
+                      </div>
                     ) : (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#3a180f] border border-[#e65e24]/30 text-[#e65e24] text-xs font-bold uppercase tracking-tight">
-                        <AlertCircle className="w-3 h-3" />
-                        Revisão Pendente
-                      </span>
+                      <span className="text-xs text-[#474747] italic">Sem locatário</span>
                     )}
                   </div>
-                </div>
 
-                {/* ÁREA DE CONTEÚDO: Informações principais do veículo */}
-                <div className="p-5 space-y-4">
-                  {/* Título e Status Badge */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-[#f5f5f5] text-base leading-tight truncate group-hover:text-[#BAFF1A] transition-colors">
-                        {moto.make} {moto.model}
-                      </h4>
-                      <p className="text-xs text-[#616161] mt-1 font-medium">Fab/Mod: {moto.year}</p>
-                    </div>
+                  {/* VALOR/SEMANA */}
+                  <div>
+                    {weeklyValue ? (
+                      <span className="text-xs font-bold text-[#BAFF1A]">{weeklyValue}</span>
+                    ) : (
+                      <span className="text-xs text-[#474747]">—</span>
+                    )}
+                  </div>
+
+                  {/* ENDEREÇO */}
+                  <div className="min-w-0">
+                    {customer?.address ? (
+                      <div className="flex items-start gap-1.5">
+                        <MapPin className="w-3 h-3 text-[#616161] flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-[#9e9e9e] truncate">{customer.address}</p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[#474747]">—</span>
+                    )}
+                  </div>
+
+                  {/* STATUS */}
+                  <div>
                     <StatusBadge status={moto.status} />
                   </div>
 
-                  {/* Detalhes Técnicos Secundários */}
-                  <div className="grid grid-cols-2 gap-4 py-3 border-y border-[#474747]/30">
-                    <div>
-                      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider">Placa</p>
-                      <p className="text-sm font-mono font-bold text-[#f5f5f5] mt-0.5">{moto.license_plate}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider">Cor Principal</p>
-                      <p className="text-sm text-[#9e9e9e] mt-0.5 font-medium">{moto.color}</p>
-                    </div>
-                  </div>
-
-                  {/* Informação Financeira (Opcional) */}
-                  {moto.fipe_value && (
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider">Valor de Mercado (FIPE)</p>
-                      <p className="text-sm text-[#BAFF1A] font-bold">{formatCurrency(moto.fipe_value)}</p>
-                    </div>
-                  )}
-
-                  {/* BARRA DE AÇÕES: Interatividade rápida por card */}
-                  <div className="flex items-center gap-2 pt-2">
-                    {/* Botão de Detalhes Completo */}
+                  {/* AÇÕES */}
+                  <div className="flex items-center gap-1">
                     <button
-                      onClick={() => setMotorcycleDetails(moto)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-all font-bold border border-transparent hover:border-[#474747]"
+                      onClick={(e) => { e.stopPropagation(); setMotorcycleDetails(moto) }}
+                      className="p-1.5 rounded-md text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-all"
+                      title="Ver detalhes"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      DETALHES
                     </button>
-                    {/* Botão de Edição */}
                     <button
-                      onClick={() => openEditMotorcycle(moto)}
-                      className="p-2.5 rounded-full text-[#9e9e9e] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-all border border-transparent hover:border-[#BAFF1A]/20"
-                      title="Editar informações do veículo"
+                      onClick={(e) => { e.stopPropagation(); openEditMotorcycle(moto) }}
+                      className="p-1.5 rounded-md text-[#9e9e9e] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-all"
+                      title="Editar"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Edit2 className="w-3.5 h-3.5" />
                     </button>
-                    {/* Botão de Exclusão */}
                     <button
-                      onClick={() => setDeletingMotorcycle(moto)}
-                      className="p-2.5 rounded-full text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-all border border-transparent hover:border-[#bf1d1e]/20"
-                      title="Remover veículo da frota"
+                      onClick={(e) => { e.stopPropagation(); setDeletingMotorcycle(moto) }}
+                      className="p-1.5 rounded-md text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-all"
+                      title="Excluir"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )
+            })
+          )}
+        </div>
       </div>
 
       {/* 
@@ -941,14 +1065,12 @@ export default function MotorcyclesPage() {
 
 /**
  * @component DetailRow
- * @description Sub-componente para padronizar a exibição de pares Rótulo/Valor na Ficha Técnica.
- * O "porquê": Melhora a manutenção do código ao evitar repetição de classes CSS.
- * 
- * @param {string} label - O texto explicativo do campo.
- * @param {string | number | null} value - O conteúdo a ser exibido.
- * @param {boolean} mono - Se verdadeiro, usa fonte monoespaçada.
- * @param {boolean} highlight - Se verdadeiro, destaca o valor em verde.
- * @param {boolean} fullWidth - Se verdadeiro, ocupa a largura total do grid.
+ * @description Sub-componente para exibição padronizada de pares Rótulo/Valor na Ficha Técnica.
+ * Evita repetição de classes CSS e centraliza a lógica de ocultação de campos vazios.
+ *
+ * ATENÇÃO — Bug corrigido: a verificação anterior `if (!value)` ocultava valores
+ * numericamente falsy como `0` (ex: "0 KM" ou "R$ 0,00"). A verificação explícita
+ * abaixo garante que apenas undefined, null e string vazia suprimem a renderização.
  */
 function DetailRow({
   label,
@@ -963,8 +1085,8 @@ function DetailRow({
   highlight?: boolean
   fullWidth?: boolean
 }) {
-  // Se não houver valor, não renderiza nada para manter a UI limpa
-  if (!value) return null
+  // Verificação explícita: permite o valor 0, mas oculta undefined, null e strings vazias
+  if (value === undefined || value === null || value === '') return null
   
   return (
     <div className={fullWidth ? 'col-span-full' : ''}>

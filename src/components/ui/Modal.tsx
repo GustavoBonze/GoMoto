@@ -87,7 +87,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   return (
     // Contêiner principal, fixo na tela (inset-0), com z-index alto (z-50) para ficar acima de tudo.
     // Usa flexbox para centralizar o conteúdo da modal.
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 animate-in fade-in">
       
       {/** 
        * Camada de fundo (Backdrop):
