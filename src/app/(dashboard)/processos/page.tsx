@@ -306,7 +306,7 @@ export default function ProcessesPage() {
       <div className="p-6 space-y-4">
         {/* SEÇÃO DE FILTROS: Permite filtrar os processos por categoria. */}
         <div className="flex items-center gap-3 flex-wrap">
-          <BookOpen className="w-4 h-4 text-[#A0A0A0]" />
+          <BookOpen className="w-4 h-4 text-[#9e9e9e]" />
           <div className="flex gap-2 flex-wrap">
             {/* Botões de filtro rápido, incluindo "Todas". */}
             {[{ value: '', label: 'Todas' }, ...categories.map((c) => ({ value: c, label: c }))].map(
@@ -314,10 +314,10 @@ export default function ProcessesPage() {
                 <button
                   key={opt.value}
                   onClick={() => setCategoryFilter(opt.value)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-150 ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 ${
                     categoryFilter === opt.value
                       ? 'bg-[#BAFF1A] text-[#121212]'
-                      : 'bg-[#202020] border border-[#333333] text-[#A0A0A0] hover:text-white hover:border-[#555555]'
+                      : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
                   }`}
                 >
                   {opt.label}
@@ -333,7 +333,7 @@ export default function ProcessesPage() {
             {/* Cabeçalho de cada Categoria */}
             <div className="flex items-center gap-2 py-1">
               <Badge variant={categoryBadgeVariant[category] ?? 'muted'}>{category}</Badge>
-              <span className="text-xs text-[#A0A0A0]">{items.length} processo(s)</span>
+              <span className="text-xs text-[#9e9e9e]">{items.length} processo(s)</span>
             </div>
 
             {/* Itens da Categoria em formato de Acordeão */}
@@ -341,7 +341,7 @@ export default function ProcessesPage() {
               {items.map((process) => (
                 <div
                   key={process.id}
-                  className="bg-[#202020] border border-[#333333] rounded-xl overflow-hidden transition-colors hover:border-[#444444]"
+                  className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden transition-colors hover:border-[#616161]"
                 >
                   {/* Botão de Expansão que contém a pergunta. */}
                   <button
@@ -350,7 +350,7 @@ export default function ProcessesPage() {
                       setExpandedId((prev) => (prev === process.id ? null : process.id))
                     }
                   >
-                    <p className="font-medium text-white text-sm leading-relaxed">
+                    <p className="font-medium text-[#f5f5f5] text-sm leading-relaxed">
                       {process.question}
                     </p>
                     
@@ -361,34 +361,34 @@ export default function ProcessesPage() {
                           e.stopPropagation() // Impede que o clique no botão também expanda/recolha o acordeão.
                           handleEdit(process)
                         }}
-                        className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
+                        className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-colors"
                         title="Editar processo"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-5 h-5" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDelete(process.id)
                         }}
-                        className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                        className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-colors"
                         title="Excluir processo"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-5 h-5" />
                       </button>
                       {/* Ícone de Seta que muda conforme o estado expandido. */}
                       {expandedId === process.id ? (
-                        <ChevronUp className="w-4 h-4 text-[#A0A0A0]" />
+                        <ChevronUp className="w-4 h-4 text-[#9e9e9e]" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-[#A0A0A0]" />
+                        <ChevronDown className="w-4 h-4 text-[#9e9e9e]" />
                       )}
                     </div>
                   </button>
 
                   {/* Conteúdo Expansível (A resposta para a pergunta). */}
                   {expandedId === process.id && (
-                    <div className="px-4 pb-4 border-t border-[#2a2a2a] pt-3">
-                      <p className="text-sm text-[#A0A0A0] leading-relaxed whitespace-pre-wrap">{process.answer}</p>
+                    <div className="px-4 pb-4 border-t border-[#474747] pt-3">
+                      <p className="text-sm text-[#9e9e9e] leading-relaxed whitespace-pre-wrap">{process.answer}</p>
                     </div>
                   )}
                 </div>
@@ -401,8 +401,8 @@ export default function ProcessesPage() {
         {filteredProcesses.length === 0 && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <BookOpen className="w-12 h-12 text-[#888888] mx-auto mb-3" />
-              <p className="text-[#A0A0A0]">Nenhum processo encontrado</p>
+              <BookOpen className="w-12 h-12 text-[#616161] mx-auto mb-3" />
+              <p className="text-[#9e9e9e]">Nenhum processo encontrado</p>
             </div>
           </div>
         )}

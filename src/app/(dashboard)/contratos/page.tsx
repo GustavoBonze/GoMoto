@@ -1,995 +1,812 @@
 /**
- * ARQUIVO: src/app/(dashboard)/contratos/page.tsx
- * 
- * DESCRIÇÃO GERAL:
- * Esta página representa o módulo de "Gestão Contratual" do ecossistema GoMoto.
- * Sua principal função é formalizar juridicamente e financeiramente a entrega de um veículo a um locatário.
- * 
- * REGRAS DE NEGÓCIO POR TIPO DE CONTRATO:
- * - TIPO 1 (Locação Pura): Focado em flexibilidade. Ciclos de 90 dias com renovação automática.
- *   Manutenção preventiva dividida (GoMoto fornece peças, cliente paga mão de obra ou vice-versa).
- * - TIPO 2 (Fidelidade Quinzenal): Plano de aquisição (Rent-to-own). Pagamentos a cada 15 dias.
- *   Duração de 24 meses. Ao final, a moto é transferida para o cliente.
- * - TIPO 3 (Fidelidade Semanal): Similar ao Tipo 2, mas com fluxo de caixa semanal.
- *   Responsabilidade de manutenção 100% do cliente para acelerar a quitação.
- * 
- * FLUXO OPERACIONAL:
- * 1. Geração: O contrato nasce a partir da alocação de uma moto a um cliente da fila.
- * 2. Assinatura: O sistema marca como "Pendente" até que o PDF assinado seja carregado.
- * 3. Vigência: Monitoramento dinâmico de semanas restantes e alertas de proximidade do fim.
- * 4. Encerramento: Finalização por conclusão, distrato (cancelamento) ou inadimplência (quebra).
+ * @file src/app/(dashboard)/contratos/page.tsx
+ *
+ * @description Módulo de Gestão Contratual do Sistema GoMoto.
+ * Permite listar, criar e encerrar contratos de locação de motos,
+ * integrando em tempo real com o banco de dados Supabase.
+ *
+ * @fluxo
+ * 1. Ao montar, busca todos os contratos com join de cliente e moto.
+ * 2. O usuário pode filtrar por status ou buscar por nome/placa.
+ * 3. Novo contrato: seleciona cliente e moto disponível, define datas e valor.
+ *    Antes de salvar, verifica se a moto ainda está disponível no banco.
+ *    Ao confirmar, a moto tem seu status alterado para 'rented'.
+ * 4. Encerrar contrato: um modal de confirmação exibe os dados do contrato.
+ *    Ao confirmar, status vai para 'closed' e a moto volta para 'available'.
  */
 
-'use client' // Define como Client Component para gerenciar estados de modais e filtros
+'use client'
 
-// Importação de hooks do React para ciclo de vida e estado
-import { useEffect, useRef, useState } from 'react'
-
-// Importação da biblioteca Lucide para iconografia de interface
+import { useState, useEffect } from 'react'
 import {
-  Plus,             // Ícone para criar novo contrato
-  Eye,              // Ícone para visualizar detalhes
-  FileText,         // Ícone representativo de documento/PDF
-  Upload,           // Ícone para envio de arquivos
-  ExternalLink,     // Ícone para abrir links externos (PDF)
-  ChevronDown,      // Seta para baixo (expansão)
-  ChevronUp,        // Seta para cima (recolhimento)
-  Clock,            // Ícone de tempo/vencimento
-  Bike,             // Ícone de veículo
-  User,             // Ícone de cliente
-  CheckCircle,      // Ícone de sucesso/concluído
-  History,          // Ícone de arquivo morto/histórico
-  XCircle,          // Ícone de erro/cancelamento
-  AlertCircle,      // Ícone de alerta/aviso
-  X,                // Ícone de fechar
-  Search,           // Ícone de busca
+  Plus,
+  Eye,
+  XCircle,
+  CheckCircle,
+  FileText,
+  Search,
+  Clock,
+  AlertCircle,
+  User,
+  Bike,
+  TrendingUp,
 } from 'lucide-react'
 
-// Importação de componentes de Layout e UI atômicos
+import { createClient } from '@/lib/supabase/client'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import type { ContractStatus } from '@/types'
+
 import { Header } from '@/components/layout/Header'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Input, Select, Textarea } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+import { StatusBadge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
+import { Input, Select, Textarea } from '@/components/ui/Input'
+import { Table } from '@/components/ui/Table'
 
-// Importação de constantes de integração com LocalStorage (persistência temporária)
-import { LS_ALLOCATED_MOTORCYCLES, LS_NEW_CONTRACTS } from '@/data/motos'
-
-// Importação de tipos globais para segurança de tipos (TypeScript)
-import type { 
-  ContractType,     // Enum numérico (1, 2, 3) para tipos de plano
-  ContractStatus  // Enum string (ativo, encerrado, etc) para status
-} from '@/types'
+// ─────────────────────────────────────────────
+// TIPOS LOCAIS
+// ─────────────────────────────────────────────
 
 /**
- * INTERFACE: Contract
- * 
- * Representa a "Fotografia" (Snapshot) do acordo no momento da assinatura.
- * IMPORTANTE: Dados como endereço e telefone são salvos aqui para que, mesmo que o cliente mude de endereço no futuro, 
- * o registro do contrato assinado permaneça fiel ao documento físico da época.
+ * @interface ContractWithRelations
+ * @description Representa um contrato com os dados relacionados de cliente e moto,
+ * retornados pelo Supabase via join automático.
  */
-interface Contract {
-  id: string                        // Identificador único do contrato
-  type: ContractType                // Categoria do plano (Locação ou Fidelidade)
-  customer_id: string               // ID de referência do cliente no banco
-  customerName: string              // Nome completo do locatário
-  customerCpf: string               // CPF para validade jurídica
-  customerPhone: string             // Contato principal
-  customerRg?: string               // Identidade
-  customerState?: string            // UF de origem
-  customerAddress?: string          // Endereço na data da assinatura
-  customerZipCode?: string          // CEP
-  customerCnh?: string              // Número da CNH do motorista
-  customerCnhCategory?: string      // Categoria (deve conter 'A')
-  customerEmergencyContact?: string // Contato de segurança
-  motorcycle_id: string             // ID de referência do veículo
-  motorcycle_plate: string          // Placa (identificação visual)
-  motorcycleModel: string           // Modelo da moto (Ex: Pop 110)
-  motorcycleBrand: string           // Fabricante (Ex: Honda)
-  motorcycleYear: string            // Ano de fabricação
-  motorcycleColor: string           // Cor predominante
-  motorcycleRenavam?: string        // Código RENAVAM
-  motorcycleChassis?: string        // Número do Chassi
-  start_date: string                // Data de início da vigência (YYYY-MM-DD)
-  end_date: string                  // Data prevista para término (YYYY-MM-DD)
-  closing_date?: string             // Data de encerramento
-  weekly_rate?: number              // Valor pactuado por ciclo (Semana)
-  biweekly_rate?: number            // Valor pactuado por ciclo (Quinzena)
-  monthly_rate?: number             // Valor pactuado por ciclo (Mês)
-  deposit?: number                  // Valor de caução
-  status: ContractStatus            // Estado atual do acordo
-  signed?: boolean                  // Flag que indica assinatura
-  pdf_url?: string                  // Link para o arquivo PDF no storage
-  closureReason?: string            // Justificativa caso o contrato seja encerrado precocemente
-  observations?: string             // Observações administrativas gerais
-  created_at: string                // Timestamp de registro
-  updated_at: string                // Timestamp de última modificação
+interface ContractWithRelations {
+  /** @property id - UUID único do contrato. */
+  id: string
+  /** @property customer_id - Referência ao ID do cliente locatário. */
+  customer_id: string
+  /** @property motorcycle_id - Referência ao ID da moto alugada. */
+  motorcycle_id: string
+  /** @property start_date - Data de início da locação (formato ISO). */
+  start_date: string
+  /** @property end_date - Data prevista de término (null se em aberto). */
+  end_date: string | null
+  /** @property monthly_amount - Valor da mensalidade acordada. */
+  monthly_amount: number
+  /** @property status - Situação atual do contrato. */
+  status: ContractStatus
+  /** @property pdf_url - URL do contrato assinado em PDF, se houver. */
+  pdf_url: string | null
+  /** @property observations - Notas adicionais sobre o contrato. */
+  observations: string | null
+  /** @property created_at - Timestamp de criação do registro. */
+  created_at: string
+  /** @property updated_at - Timestamp da última alteração. */
+  updated_at: string
+  /** @property clientes - Dados do cliente vinculado ao contrato (join com tabela clientes). */
+  customers: { name: string } | null
+  /** @property motos - Dados da moto vinculada ao contrato (join com tabela motos). */
+  motorcycles: { make: string; model: string; license_plate: string } | null
 }
 
 /**
- * CONSTANTE: TYPE_INFO
- * 
- * Dicionário de configuração das regras de cada modalidade de contrato.
- * Utilizado para automatizar textos explicativos e cálculos na interface.
+ * @interface FormState
+ * @description Estado controlado do formulário de criação de contrato.
+ * monthly_amount é string para suportar o input type="number" nativamente.
  */
-const TYPE_INFO: Record<ContractType, {
-  label: string                     // Nome comercial do plano
-  frequency: string                 // Periodicidade de cobrança
-  duration: string                  // Tempo total de validade
-  acquisition: boolean              // Indica se o cliente ganha a moto no final
-  maintenance: string               // Regra de divisão de custos de oficina
-}> = {
-  1: { 
-    label: 'Locação Convencional', 
-    frequency: 'Semanal',    
-    duration: '90 dias (renovável)', 
-    acquisition: false, 
-    maintenance: 'Peças por conta da GoMoto / Mão de obra pelo cliente' 
-  },
-  2: { 
-    label: 'Fidelidade Quinzenal', 
-    frequency: 'Quinzenal',  
-    duration: '24 meses (Quitação)', 
-    acquisition: true,  
-    maintenance: 'Dividida 50/50 entre locador e locatário' 
-  },
-  3: { 
-    label: 'Fidelidade Semanal',   
-    frequency: 'Semanal',    
-    duration: '24 meses (Quitação)', 
-    acquisition: true,  
-    maintenance: '100% Responsabilidade do Cliente' 
-  },
+interface FormState {
+  /** @property customer_id - ID do cliente selecionado no formulário. */
+  customer_id: string
+  /** @property motorcycle_id - ID da moto selecionada no formulário. */
+  motorcycle_id: string
+  /** @property start_date - Data de início digitada (formato YYYY-MM-DD). */
+  start_date: string
+  /** @property end_date - Data de término digitada (formato YYYY-MM-DD ou vazio). */
+  end_date: string
+  /** @property monthly_amount - Valor mensal digitado como string para o input. */
+  monthly_amount: string
+  /** @property observations - Observações adicionais (opcional). */
+  observations: string
 }
+
+// ─────────────────────────────────────────────
+// COMPONENTE PRINCIPAL
+// ─────────────────────────────────────────────
 
 /**
- * MAPAS DE CORES E ESTILOS VISUAIS
- * 
- * Padronizam a identidade visual baseada no estado dos dados.
+ * @component ContratosPage
+ * @description Página principal de gestão de contratos.
+ * Conectada ao Supabase para leitura e escrita em tempo real.
+ * Inclui CRUD completo: listar, criar, ver detalhes e encerrar contratos.
  */
-const TYPE_COLORS: Record<ContractType, string> = {
-  1: 'bg-blue-500/15 border-blue-500/30 text-blue-400',      // Azul para Locação
-  2: 'bg-purple-500/15 border-purple-500/30 text-purple-400', // Roxo para Fidelidade Quinzenal
-  3: 'bg-[#BAFF1A]/10 border-[#BAFF1A]/20 text-[#BAFF1A]',   // Verde Limão para Fidelidade Semanal
-}
+export default function ContratosPage() {
+  /** Lista completa de contratos carregada do banco */
+  const [contratos, setContratos] = useState<ContractWithRelations[]>([])
+  /** Lista de clientes ativos para popular o select do formulário */
+  const [clientes, setClientes] = useState<{ id: string; name: string }[]>([])
+  /** Lista de motos disponíveis para popular o select do formulário */
+  const [motosDisponiveis, setMotosDisponiveis] = useState<{ id: string; make: string; model: string; license_plate: string }[]>([])
 
-const STATUS_COLORS: Record<ContractStatus, string> = {
-  active:     'bg-green-500/15 border-green-500/30 text-green-400',  // Verde para em vigor
-  closed: 'bg-white/5 border-white/10 text-[#888888]',           // Cinza para concluído
-  cancelled: 'bg-amber-500/15 border-amber-500/30 text-amber-400',  // Laranja para distrato
-  broken:  'bg-red-500/15 border-red-500/30 text-red-400',        // Vermelho para inadimplência
-}
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-const STATUS_LABELS: Record<ContractStatus, string> = {
-  active: 'Em Vigência', 
-  closed: 'Concluído', 
-  cancelled: 'Cancelado', 
-  broken: 'Quebra de Contrato',
-}
+  /** Termo de busca livre (nome do cliente ou placa) */
+  const [searchTerm, setSearchTerm] = useState('')
+  /** Filtro de status aplicado à listagem */
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
-/**
- * LISTA: mockContracts
- * 
- * Lista inicial de contratos para popular a UI.
- */
-const mockContracts: Contract[] = [
-  {
-    id: '1', type: 1,
-    customer_id: '1', customerName: 'FABRICIO DO VALE NEPOMUCENO', customerCpf: '129.616.867-09',
-    customerPhone: '21 98776-4348', customerRg: '207189267', customerState: 'RJ',
-    customerAddress: 'R ADELINO 12 - ROLLAS 2 - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    customerZipCode: '23590-170', customerCnh: '4372430975', customerCnhCategory: 'A',
-    customerEmergencyContact: 'MÃE: (21) 99184-7214 | IRMÃO: (21) 96577-2573',
-    motorcycle_id: '4', motorcycle_plate: 'DDD3D33', motorcycleModel: 'HONDA/CG 160 START',
-    motorcycleBrand: 'HONDA', motorcycleYear: '24/25', motorcycleColor: 'PRETO',
-    start_date: '2026-02-05', end_date: '2026-05-06',
-    weekly_rate: 350, status: 'active', signed: true,
-    observations: '', created_at: '2026-02-05T10:00:00Z', updated_at: '2026-02-05T10:00:00Z',
-  },
-  {
-    id: '2', type: 2,
-    customer_id: '2', customerName: 'DOUGLAS DOS SANTOS SIMÔES', customerCpf: '173.964.027-60',
-    customerPhone: '21 97389-7602', customerRg: '300246329', customerState: 'RJ',
-    customerAddress: 'ESTRADA DE SEPETIBA N 595 - BLOCO 09 CASA 02 - SANTA CRUZ - RIO DE JANEIRO - RJ',
-    customerZipCode: '23520-660', customerCnh: '7601971200', customerCnhCategory: 'A',
-    customerEmergencyContact: 'ESPOSA: (21) 96683-1232 | MÃE: (21) 97876-1439',
-    motorcycle_id: '2', motorcycle_plate: 'BBB1B11', motorcycleModel: 'YAMAHA/YS150 FAZER SED',
-    motorcycleBrand: 'YAMAHA', motorcycleYear: '23/24', motorcycleColor: 'CINZA',
-    start_date: '2025-10-23', end_date: '2027-10-23',
-    biweekly_rate: 630, status: 'active', signed: true,
-    observations: 'Moto será transferida ao final do contrato.',
-    created_at: '2025-10-23T10:00:00Z', updated_at: '2025-10-23T10:00:00Z',
-  },
-]
+  /** Controla a visibilidade do modal de criação */
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  /** Contrato selecionado para exibir no modal de detalhes */
+  const [selectedContrato, setSelectedContrato] = useState<ContractWithRelations | null>(null)
+  /** Contrato selecionado para o modal de confirmação de encerramento */
+  const [contratoParaEncerrar, setContratoParaEncerrar] = useState<ContractWithRelations | null>(null)
 
-/* 
- * FUNÇÕES UTILITÁRIAS DE CÁLCULO E FORMATAÇÃO
- */
-
-/**
- * Calcula quantas semanas faltam para o término do contrato.
- * Utilizado para gerar alertas visuais de proximidade de encerramento.
- */
-function getWeeksRemaining(endDate: string): number {
-  const diff = new Date(endDate + 'T12:00:00').getTime() - new Date().getTime()
-  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24 * 7)))
-}
-
-/**
- * Converte o valor do período (semanal ou quinzenal) em uma média mensal estimada.
- * Baseia-se em 52 semanas/ano ou 26 quinzenas/ano dividido por 12 meses.
- */
-function getMonthlyValue(type: ContractType, value: number): number {
-  if (type === 2) return (value * 26) / 12  // Projeção mensal para plano quinzenal
-  return (value * 52) / 12                  // Projeção mensal para plano semanal
-}
-
-/**
- * Formata números para o padrão de moeda Real Brasileiro (R$).
- */
-function formatLocalCurrency(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-/**
- * Formata strings de data YYYY-MM-DD para o padrão brasileiro DD/MM/YYYY.
- */
-function formatLocalDate(dateStr: string) {
-  return new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR')
-}
-
-/**
- * COMPONENTE: TypeBadge
- * 
- * Exibe visualmente o tipo do contrato com cores semânticas.
- */
-function TypeBadge({ type }: { type: ContractType }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider ${TYPE_COLORS[type]}`}>
-      PLANO T{type} • {TYPE_INFO[type].label}
-    </span>
-  )
-}
-
-/**
- * COMPONENTE: StatusBadge
- * 
- * Exibe visualmente o estado atual do contrato.
- */
-function StatusBadge({ status }: { status: ContractStatus }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-tight ${STATUS_COLORS[status]}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  )
-}
-
-/**
- * MODAL: PDFModal
- * 
- * Gerencia o ciclo de vida do documento digitalizado do contrato.
- */
-function PDFModal({ contract, onClose, onUpdate }: {
-  contract: Contract
-  onClose: () => void
-  onUpdate: (id: string, url: string) => void
-}) {
-  // Referência ao input de arquivo para acionamento via botão estilizado
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  /**
-   * Processa a seleção do arquivo PDF e gera uma URL de visualização.
-   */
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    // Em produção, aqui ocorreria o upload para Supabase Storage
-    onUpdate(contract.id, URL.createObjectURL(file))
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  return (
-    <Modal open onClose={onClose} title="Arquivo Digital do Contrato" size="md">
-      <div className="space-y-5">
-        {/* Identificação do Contrato no Modal */}
-        <div className="p-4 rounded-xl bg-[#2a2a2a]/50 border border-[#333333]">
-          <p className="text-[10px] text-[#606060] font-black uppercase mb-1">Locatário Responsável</p>
-          <p className="font-bold text-white text-base">{contract.customerName}</p>
-          <p className="text-xs text-[#A0A0A0] mt-1 font-medium">{contract.motorcycle_plate} — {contract.motorcycleModel}</p>
-        </div>
-
-        {/* Verificação de existência do arquivo */}
-        {contract.pdf_url ? (
-          /* Estado: Arquivo Carregado */
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
-            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-400">
-               <FileText className="w-6 h-6" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-white uppercase tracking-tight">Documento Armazenado</p>
-              <p className="text-[11px] text-green-400/70 font-medium">O contrato assinado está disponível para auditoria.</p>
-            </div>
-            <a
-              href={contract.pdf_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-[#BAFF1A] text-black hover:scale-105 transition-all shadow-lg shadow-[#BAFF1A]/20"
-            >
-              <ExternalLink className="w-4 h-4" /> VER PDF
-            </a>
-          </div>
-        ) : (
-          /* Estado: Aguardando Documento */
-          <div className="text-center py-12 border-2 border-dashed border-[#333333] rounded-2xl bg-black/10">
-            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-[#444444] mx-auto mb-4">
-               <Upload className="w-8 h-8" />
-            </div>
-            <p className="text-sm text-[#A0A0A0] font-medium italic">Nenhum scan ou PDF foi vinculado a este contrato.</p>
-          </div>
-        )}
-
-        {/* Input Oculto */}
-        <input ref={fileInputRef} type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
-        
-        {/* Ações de Rodapé */}
-        <div className="flex justify-between items-center pt-2">
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="px-6 font-bold">
-            <Upload className="w-4 h-4" /> {contract.pdf_url ? 'SUBSTITUIR ARQUIVO' : 'CARREGAR CONTRATO ASSINADO'}
-          </Button>
-          <Button variant="ghost" onClick={onClose} className="px-8 uppercase font-black text-[10px] tracking-widest text-[#606060]">FECHAR</Button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-/**
- * MODAL: DetailsModal
- * 
- * Visão holística de todos os termos e dados técnicos de um contrato específico.
- */
-function DetailsModal({ contract, onClose }: { contract: Contract; onClose: () => void }) {
-  // Cálculos financeiros e temporais para exibição
-  const periodValue = contract.type === 2 ? contract.biweekly_rate || 0 : contract.weekly_rate || 0;
-  const monthlyValue = getMonthlyValue(contract.type, periodValue)
-  const weeksLeft = getWeeksRemaining(contract.end_date)
-  const info = TYPE_INFO[contract.type]
-
-  /**
-   * Helper visual para renderizar pares de chave/valor com consistência.
-   */
-  function DetailRow({ label, value, mono = true }: { label: string; value?: string; mono?: boolean }) {
-    return (
-      <div className="space-y-1">
-        <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest">{label}</p>
-        <p className={`text-sm text-white font-bold ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
-      </div>
-    )
-  }
-
-  return (
-    <Modal open onClose={onClose} title="Dossiê Completo do Contrato" size="lg">
-      <div className="space-y-8 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
-
-        {/* Cabeçalho do Detalhamento: Status e Projeção Financeira */}
-        <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#333333]">
-          <div>
-            <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <TypeBadge type={contract.type} />
-              <StatusBadge status={contract.status} />
-            </div>
-            <p className="text-sm text-[#A0A0A0] font-medium leading-relaxed italic">
-              Ciclo de Cobrança {info.frequency} • Vigência de {info.duration}
-              {info.acquisition && <span className="block text-[#BAFF1A] not-italic font-bold mt-1 uppercase text-[10px]">✓ Veículo com Promessa de Transferência</span>}
-            </p>
-          </div>
-          <div className="text-right flex-shrink-0 bg-[#BAFF1A]/5 p-4 rounded-2xl border border-[#BAFF1A]/10">
-            <p className="text-[10px] text-[#BAFF1A] font-black uppercase tracking-widest mb-1">Média de Faturamento Mensal</p>
-            <p className="text-2xl font-black text-white tracking-tight">{formatLocalCurrency(monthlyValue)}</p>
-          </div>
-        </div>
-
-        {/* SEÇÃO: CRONOGRAMA E VALORES */}
-        <section>
-          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-5 ml-1">Vigência & Compromisso Financeiro</h5>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-[#1a1a1a] p-5 rounded-2xl border border-white/5">
-            <DetailRow label="Data de Ativação" value={formatLocalDate(contract.start_date)} />
-            <DetailRow label="Data de Término" value={formatLocalDate(contract.end_date)} />
-            <DetailRow label={`Valor por ${contract.type === 2 ? 'Quinzena' : 'Semana'}`} value={formatLocalCurrency(periodValue)} />
-            <DetailRow label="Tempo Restante" value={contract.status === 'active' ? `${weeksLeft} Semanas` : 'CONTRATO FINALIZADO'} />
-          </div>
-        </section>
-
-        {/* SEÇÃO: REGRAS E CLAUSULAS (Informativo para o gestor) */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-[#202020] to-[#151515] border border-[#2a2a2a] shadow-inner">
-          <h5 className="text-[10px] text-[#BAFF1A] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" /> Resumo das Condições Pactuadas
-          </h5>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 text-[11px] text-[#A0A0A0] font-medium">
-            <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Vencimento recorrente toda quarta-feira</li>
-            <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Multa por atraso fixa de 10% do valor da parcela</li>
-            <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Manutenção: {info.maintenance}</li>
-            {info.acquisition && <li className="flex items-start gap-2"><span className="text-[#BAFF1A]">»</span> Transferência do bem condicionada à quitação integral</li>}
-          </ul>
-        </div>
-
-        {/* SEÇÃO: DADOS DO LOCATÁRIO (SNAPSHOTTED) */}
-        <section>
-          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-5 ml-1">Identificação do Locatário na Assinatura</h5>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 bg-white/[0.01] p-6 rounded-2xl border border-white/5">
-            <div className="md:col-span-2">
-              <p className="text-[10px] text-[#606060] font-black uppercase mb-1">Nome Completo</p>
-              <p className="text-base text-white font-black uppercase italic tracking-tight">{contract.customerName}</p>
-            </div>
-            <DetailRow label="Documento CPF" value={contract.customerCpf} />
-            <DetailRow label="WhatsApp de Contato" value={contract.customerPhone} />
-            <div className="md:col-span-2">
-              <p className="text-[10px] text-[#606060] font-black uppercase mb-1">Endereço Residencial Declarado</p>
-              <p className="text-sm text-[#A0A0A0] font-medium leading-relaxed italic">{contract.customerAddress || '—'}</p>
-            </div>
-            <DetailRow label="Nº de Registro CNH" value={contract.customerCnh} />
-            <DetailRow label="Categoria de Habilitação" value={contract.customerCnhCategory} />
-          </div>
-        </section>
-
-        {/* SEÇÃO: DADOS DO VEÍCULO (SNAPSHOTTED) */}
-        <section>
-          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-5 ml-1">Características do Objeto Locado</h5>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-[#1a1a1a] p-5 rounded-2xl border border-white/5">
-            <DetailRow label="Placa de Identificação" value={contract.motorcycle_plate} />
-            <DetailRow label="Modelo Comercial" value={contract.motorcycleModel} />
-            <DetailRow label="Marca/Fabricante" value={contract.motorcycleBrand} />
-            <DetailRow label="Ano de Fabricação" value={contract.motorcycleYear} />
-          </div>
-        </section>
-
-        {/* SEÇÃO: HISTÓRICO DE ENCERRAMENTO E NOTAS */}
-        {(contract.observations || contract.closureReason) && (
-          <div className="space-y-6">
-            {contract.observations && (
-              <section>
-                <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] mb-3 ml-1">Observações Administrativas</h5>
-                <div className="p-4 rounded-xl bg-[#2a2a2a]/30 border border-[#333333]">
-                   <p className="text-sm text-[#A0A0A0] leading-relaxed italic">{contract.observations}</p>
-                </div>
-              </section>
-            )}
-
-            {contract.closureReason && (
-              <section>
-                <h5 className="text-[10px] text-red-400 font-black uppercase tracking-[0.2em] mb-3 ml-1">Laudo de Encerramento do Contrato</h5>
-                <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10">
-                   <p className="text-sm text-red-200/70 leading-relaxed font-medium italic">
-                     <span className="not-italic font-black text-red-400 mr-2 uppercase text-[10px]">Justificativa:</span>
-                     {contract.closureReason}
-                   </p>
-                </div>
-              </section>
-            )}
-          </div>
-        )}
-
-        {/* Ações do Modal */}
-        <div className="flex justify-end pt-4 border-t border-[#333333]">
-          <Button variant="ghost" onClick={onClose} className="px-12 font-black uppercase text-xs tracking-widest text-[#606060]">FECHAR DETALHES</Button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-/**
- * COMPONENTE: ContractCard
- * 
- * Representação visual resumida do contrato para as listagens.
- */
-function ContractCard({ contract, dim, onDetails, onPDF, onTerminate }: {
-  contract: Contract
-  dim?: boolean                      // Se verdadeiro, reduz opacidade (histórico)
-  onDetails: (c: Contract) => void   // Gatilho para abrir detalhes
-  onPDF: (c: Contract) => void       // Gatilho para gerir PDF
-  onTerminate?: (c: Contract) => void // Gatilho para encerrar contrato
-}) {
-  // Dados calculados para o card
-  const weeksLeft = getWeeksRemaining(contract.end_date)
-  const periodValue = contract.type === 2 ? contract.biweekly_rate || 0 : contract.weekly_rate || 0;
-  const monthlyValue = getMonthlyValue(contract.type, periodValue)
-  const periodLabel = contract.type === 2 ? 'QUINZENA' : 'SEMANA'
-  
-  // Lógica de criticidade de prazo
-  const isCritical = contract.status === 'active' && weeksLeft <= 2
-  const isWarning  = contract.status === 'active' && weeksLeft > 2 && weeksLeft <= 4
-  // Lógica de alerta de assinatura pendente
-  const noSignedPdf = contract.status === 'active' && !contract.pdf_url && !contract.signed
-
-  return (
-    <div className={`group bg-[#202020] border rounded-2xl p-5 transition-all duration-300 ${
-      dim           ? 'border-[#2a2a2a] opacity-65 grayscale hover:opacity-100 hover:grayscale-0'
-      : noSignedPdf  ? 'border-red-500/40 shadow-lg shadow-red-500/5'
-      : 'border-[#333333] hover:border-[#555555] hover:shadow-2xl hover:shadow-black/40'
-    }`}>
-      
-      {/* Cabeçalho do Card: Status e Badges de Alerta */}
-      <div className="flex items-start justify-between gap-4 mb-5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <TypeBadge type={contract.type} />
-          <StatusBadge status={contract.status} />
-          
-          {/* ALERTA: FALTA DE PDF ASSINADO */}
-          {noSignedPdf && (
-            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-black uppercase italic animate-pulse">
-              <AlertCircle className="w-3 h-3" /> AGUARDANDO SCAN
-            </span>
-          )}
-          
-          {/* ALERTA: PROXIMIDADE DO FIM */}
-          {contract.status === 'active' && (isCritical || isWarning) && (
-            <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase ${
-              isCritical ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-            }`}>
-              <Clock className="w-3 h-3" /> {weeksLeft} SEMANAS RESTANTES
-            </span>
-          )}
-        </div>
-
-        {/* Ações Rápidas no Card */}
-        <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Botão PDF */}
-          <button
-            onClick={() => onPDF(contract)}
-            className={`p-2 rounded-xl transition-all border border-transparent ${
-              contract.pdf_url || contract.signed
-                ? 'text-green-400 hover:bg-green-500/10 hover:border-green-500/20' 
-                : noSignedPdf ? 'text-red-400 bg-red-500/5 border-red-500/20' : 'text-[#606060]'
-            }`}
-            title="Gerenciar Documento PDF"
-          >
-            <FileText className="w-4.5 h-4.5" />
-          </button>
-          {/* Botão Detalhes */}
-          <button 
-            onClick={() => onDetails(contract)} 
-            className="p-2 rounded-xl text-[#606060] hover:text-white hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
-            title="Ver Ficha Completa"
-          >
-            <Eye className="w-4.5 h-4.5" />
-          </button>
-          {/* Botão Encerrar (Apenas Ativos) */}
-          {onTerminate && contract.status === 'active' && (
-            <button 
-              onClick={() => onTerminate(contract)} 
-              className="p-2 rounded-xl text-[#606060] hover:text-amber-400 hover:bg-amber-500/10 transition-all border border-transparent hover:border-amber-500/20" 
-              title="Baixar Contrato / Encerrar"
-            >
-              <XCircle className="w-4.5 h-4.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Grid Central: Informação das Partes e Objeto */}
-      <div className="grid grid-cols-2 gap-6 mb-5">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#606060] flex-shrink-0">
-             <User className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest mb-0.5">Locatário</p>
-            <p className="text-sm text-white font-bold truncate uppercase italic group-hover:text-[#BAFF1A] transition-colors">{contract.customerName}</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#606060] flex-shrink-0">
-             <Bike className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest mb-0.5">Veículo</p>
-            <p className="text-sm text-white font-mono font-black tracking-tighter uppercase">{contract.motorcycle_plate}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Rodapé do Card: Datas e Valores de Cobrança */}
-      <div className="grid grid-cols-4 gap-4 pt-4 border-t border-[#2a2a2a] bg-black/10 -mx-5 px-5 pb-0">
-        <div>
-          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">ATIVAÇÃO</p>
-          <p className="text-[11px] text-[#A0A0A0] font-bold">{formatLocalDate(contract.start_date)}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">VENCIMENTO</p>
-          <p className={`text-[11px] font-bold ${isCritical ? 'text-red-400' : 'text-[#A0A0A0]'}`}>{formatLocalDate(contract.end_date)}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">PARCELA/{periodLabel}</p>
-          <p className="text-[11px] text-white font-black">{formatLocalCurrency(periodValue)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[9px] text-[#606060] font-black uppercase tracking-tighter mb-1">MÉD. MENSAL</p>
-          <p className="text-[11px] text-[#BAFF1A] font-black">{formatLocalCurrency(monthlyValue)}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * COMPONENTE PRINCIPAL: ContractsPage
- * 
- * Gerencia a lógica de negócio, filtros e criação de novos contratos.
- */
-export default function ContractsPage() {
-  /* 
-   * ESTADOS DE DADOS E VISUALIZAÇÃO 
-   */
-  // Lista mestre de contratos do sistema
-  const [contracts, setContracts] = useState<Contract[]>(mockContracts)
-  // Controla se a seção de histórico está aberta
-  const [showHistory, setShowHistory] = useState(false)
-  // Valor do filtro de modalidade (Todos, T1, T2, T3)
-  const [typeFilter, setTypeFilter] = useState('todos')
-  // Termo de pesquisa global
-  const [search, setSearch] = useState('')
-  
-  /* ESTADOS DE MODAIS */
-  const [addModalOpen, setAddModalOpen] = useState(false)
-  const [contractDetails, setContractDetails] = useState<Contract | null>(null)
-  const [contractPdf, setContractPdf] = useState<Contract | null>(null)
-  const [terminatingContract, setTerminatingContract] = useState<Contract | null>(null)
-  
-  /* ESTADOS DE FORMULÁRIOS */
-  const [terminationForm, setTerminationForm] = useState<{ status: ContractStatus; reason: string }>({ 
-    status: 'closed', 
-    reason: '' 
-  })
-  const [form, setForm] = useState({
-    type: '1', customerName: '', customerCpf: '', customerPhone: '',
-    motorcycle_plate: '', motorcycleModel: '', motorcycleBrand: '', motorcycleYear: '', motorcycleColor: '',
-    motorcycleRenavam: '', motorcycleChassis: '', start_date: '', periodValue: '', observations: '',
+  /** Estado do formulário de criação */
+  const [formState, setFormState] = useState<FormState>({
+    customer_id: '',
+    motorcycle_id: '',
+    start_date: '',
+    end_date: '',
+    monthly_amount: '',
+    observations: '',
   })
 
+  // ─────────────────────────────────────────────
+  // FUNÇÕES DE BUSCA (Supabase)
+  // ─────────────────────────────────────────────
+
   /**
-   * EFEITO: Sincronização com LocalStorage (Integração com a Fila de Locadores)
-   * 
-   * Verifica se existem contratos recém-gerados por outras telas (ex: Fila) e os importa.
+   * @function fetchContratos
+   * @description Busca todos os contratos do Supabase com join de clientes e motos.
+   * Ordena pelos mais recentes primeiro e popula o estado `contratos`.
    */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_NEW_CONTRACTS)
-      if (!raw) return
-      const pending: Contract[] = JSON.parse(raw)
-      if (pending.length > 0) {
-        setContracts((prev) => {
-          // Evita duplicidade baseada no ID
-          const existingIds = new Set(prev.map((c) => c.id))
-          const uniqueNew = pending.filter((c) => !existingIds.has(c.id))
-          return [...uniqueNew, ...prev]
-        })
-        // Limpa a fila após importar com sucesso
-        localStorage.removeItem(LS_NEW_CONTRACTS)
-      }
-    } catch (e) {
-      console.error("Falha ao sincronizar novos contratos:", e)
+  async function fetchContratos() {
+    setLoading(true)
+    setError(null)
+    const supabase = createClient()
+
+    const { data, error: fetchError } = await supabase
+      .from('contracts')
+      .select('*, customers(name), motorcycles(make, model, license_plate)')
+      .order('created_at', { ascending: false })
+
+    if (fetchError) {
+      setError(fetchError.message)
+    } else {
+      setContratos((data as unknown as ContractWithRelations[]) || [])
     }
+    setLoading(false)
+  }
+
+  /**
+   * @function fetchClientes
+   * @description Busca clientes com active=true para popular o select do formulário.
+   */
+  async function fetchClientes() {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('customers')
+      .select('id, name')
+      .eq('active', true)
+      .order('name')
+    setClientes(data || [])
+  }
+
+  /**
+   * @function fetchMotosDisponiveis
+   * @description Busca motos com status 'available' para o select do formulário.
+   */
+  async function fetchMotosDisponiveis() {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('motorcycles')
+      .select('id, make, model, license_plate')
+      .eq('status', 'available')
+      .order('license_plate')
+    setMotosDisponiveis(data || [])
+  }
+
+  /** Carrega os contratos na montagem do componente */
+  useEffect(() => {
+    fetchContratos()
   }, [])
 
+  // ─────────────────────────────────────────────
+  // AÇÕES DO USUÁRIO
+  // ─────────────────────────────────────────────
+
   /**
-   * FUNÇÃO: filterContracts
-   * 
-   * Filtra uma lista de contratos baseada nos critérios de UI (Tipo e Busca).
+   * @function openCreateModal
+   * @description Abre o modal de criação e pré-carrega clientes e motos disponíveis.
+   * Reseta o formulário para valores vazios antes de abrir.
    */
-  function filterContracts(list: Contract[]) {
-    return list.filter((c) => {
-      // Filtro por categoria técnica
-      const passesType = typeFilter === 'todos' || String(c.type) === typeFilter
-      // Filtro por busca textual (Nome ou Placa)
-      const passesSearch = !search || [c.customerName, c.motorcycle_plate, c.motorcycleModel].some(
-        (v) => v?.toLowerCase().includes(search.toLowerCase())
-      )
-      return passesType && passesSearch
+  function openCreateModal() {
+    fetchClientes()
+    fetchMotosDisponiveis()
+    setFormState({
+      customer_id: '',
+      motorcycle_id: '',
+      start_date: '',
+      end_date: '',
+      monthly_amount: '',
+      observations: '',
     })
-  }
-
-  /* 
-   * SEPARAÇÃO LÓGICA DAS LISTAS PARA RENDERIZAÇÃO 
-   */
-  // Contratos marcados como pendentes de assinatura (Críticos)
-  const pending = contracts.filter((c) => c.signed === false && !c.pdf_url)
-  // Contratos ativos e já assinados (Operação normal)
-  const active  = filterContracts(contracts.filter((c) => c.status === 'active' && (c.signed !== false || c.pdf_url)))
-  // Contratos encerrados ou quebrados (Histórico)
-  const history = filterContracts(contracts.filter((c) => c.status !== 'active'))
-
-  /**
-   * HANDLER: handleUpdatePDF
-   * 
-   * Atualiza a URL do PDF e retira o contrato do estado de pendência de assinatura.
-   */
-  function handleUpdatePDF(id: string, url: string) {
-    setContracts((prev) => prev.map((c) => c.id === id ? { ...c, pdf_url: url, signed: true } : c))
-    // Sincroniza o modal se estiver aberto
-    setContractPdf((prev) => prev && prev.id === id ? { ...prev, pdf_url: url, signed: true } : prev)
+    setShowCreateModal(true)
   }
 
   /**
-   * HANDLER: handleTerminateContract
-   * 
-   * Executa a lógica de baixa de um contrato ativo.
+   * @function handleCreateContrato
+   * @description Valida o formulário, verifica a disponibilidade atual da moto no banco,
+   * insere o contrato e atualiza o status da moto para 'rented'.
+   * A verificação dupla de disponibilidade evita race conditions caso outra
+   * operação tenha alugado a moto entre o carregamento da lista e o envio do formulário.
    */
-  function handleTerminateContract() {
-    if (!terminatingContract) return
-    setContracts((prev) => prev.map((c) => c.id === terminatingContract.id
-      ? {
-          ...c,
-          status: terminationForm.status,
-          closureReason: terminationForm.reason,
-          closing_date: new Date().toISOString().split('T')[0],
-          end_date: new Date().toISOString().split('T')[0], // Força a data final para hoje
-          updated_at: new Date().toISOString(),
-        }
-      : c
-    ))
-    setTerminatingContract(null)
-    setTerminationForm({ status: 'closed', reason: '' })
-  }
-
-  /**
-   * HANDLER: handleCreateContract
-   * 
-   * Consolida o formulário manual em um novo objeto Contract.
-   */
-  function handleCreateContract(e: React.FormEvent) {
-    e.preventDefault()
-    const type = parseInt(form.type) as ContractType
-    const start = new Date(form.start_date + 'T12:00:00')
-    const end = new Date(start)
-    
-    // Regra automática de duração baseada no tipo
-    if (type === 1) end.setDate(end.getDate() + 90) // 90 dias para locação
-    else end.setFullYear(end.getFullYear() + 2)    // 24 meses para fidelidade
-
-    const newContract: Contract = {
-      id: String(Date.now()),
-      type,
-      customer_id: String(Date.now()),
-      customerName: form.customerName.toUpperCase(),
-      customerCpf: form.customerCpf,
-      customerPhone: form.customerPhone,
-      motorcycle_id: String(Date.now() + 1),
-      motorcycle_plate: form.motorcycle_plate.toUpperCase(),
-      motorcycleModel: form.motorcycleModel.toUpperCase(),
-      motorcycleBrand: form.motorcycleBrand.toUpperCase(),
-      motorcycleYear: form.motorcycleYear,
-      motorcycleColor: form.motorcycleColor.toUpperCase(),
-      motorcycleRenavam: form.motorcycleRenavam || undefined,
-      motorcycleChassis: form.motorcycleChassis || undefined,
-      start_date: form.start_date,
-      end_date: end.toISOString().split('T')[0],
-      weekly_rate: type === 1 || type === 3 ? parseFloat(form.periodValue) : undefined,
-      biweekly_rate: type === 2 ? parseFloat(form.periodValue) : undefined,
-      status: 'active',
-      signed: false,
-      observations: form.observations,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+  async function handleCreateContrato() {
+    if (!formState.customer_id || !formState.motorcycle_id || !formState.start_date || !formState.monthly_amount) {
+      alert('Preencha todos os campos obrigatórios: Cliente, Moto, Data de Início e Valor Mensal.')
+      return
     }
 
-    setContracts((prev) => [newContract, ...prev])
-    setAddModalOpen(false)
-    // Reseta o estado do formulário para o próximo uso
-    setForm({ type: '1', customerName: '', customerCpf: '', customerPhone: '', motorcycle_plate: '', motorcycleModel: '', motorcycleBrand: '', motorcycleYear: '', motorcycleColor: '', motorcycleRenavam: '', motorcycleChassis: '', start_date: '', periodValue: '', observations: '' })
+    setSaving(true)
+    setError(null)
+    const supabase = createClient()
+
+    // Etapa 1: Verificar se a moto ainda está disponível (evita race condition)
+    const { data: motoCheck, error: motoCheckError } = await supabase
+      .from('motorcycles')
+      .select('status')
+      .eq('id', formState.motorcycle_id)
+      .single()
+
+    if (motoCheckError || !motoCheck || motoCheck.status !== 'available') {
+      setError('Esta moto não está mais disponível. Por favor, selecione outra moto.')
+      setSaving(false)
+      // Recarregar lista de motos disponíveis para refletir estado atual
+      fetchMotosDisponiveis()
+      return
+    }
+
+    // Etapa 2: Inserir o contrato na tabela contratos
+    const { error: insertError } = await supabase
+      .from('contracts')
+      .insert({
+        customer_id: formState.customer_id,
+        motorcycle_id: formState.motorcycle_id,
+        start_date: formState.start_date,
+        end_date: formState.end_date || null,
+        monthly_amount: parseFloat(formState.monthly_amount),
+        observations: formState.observations || null,
+        status: 'active',
+      })
+
+    if (insertError) {
+      setError(`Erro ao criar contrato: ${insertError.message}`)
+      setSaving(false)
+      return
+    }
+
+    // Etapa 3: Marcar a moto como 'rented'
+    const { error: updateMotoError } = await supabase
+      .from('motorcycles')
+      .update({ status: 'rented' })
+      .eq('id', formState.motorcycle_id)
+
+    if (updateMotoError) {
+      console.error('Erro ao atualizar status da moto:', updateMotoError.message)
+    }
+
+    setShowCreateModal(false)
+    setSaving(false)
+    fetchContratos()
   }
 
   /**
-   * RENDERIZAÇÃO DA PÁGINA: ContractsPage
+   * @function handleCloseContrato
+   * @description Solicita o encerramento de um contrato abrindo o modal de confirmação.
+   * A lógica real de encerramento é executada apenas após confirmação do usuário
+   * em confirmarEncerramento(), evitando encerramentos acidentais.
+   * @param contrato - O contrato que o usuário deseja encerrar.
    */
+  function handleCloseContrato(contrato: ContractWithRelations) {
+    setContratoParaEncerrar(contrato)
+  }
+
+  /**
+   * @function confirmarEncerramento
+   * @description Executa o encerramento do contrato após confirmação do usuário.
+   * Atualiza o status do contrato para 'closed' e libera a moto (status 'available').
+   * Fecha o modal de detalhes se o contrato encerrado estava sendo visualizado.
+   */
+  async function confirmarEncerramento() {
+    if (!contratoParaEncerrar) return
+
+    setSaving(true)
+    setError(null)
+    const supabase = createClient()
+
+    // Etapa 1: Atualizar status do contrato para 'closed'
+    const { error: updateContractError } = await supabase
+      .from('contracts')
+      .update({ status: 'closed' })
+      .eq('id', contratoParaEncerrar.id)
+
+    if (updateContractError) {
+      setError(`Erro ao encerrar contrato: ${updateContractError.message}`)
+      setSaving(false)
+      return
+    }
+
+    // Etapa 2: Liberar a moto, voltando status para 'available'
+    const { error: updateMotoError } = await supabase
+      .from('motorcycles')
+      .update({ status: 'available' })
+      .eq('id', contratoParaEncerrar.motorcycle_id)
+
+    if (updateMotoError) {
+      console.error('Erro ao atualizar status da moto para disponível:', updateMotoError.message)
+    }
+
+    // Fechar modal de detalhes se o contrato encerrado estava selecionado
+    if (selectedContrato?.id === contratoParaEncerrar.id) {
+      setSelectedContrato(null)
+    }
+
+    setContratoParaEncerrar(null)
+    setSaving(false)
+    fetchContratos()
+  }
+
+  // ─────────────────────────────────────────────
+  // CÁLCULO DE ESTATÍSTICAS
+  // ─────────────────────────────────────────────
+
+  /** Métricas calculadas localmente a partir dos contratos já carregados */
+  const stats = {
+    /** Quantidade de contratos com status 'active' */
+    ativos: contratos.filter(c => c.status === 'active').length,
+    /** Contratos ativos que encerram nos próximos 30 dias */
+    encerrando30Dias: contratos.filter(c => {
+      if (c.status !== 'active' || !c.end_date) return false
+      const endDate = new Date(c.end_date)
+      const hoje = new Date()
+      const diffDias = Math.ceil((endDate.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
+      return diffDias >= 0 && diffDias <= 30
+    }).length,
+    /** Soma dos valores mensais dos contratos ativos */
+    receitaMensal: contratos
+      .filter(c => c.status === 'active')
+      .reduce((acc, curr) => acc + Number(curr.monthly_amount), 0),
+    /** Contratos cancelados ou quebrados */
+    canceladosQuebrados: contratos.filter(c => c.status === 'cancelled' || c.status === 'broken').length,
+  }
+
+  // ─────────────────────────────────────────────
+  // FILTRAGEM LOCAL
+  // ─────────────────────────────────────────────
+
+  /** Lista de contratos filtrada pelo termo de busca e pelo status selecionado */
+  const filteredContratos = contratos.filter(c => {
+    const termo = searchTerm.toLowerCase()
+    const bateNome = c.customers?.name?.toLowerCase().includes(termo) ?? false
+    const batePlaca = c.motorcycles?.license_plate?.toLowerCase().includes(termo) ?? false
+    const bateBusca = !searchTerm || bateNome || batePlaca
+    const bateStatus = statusFilter === 'all' || c.status === statusFilter
+    return bateBusca && bateStatus
+  })
+
+  // ─────────────────────────────────────────────
+  // DEFINIÇÃO DAS COLUNAS DA TABELA
+  // ─────────────────────────────────────────────
+
+  /** Configuração das colunas exibidas na tabela de contratos */
+  const columns = [
+    {
+      key: 'cliente',
+      header: 'Cliente',
+      render: (row: ContractWithRelations) => (
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4 text-[#9e9e9e]" />
+          <span className="text-[#f5f5f5] font-medium">{row.customers?.name ?? '—'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'moto',
+      header: 'Moto',
+      render: (row: ContractWithRelations) => (
+        <div className="flex items-center gap-2">
+          <Bike className="w-4 h-4 text-[#9e9e9e]" />
+          <span className="text-[#c7c7c7]">
+            {row.motorcycles ? `${row.motorcycles.make} ${row.motorcycles.model}` : '—'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'placa',
+      header: 'Placa',
+      render: (row: ContractWithRelations) => (
+        <span className="text-[#c7c7c7]">{row.motorcycles?.license_plate ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'inicio',
+      header: 'Início',
+      render: (row: ContractWithRelations) => (
+        <span className="text-[#c7c7c7]">{formatDate(row.start_date)}</span>
+      ),
+    },
+    {
+      key: 'fim',
+      header: 'Fim',
+      render: (row: ContractWithRelations) => (
+        <span className="text-[#c7c7c7]">{row.end_date ? formatDate(row.end_date) : '—'}</span>
+      ),
+    },
+    {
+      key: 'valor',
+      header: 'Valor/mês',
+      render: (row: ContractWithRelations) => (
+        <span className="text-[#BAFF1A] font-medium">{formatCurrency(row.monthly_amount)}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row: ContractWithRelations) => <StatusBadge status={row.status} />,
+    },
+    {
+      key: 'acoes',
+      header: 'Ações',
+      render: (row: ContractWithRelations) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedContrato(row)}
+            title="Ver detalhes"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          {row.status === 'active' && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleCloseContrato(row)}
+              title="Encerrar contrato"
+            >
+              <XCircle className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ]
+
+  // ─────────────────────────────────────────────
+  // RENDERIZAÇÃO
+  // ─────────────────────────────────────────────
+
   return (
-    <div className="flex flex-col min-h-full">
-      {/* 
-        * CABEÇALHO DA PÁGINA
-        * Controla a ação primária de abertura do formulário de novo contrato.
-        */}
+    <div className="min-h-screen bg-[#121212] p-6 text-[#f5f5f5]">
+      {/* Cabeçalho da página */}
       <Header
-        title="Gestão de Contratos"
-        subtitle={`${active.length + pending.length} contratos vigentes na base de dados`}
+        title="Contratos"
+        subtitle="Gerencie os contratos de locação de motos"
         actions={
-          <Button onClick={() => setAddModalOpen(true)} className="shadow-lg shadow-[#BAFF1A]/10">
-            <Plus className="w-4 h-4" /> NOVO CONTRATO
+          <Button variant="primary" onClick={openCreateModal}>
+            <Plus className="w-4 h-4" />
+            Novo Contrato
           </Button>
         }
       />
 
-      <div className="p-6 space-y-6">
-        
-        {/* BARRA DE FERRAMENTAS: Filtros por Tipo e Busca Global */}
-        <div className="flex items-center gap-4 flex-wrap">
-          
-          {/* BOTÕES DE FILTRO DE TIPO */}
-          <div className="flex gap-2 flex-wrap bg-[#1a1a1a] p-1 rounded-xl border border-[#333333]">
-            {['todos', '1', '2', '3'].map((val) => (
-              <button
-                key={val}
-                onClick={() => setTypeFilter(val)}
-                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                  typeFilter === val 
-                    ? 'bg-[#BAFF1A] text-[#121212] shadow-inner' 
-                    : 'text-[#606060] hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {val === 'todos' ? 'TODOS OS PLANOS' : `TIPO ${val}`}
-              </button>
-            ))}
-          </div>
+      {/* Alerta de erro global */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-400">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
 
-          {/* CAMPO DE BUSCA DINÂMICA */}
-          <div className="ml-auto relative min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444444]" />
-            <input
-              type="text" 
-              placeholder="Pesquisar por Locatário ou Placa..."
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#202020] border border-[#333333] text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#BAFF1A]/40 transition-all"
+      {/* Cards de estatísticas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <Card className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-[#9e9e9e] text-sm font-medium mb-1">Total Ativos</p>
+            <h3 className="text-3xl font-bold text-[#f5f5f5]">{stats.ativos}</h3>
+          </div>
+          <div className="w-12 h-12 bg-[#BAFF1A]/10 rounded-full flex items-center justify-center text-[#BAFF1A]">
+            <CheckCircle className="w-6 h-6" />
+          </div>
+        </Card>
+
+        <Card className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-[#9e9e9e] text-sm font-medium mb-1">Encerrando (30 dias)</p>
+            <h3 className="text-3xl font-bold text-[#f5f5f5]">{stats.encerrando30Dias}</h3>
+          </div>
+          <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center text-orange-400">
+            <Clock className="w-6 h-6" />
+          </div>
+        </Card>
+
+        <Card className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-[#9e9e9e] text-sm font-medium mb-1">Receita Mensal</p>
+            <h3 className="text-xl font-bold text-[#f5f5f5]">{formatCurrency(stats.receitaMensal)}</h3>
+          </div>
+          <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-400">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+        </Card>
+
+        <Card className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-[#9e9e9e] text-sm font-medium mb-1">Cancelados/Quebrados</p>
+            <h3 className="text-3xl font-bold text-[#f5f5f5]">{stats.canceladosQuebrados}</h3>
+          </div>
+          <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-400">
+            <XCircle className="w-6 h-6" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Barra de filtros */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9e9e9e] pointer-events-none" />
+          <Input
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Buscar por cliente ou placa..."
+            className="pl-9"
+          />
+        </div>
+        <div className="w-full sm:w-56">
+          <Select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            options={[
+              { value: 'all', label: 'Todos os status' },
+              { value: 'active', label: 'Ativos' },
+              { value: 'closed', label: 'Encerrados' },
+              { value: 'cancelled', label: 'Cancelados' },
+              { value: 'broken', label: 'Quebrados' },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* Tabela de contratos */}
+      <Card className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
+        <Table
+          columns={columns}
+          data={filteredContratos}
+          keyExtractor={row => row.id}
+          loading={loading}
+          emptyMessage="Nenhum contrato encontrado."
+        />
+      </Card>
+
+      {/* ──────────────────────────────────────
+          Modal: Criar Contrato
+      ────────────────────────────────────── */}
+      <Modal
+        open={showCreateModal}
+        onClose={() => { if (!saving) setShowCreateModal(false) }}
+        title="Novo Contrato"
+        size="lg"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Select
+            label="Cliente"
+            value={formState.customer_id}
+            onChange={e => setFormState({ ...formState, customer_id: e.target.value })}
+            options={[
+              { value: '', label: 'Selecione um cliente' },
+              ...clientes.map(c => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <Select
+            label="Moto Disponível"
+            value={formState.motorcycle_id}
+            onChange={e => setFormState({ ...formState, motorcycle_id: e.target.value })}
+            options={[
+              { value: '', label: 'Selecione uma moto' },
+              ...motosDisponiveis.map(m => ({
+                value: m.id,
+                label: `${m.make} ${m.model} — ${m.license_plate}`,
+              })),
+            ]}
+          />
+          <Input
+            type="date"
+            label="Data de Início"
+            value={formState.start_date}
+            onChange={e => setFormState({ ...formState, start_date: e.target.value })}
+          />
+          <Input
+            type="date"
+            label="Data de Término"
+            value={formState.end_date}
+            onChange={e => setFormState({ ...formState, end_date: e.target.value })}
+          />
+          <div className="md:col-span-2">
+            <Input
+              type="number"
+              label="Valor Mensal (R$)"
+              step="0.01"
+              min="0"
+              value={formState.monthly_amount}
+              onChange={e => setFormState({ ...formState, monthly_amount: e.target.value })}
+              placeholder="0,00"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Textarea
+              label="Observações (opcional)"
+              value={formState.observations}
+              onChange={e => setFormState({ ...formState, observations: e.target.value })}
+              rows={3}
+              placeholder="Notas adicionais sobre o contrato..."
             />
           </div>
         </div>
 
-        {/* RESUMO ESTATÍSTICO RÁPIDO */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="border-green-500/10 bg-green-500/[0.02]">
-            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest">Contratos em Vigência</p>
-            <p className="text-4xl font-black text-white mt-2 tracking-tighter">{active.length}</p>
-          </Card>
-          <Card className="border-white/5 bg-white/[0.01]">
-            <p className="text-[10px] text-[#606060] font-black uppercase tracking-widest">Arquivo Morto (Histórico)</p>
-            <p className="text-4xl font-black text-[#444444] mt-2 tracking-tighter">{history.length}</p>
-          </Card>
+        <div className="flex justify-end gap-3 mt-6 pt-5 border-t border-[#474747]">
+          <Button
+            variant="secondary"
+            onClick={() => setShowCreateModal(false)}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleCreateContrato} loading={saving}>
+            Salvar Contrato
+          </Button>
         </div>
-
-        {/* SEÇÃO CRÍTICA: CONTRATOS SEM ASSINATURA CARREGADA */}
-        {pending.length > 0 && (
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-5 space-y-4">
-            <div className="flex items-center gap-2 text-red-400 font-black uppercase text-[11px] tracking-[0.2em] mb-2">
-               <AlertCircle className="w-4 h-4" /> ALERTA DE COMPLIANCE: AGUARDANDO ASSINATURA ({pending.length})
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pending.map((c) => (
-                <ContractCard key={c.id} contract={c} onDetails={setContractDetails} onPDF={setContractPdf} onTerminate={setTerminatingContract} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* LISTAGEM PRINCIPAL: CONTRATOS ATIVOS */}
-        <div className="space-y-4">
-          <h5 className="text-[10px] text-[#606060] font-black uppercase tracking-[0.2em] ml-1">Contratos Operacionais</h5>
-          <div className="grid grid-cols-1 gap-4">
-            {active.map((c) => (
-              <ContractCard key={c.id} contract={c} onDetails={setContractDetails} onPDF={setContractPdf} onTerminate={setTerminatingContract} />
-            ))}
-            
-            {/* Estado Vazio para Contratos Ativos */}
-            {active.length === 0 && pending.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 bg-[#1a1a1a]/50 rounded-2xl border border-dashed border-[#252525]">
-                <FileText className="w-12 h-12 text-[#333333] mb-4" />
-                <p className="text-sm text-[#555555] font-medium italic">Nenhum contrato ativo corresponde aos filtros aplicados.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* SEÇÃO: HISTÓRICO EXPANSÍVEL (Contratos Encerrados) */}
-        {history.length > 0 && (
-          <div className="pt-4">
-            <button 
-              onClick={() => setShowHistory(!showHistory)} 
-              className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#606060] hover:text-white transition-all w-full justify-center py-4 border border-white/5 rounded-2xl hover:bg-white/[0.02]"
-            >
-              <History className="w-4 h-4 group-hover:rotate-[-45deg] transition-transform" />
-              {showHistory ? 'OCULTAR ARQUIVO DE CONTRATOS' : `EXIBIR HISTÓRICO DE CONTRATOS ENCERRADOS (${history.length})`}
-              {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-            
-            {showHistory && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 animate-in slide-in-from-top-4 duration-500">
-                {history.map((c) => (
-                  <ContractCard key={c.id} contract={c} dim onDetails={setContractDetails} onPDF={setContractPdf} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 
-        * MODAL: CRIAÇÃO MANUAL DE CONTRATO 
-        * Utilizado em casos de exceção onde o contrato não vem da fila automática.
-        */}
-      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Formalizar Novo Contrato Manual" size="lg">
-        <form onSubmit={handleCreateContract} className="space-y-6 p-1">
-          {/* Seleção de Modalidade */}
-          <Select 
-            label="Modalidade de Plano" 
-            value={form.type} 
-            onChange={(e) => setForm({ ...form, type: e.target.value })} 
-            options={[
-              { value: '1', label: 'TIPO 1 — Locação (90 dias renováveis)' },
-              { value: '2', label: 'TIPO 2 — Fidelidade Quinzenal (24 meses)' },
-              { value: '3', label: 'TIPO 3 — Fidelidade Semanal (24 meses)' },
-            ]}
-          />
-          
-          {/* Dados Resumidos das Partes */}
-          <div className="grid grid-cols-2 gap-5">
-            <Input label="Nome do Locatário" placeholder="EX: JOÃO DA SILVA" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} required />
-            <Input label="Placa da Moto" placeholder="EX: ABC1D23" value={form.motorcycle_plate} onChange={(e) => setForm({ ...form, motorcycle_plate: e.target.value })} required />
-            <Input label="Início da Vigência" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} required />
-            <Input label="Valor da Parcela (R$)" type="number" step="0.01" placeholder="0.00" value={form.periodValue} onChange={(e) => setForm({ ...form, periodValue: e.target.value })} required />
-          </div>
-
-          {/* Campo de Notas */}
-          <Textarea label="Notas Administrativas" placeholder="Observações sobre o fechamento..." rows={3} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} />
-          
-          {/* Ações do Form */}
-          <div className="flex justify-end gap-4 pt-4 border-t border-white/5">
-            <Button type="button" variant="ghost" onClick={() => setAddModalOpen(false)} className="px-8 font-black text-[10px] tracking-widest text-[#606060]">CANCELAR</Button>
-            <Button type="submit" className="px-12 shadow-lg shadow-[#BAFF1A]/20 font-black">GERAR REGISTRO</Button>
-          </div>
-        </form>
       </Modal>
 
-      {/* 
-        * MODAIS CONDICIONAIS (DETALHES E PDF) 
-        */}
-      {contractDetails && <DetailsModal contract={contractDetails} onClose={() => setContractDetails(null)} />}
-      
-      {contractPdf && <PDFModal contract={contractPdf} onClose={() => setContractPdf(null)} onUpdate={handleUpdatePDF} />}
-
-      {/* 
-        * MODAL: ENCERRAMENTO (BAIXA DE CONTRATO)
-        * Define o destino final do veículo e do histórico do cliente.
-        */}
-      {terminatingContract && (
-        <Modal open onClose={() => setTerminatingContract(null)} title="Encerramento de Vigência" size="sm">
-          <div className="space-y-6">
-            <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
-               <p className="text-xs text-amber-200/70 font-medium leading-relaxed italic text-center">
-                 Você está finalizando o contrato de <br />
-                 <strong className="text-white font-black not-italic text-sm">{terminatingContract.customerName}</strong>.
-               </p>
+      {/* ──────────────────────────────────────
+          Modal: Detalhes do Contrato
+      ────────────────────────────────────── */}
+      <Modal
+        open={!!selectedContrato}
+        onClose={() => setSelectedContrato(null)}
+        title="Detalhes do Contrato"
+        size="md"
+      >
+        {selectedContrato && (
+          <div className="space-y-4 text-[#c7c7c7]">
+            {/* Cabeçalho com nome do cliente e status */}
+            <div className="flex justify-between items-start pb-4 border-b border-[#474747]">
+              <div>
+                <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-0.5">Cliente</p>
+                <p className="text-lg font-semibold text-[#f5f5f5]">
+                  {selectedContrato.customers?.name ?? '—'}
+                </p>
+              </div>
+              <StatusBadge status={selectedContrato.status} />
             </div>
 
-            <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleTerminateContract(); }}>
-              <Select 
-                label="Qual o status final do acordo?" 
-                value={terminationForm.status} 
-                onChange={(e) => setTerminationForm({ ...terminationForm, status: e.target.value as ContractStatus })}
-                options={[
-                  { value: 'closed', label: 'ENCERRADO (Fim de prazo / Quitado)' },
-                  { value: 'cancelled', label: 'CANCELADO (Devolução amigável)' },
-                  { value: 'broken',  label: 'QUEBRADO (Inadimplência / Sinistro)' },
-                ]}
-              />
-              <Textarea 
-                label="Descreva o motivo do fechamento" 
-                placeholder="Ex: Cliente atingiu os 24 meses / Cliente devolveu por falta de demanda..." 
-                rows={4} 
-                value={terminationForm.reason} 
-                onChange={(e) => setTerminationForm({ ...terminationForm, reason: e.target.value })} 
-                required
-              />
-              <div className="flex gap-3">
-                <Button type="button" variant="ghost" onClick={() => setTerminatingContract(null)} className="flex-1 font-black text-[10px] tracking-widest text-[#606060]">VOLTAR</Button>
-                <Button type="submit" variant="danger" className="flex-1 font-black shadow-lg shadow-red-500/20">CONFIRMAR BAIXA</Button>
+            {/* Moto, placa, datas */}
+            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-[#474747]">
+              <div>
+                <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-0.5">Moto</p>
+                <p className="text-[#f5f5f5]">
+                  {selectedContrato.motorcycles
+                    ? `${selectedContrato.motorcycles.make} ${selectedContrato.motorcycles.model}`
+                    : '—'}
+                </p>
               </div>
-            </form>
+              <div>
+                <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-0.5">Placa</p>
+                <p className="text-[#f5f5f5]">{selectedContrato.motorcycles?.license_plate ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-0.5">Início</p>
+                <p className="text-[#f5f5f5]">{formatDate(selectedContrato.start_date)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-0.5">Término</p>
+                <p className="text-[#f5f5f5]">
+                  {selectedContrato.end_date ? formatDate(selectedContrato.end_date) : 'Não definido'}
+                </p>
+              </div>
+            </div>
+
+            {/* Valor mensal */}
+            <div className="pb-4 border-b border-[#474747]">
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-0.5">Valor Mensal</p>
+              <p className="text-2xl font-bold text-[#BAFF1A]">
+                {formatCurrency(selectedContrato.monthly_amount)}
+              </p>
+            </div>
+
+            {/* Observações */}
+            {selectedContrato.observations && (
+              <div className="pb-4 border-b border-[#474747]">
+                <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-1">Observações</p>
+                <p className="bg-[#1a1a1a] border border-[#333] rounded-lg p-3 text-sm leading-relaxed">
+                  {selectedContrato.observations}
+                </p>
+              </div>
+            )}
+
+            {/* Metadados e link do PDF */}
+            <div className="flex items-center justify-between text-xs text-[#666]">
+              <span>
+                Criado em: {new Date(selectedContrato.created_at).toLocaleString('pt-BR')}
+              </span>
+              {selectedContrato.pdf_url && (
+                <a
+                  href={selectedContrato.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[#BAFF1A] hover:underline"
+                >
+                  <FileText className="w-3 h-3" />
+                  Ver PDF
+                </a>
+              )}
+            </div>
+
+            {/* Botão de encerrar contrato */}
+            {selectedContrato.status === 'active' && (
+              <div className="pt-4 border-t border-[#474747] flex justify-end">
+                <Button
+                  variant="danger"
+                  onClick={() => handleCloseContrato(selectedContrato)}
+                >
+                  <XCircle className="w-4 h-4" />
+                  Encerrar Contrato
+                </Button>
+              </div>
+            )}
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
+
+      {/* ──────────────────────────────────────
+          Modal: Confirmação de Encerramento
+          Substitui window.confirm por um modal
+          contextual com os dados do contrato.
+      ────────────────────────────────────── */}
+      <Modal
+        open={!!contratoParaEncerrar}
+        onClose={() => { if (!saving) setContratoParaEncerrar(null) }}
+        title="Encerrar Contrato"
+        size="sm"
+      >
+        <div className="space-y-4">
+          {/* Descrição do contrato que será encerrado */}
+          <p className="text-[#c7c7c7] text-sm leading-relaxed">
+            Tem certeza que deseja encerrar o contrato de{' '}
+            <span className="text-[#f5f5f5] font-semibold">
+              {contratoParaEncerrar?.customers?.name}
+            </span>{' '}
+            com a moto{' '}
+            <span className="text-[#f5f5f5] font-semibold">
+              {contratoParaEncerrar?.motorcycles?.make} {contratoParaEncerrar?.motorcycles?.model}{' '}
+              ({contratoParaEncerrar?.motorcycles?.license_plate})
+            </span>?
+          </p>
+          <p className="text-[#9e9e9e] text-xs">
+            A moto voltará a ficar disponível para locação. Esta ação não pode ser desfeita.
+          </p>
+
+          {/* Botões de ação */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#474747]">
+            <Button
+              variant="secondary"
+              onClick={() => setContratoParaEncerrar(null)}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarEncerramento} loading={saving}>
+              <XCircle className="w-4 h-4" />
+              Encerrar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
-
-/**
- * NOTAS DE EVOLUÇÃO TÉCNICA:
- * - Implementar integração com Docusign/Clicksign para assinaturas digitais nativas.
- * - Gerar avisos automáticos via WhatsApp quando o contrato estiver a 4 semanas do fim.
- * - Adicionar upload de fotos da moto no momento da devolução (Check-out) no Modal de Encerramento.
- */

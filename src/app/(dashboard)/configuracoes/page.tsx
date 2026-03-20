@@ -1,545 +1,488 @@
 /**
  * @file src/app/(dashboard)/configuracoes/page.tsx
- * @description Página de Configurações Globais do Sistema GoMoto.
- * 
+ * @description Página de Configurações do Sistema GoMoto.
+ *
  * @summary
- * Este arquivo centraliza todas as configurações que governam o comportamento do sistema.
- * O "porquê" desta página é fornecer um único ponto de controle para administradores
- * ajustarem parâmetros vitais da operação sem a necessidade de intervenção no código.
- * 
+ * Esta página conecta as configurações da empresa e da conta do usuário
+ * diretamente ao Supabase. A tabela `configuracoes` usa estrutura chave-valor,
+ * portanto os campos são mapeados de/para pares { chave, valor } nas operações
+ * de leitura e escrita.
+ *
  * @funcionalidades
- * 1.  **Dados da Empresa**: Permite que o administrador edite as informações cadastrais
- *     da locadora (Nome, CNPJ, Endereço), que serão usadas em contratos e relatórios.
- * 2.  **Gestão de Usuários**: Oferece um CRUD completo para gerenciar quem pode acessar
- *     o painel administrativo, definindo seus papéis (permissões) e status (ativo/inativo).
- * 3.  **Preferências do Sistema**: Controla configurações de comportamento, como a ativação
- *     ou desativação de notificações automáticas por e-mail para eventos críticos.
- * 
- * @arquitetura
- * A página é estruturada como um "Client Component" para permitir interatividade e manipulação
- * de estado em tempo real. Cada seção (Empresa, Usuários, Preferências) é encapsulada
- * em seu próprio componente visual `<Card>`, e as ações de edição/criação utilizam
- * modais para não interromper o fluxo principal da visualização.
+ * 1. **Dados da Empresa**: Busca e salva na tabela `configuracoes` via upsert.
+ * 2. **Segurança**: Altera a senha do usuário via `supabase.auth.updateUser`.
+ * 3. **Informações da Conta**: Exibe e-mail e data de criação do usuário logado.
  */
 
 'use client'
 
-// Importações de hooks do React para gerenciamento de estado.
-import { useState } from 'react'
-// Importação de ícones para dar feedback visual e semântico às ações.
-import { Save, Plus, Edit2, Trash2, Building2, Users, Settings, Bell, BellOff } from 'lucide-react'
-// Importação de componentes de UI reutilizáveis do projeto.
+import React, { useState, useEffect } from 'react'
+import { Building2, Lock, User, Save, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
-import { Input, Select } from '@/components/ui/Input'
-import { Modal } from '@/components/ui/Modal'
-import { Table } from '@/components/ui/Table'
+import { Input } from '@/components/ui/Input'
+import { createClient } from '@/lib/supabase/client'
 
 /**
- * @interface User
- * @description Define o contrato de dados para um usuário do sistema.
- * O "porquê" desta interface é garantir a consistência e a tipagem segura
- * dos objetos de usuário em todo o componente, prevenindo erros em tempo de desenvolvimento.
+ * @interface CompanyData
+ * @description Define a estrutura dos dados da empresa gerenciados nesta página.
+ * Cada campo corresponde a uma chave na tabela `configuracoes`.
  */
-interface User {
-  id: string              // Identificador único (UUID ou similar) do usuário.
-  name: string            // Nome completo para exibição na interface.
-  email: string           // E-mail usado para login e envio de notificações.
-  role: 'admin' | 'funcionario' // Nível de permissão que define o que o usuário pode ver e fazer.
-  active: boolean         // Flag para habilitar ou desabilitar o acesso do usuário sem excluí-lo.
+interface CompanyData {
+  /** Chave: empresa_nome */
+  company_name: string
+  /** Chave: empresa_cnpj */
+  cnpj: string
+  /** Chave: empresa_telefone */
+  phone: string
+  /** Chave: empresa_email */
+  email: string
+  /** Chave: empresa_endereco */
+  address: string
 }
 
 /**
- * @constant mockUsers
- * @description Dados simulados de usuários para desenvolvimento e demonstração.
- * O "porquê": Permite construir e testar a interface de gestão de usuários
- * sem depender de uma conexão real com o banco de dados, agilizando o desenvolvimento do front-end.
+ * @interface UserData
+ * @description Define as informações exibidas do usuário logado obtidas via Supabase Auth.
  */
-const mockUsers: User[] = [
-  { id: '1', name: 'Gustavo Proprietário', email: 'gustavo@gomoto.com.br', role: 'admin', active: true },
-  { id: '2', name: 'Ana Atendente', email: 'ana@gomoto.com.br', role: 'funcionario', active: true },
-  { id: '3', name: 'Pedro Mecânico', email: 'pedro@gomoto.com.br', role: 'funcionario', active: true },
-  { id: '4', name: 'Maria Financeiro', email: 'maria@gomoto.com.br', role: 'funcionario', active: false },
-]
-
-/**
- * @constant defaultCompany
- * @description Objeto com os dados padrão da empresa.
- * O "porquê": Serve como estado inicial para o formulário de dados da empresa,
- * garantindo que a UI já carregue com informações preenchidas ou um formato válido.
- */
-const defaultCompany = {
-  name: 'GoMoto Locações',
-  taxId: '12.345.678/0001-90', // CNPJ da empresa.
-  phone: '(11) 3333-4444',
-  email: 'contato@gomoto.com.br',
-  address: 'Rua das Motos, 500 - Santana, São Paulo/SP - CEP: 02000-000',
+interface UserData {
+  email: string
+  createdAt: string
 }
 
 /**
- * @constant defaultPrefs
- * @description Define as preferências padrão de notificação.
- * O "porquê": Garante um estado inicial consistente para os controles de preferência,
- * evitando estados indefinidos na primeira renderização.
+ * @interface FeedbackState
+ * @description Estado das mensagens de feedback inline exibidas após operações assíncronas.
  */
-const defaultPrefs = {
-  emailNotifications: true,       // Controla o envio de alertas gerais por e-mail.
-  expirationNotifications: true, // Controla alertas sobre vencimento de CNH/contratos.
-  maintenanceNotifications: false, // Controla alertas sobre agendamento de manutenções.
-}
-
-/**
- * @constant roleOptions
- * @description Opções para o campo de seleção de "Papel" do usuário.
- * O "porquê": Centraliza as opções disponíveis, facilitando a manutenção e garantindo
- * que apenas valores válidos ('admin', 'funcionario') possam ser selecionados na UI.
- */
-const roleOptions = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'funcionario', label: 'Funcionário' },
-]
-
-/**
- * @constant defaultUserForm
- * @description Estado inicial para o formulário de criação de usuário.
- * O "porquê": Assegura que o modal de "Novo Usuário" sempre abra com os campos limpos
- * e com um valor padrão para o "Papel", evitando dados residuais de edições anteriores.
- */
-const defaultUserForm = {
-  name: '',
-  email: '',
-  role: 'funcionario',
+interface FeedbackState {
+  type: 'success' | 'error'
+  message: string
 }
 
 /**
  * @component SettingsPage
  * @description Componente principal da página de Configurações.
- * Ele orquestra os estados e as interações para todas as seções de gerenciamento.
+ * Gerencia os dados da empresa, segurança e informações da conta do usuário logado.
  */
 export default function SettingsPage() {
-  // --- ESTADOS DE DADOS DA EMPRESA ---
   /**
-   * @state company
-   * @description Armazena os dados do formulário de informações da empresa.
-   * O "porquê": Permite que os campos do formulário sejam "componentes controlados",
-   * onde o estado do React é a única fonte da verdade para os valores dos inputs.
+   * Cliente Supabase criado fora do ciclo de render para evitar
+   * a criação de novas instâncias a cada atualização de estado.
    */
-  const [company, setCompany] = useState(defaultCompany)
-  /**
-   * @state isCompanySaved
-   * @description Controla a exibição da mensagem de sucesso ao salvar dados da empresa.
-   * O "porquê": Fornece feedback visual imediato ao usuário de que sua ação foi concluída
-   * com sucesso, melhorando a experiência de uso.
-   */
-  const [isCompanySaved, setIsCompanySaved] = useState(false)
+  const supabase = React.useMemo(() => createClient(), [])
 
-  // --- ESTADOS DE GESTÃO DE USUÁRIOS ---
-  /**
-   * @state users
-   * @description Armazena a lista de usuários do sistema.
-   * O "porquê": Funciona como a fonte de dados para a tabela de usuários.
-   * Qualquer alteração (adição, edição, exclusão) nesta lista refletirá na UI.
-   */
-  const [users, setUsers] = useState<User[]>(mockUsers)
+  // --- ESTADOS: Dados da Empresa ---
 
-  // --- ESTADOS DE PREFERÊNCIAS ---
-  /**
-   * @state prefs
-   * @description Armazena o estado atual das preferências de notificação.
-   * O "porquê": Controla o estado (ligado/desligado) dos interruptores (toggles) na UI.
-   */
-  const [prefs, setPrefs] = useState(defaultPrefs)
-  /**
-   * @state arePrefsSaved
-   * @description Controla a exibição da mensagem de sucesso ao salvar preferências.
-   */
-  const [arePrefsSaved, setArePrefsSaved] = useState(false)
+  /** @state companyData — Formulário com os dados da empresa. */
+  const [companyData, setCompanyData] = useState<CompanyData>({
+    company_name: '',
+    cnpj: '',
+    phone: '',
+    email: '',
+    address: '',
+  })
 
-  // --- ESTADOS DE CONTROLE DE UI (MODAIS) ---
+  /** @state isLoadingCompany — Exibe o spinner enquanto os dados são carregados. */
+  const [isLoadingCompany, setIsLoadingCompany] = useState<boolean>(true)
+
+  /** @state isSavingCompany — Bloqueia o botão e exibe loading durante o salvamento. */
+  const [isSavingCompany, setIsSavingCompany] = useState<boolean>(false)
+
+  /** @state companyFeedback — Mensagem inline de sucesso ou erro do formulário da empresa. */
+  const [companyFeedback, setCompanyFeedback] = useState<FeedbackState | null>(null)
+
+  // --- ESTADOS: Segurança (Senha) ---
+
+  /** @state newPassword — Campo de nova senha. */
+  const [newPassword, setNewPassword] = useState<string>('')
+
+  /** @state confirmPassword — Campo de confirmação da nova senha. */
+  const [confirmPassword, setConfirmPassword] = useState<string>('')
+
+  /** @state showPassword — Alterna a visibilidade dos campos de senha. */
+  const [showPassword, setShowPassword] = useState<boolean>(false)
+
+  /** @state isSavingPassword — Bloqueia o botão durante a operação de troca de senha. */
+  const [isSavingPassword, setIsSavingPassword] = useState<boolean>(false)
+
+  /** @state passwordFeedback — Mensagem inline de sucesso ou erro da seção de senha. */
+  const [passwordFeedback, setPasswordFeedback] = useState<FeedbackState | null>(null)
+
+  // --- ESTADOS: Informações da Conta ---
+
+  /** @state userData — E-mail e data de criação do usuário autenticado. */
+  const [userData, setUserData] = useState<UserData | null>(null)
+
+  /** @state isLoadingUser — Exibe o spinner enquanto os dados do usuário carregam. */
+  const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true)
+
   /**
-   * @state isUserModalOpen
-   * @description Controla a visibilidade do modal de criação/edição de usuário.
+   * @effect fetchInitialData
+   * @description Busca os dados da empresa na tabela `configuracoes` e
+   * as informações do usuário logado via Supabase Auth ao montar o componente.
    */
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
-  /**
-   * @state editingUserId
-   * @description Armazena o ID do usuário que está sendo editado. Se for `null`, o modal está em modo de "criação".
-   * O "porquê": Permite reutilizar o mesmo modal e formulário tanto para criar um novo usuário quanto para editar um existente.
-   */
-  const [editingUserId, setEditingUserId] = useState<string | null>(null)
-  /**
-   * @state userForm
-   * @description Armazena os dados do formulário do modal de usuário.
-   */
-  const [userForm, setUserForm] = useState(defaultUserForm)
-  /**
-   * @state userToDelete
-   * @description Armazena o objeto do usuário selecionado para exclusão.
-   * O "porquê": Passa o contexto do usuário para o modal de confirmação, garantindo
-   * que a ação de exclusão seja executada sobre o alvo correto.
-   */
-  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  useEffect(() => {
+    async function fetchInitialData() {
+      try {
+        // Busca o usuário autenticado para exibir na seção "Informações da Conta"
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (user && !userError) {
+          setUserData({
+            email: user.email ?? 'E-mail não disponível',
+            createdAt: new Date(user.created_at).toLocaleDateString('pt-BR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }),
+          })
+        }
+      } catch {
+        // Falha silenciosa: o card de conta exibirá mensagem de erro
+      } finally {
+        setIsLoadingUser(false)
+      }
+
+      try {
+        // Busca todos os registros da tabela de configurações (estrutura chave-valor)
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('settings')
+          .select('key, value')
+
+        if (settingsData && !settingsError) {
+          /**
+           * Transforma o array [{chave, valor}] em um objeto estruturado,
+           * mapeando cada chave do banco para a propriedade correspondente.
+           */
+          const find = (key: string) =>
+            settingsData.find((item) => item.key === key)?.value ?? ''
+
+          setCompanyData({
+            company_name: find('empresa_nome'),
+            cnpj: find('empresa_cnpj'),
+            phone: find('empresa_telefone'),
+            email: find('empresa_email'),
+            address: find('empresa_endereco'),
+          })
+        }
+      } catch {
+        // Falha silenciosa: o formulário iniciará vazio
+      } finally {
+        setIsLoadingCompany(false)
+      }
+    }
+
+    fetchInitialData()
+  }, [supabase])
 
   /**
    * @function handleSaveCompany
-   * @description Simula o salvamento dos dados da empresa e exibe um feedback temporário.
-   * @param e O evento do formulário, para prevenir o recarregamento da página.
+   * @description Salva todos os campos da empresa na tabela `configuracoes`
+   * usando Promise.all para executar os upserts em paralelo.
    */
-  function handleSaveCompany(e: React.FormEvent) {
-    e.preventDefault() // Impede o comportamento padrão de submissão do formulário.
-    setIsCompanySaved(true)
-    // O "porquê" do setTimeout: Em uma aplicação real, haveria uma chamada de API.
-    // Aqui, ele simula a assincronicidade e remove a mensagem de sucesso após um tempo.
-    setTimeout(() => setIsCompanySaved(false), 2500)
+  const handleSaveCompany = async () => {
+    setIsSavingCompany(true)
+    setCompanyFeedback(null)
+
+    try {
+      const updates = [
+        { key: 'empresa_nome', value: companyData.company_name },
+        { key: 'empresa_cnpj', value: companyData.cnpj },
+        { key: 'empresa_telefone', value: companyData.phone },
+        { key: 'empresa_email', value: companyData.email },
+        { key: 'empresa_endereco', value: companyData.address },
+      ]
+
+      await Promise.all(
+        updates.map((update) =>
+          supabase.from('settings').upsert(update, { onConflict: 'key' })
+        )
+      )
+
+      setCompanyFeedback({
+        type: 'success',
+        message: 'Dados da empresa salvos com sucesso!',
+      })
+    } catch {
+      setCompanyFeedback({
+        type: 'error',
+        message: 'Erro ao salvar os dados. Tente novamente.',
+      })
+    } finally {
+      setIsSavingCompany(false)
+    }
   }
 
   /**
-   * @function handleSavePrefs
-   * @description Simula o salvamento das preferências e exibe feedback.
+   * @function handleSavePassword
+   * @description Valida e altera a senha do usuário via Supabase Auth.
+   * Após sucesso, limpa os campos e exibe confirmação.
    */
-  function handleSavePrefs() {
-    setArePrefsSaved(true)
-    setTimeout(() => setArePrefsSaved(false), 2500)
+  const handleSavePassword = async () => {
+    setPasswordFeedback(null)
+
+    // Validação: mínimo de 6 caracteres
+    if (newPassword.length < 6) {
+      setPasswordFeedback({
+        type: 'error',
+        message: 'A nova senha deve ter pelo menos 6 caracteres.',
+      })
+      return
+    }
+
+    // Validação: senhas devem ser iguais
+    if (newPassword !== confirmPassword) {
+      setPasswordFeedback({
+        type: 'error',
+        message: 'A confirmação de senha não coincide com a nova senha.',
+      })
+      return
+    }
+
+    setIsSavingPassword(true)
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+      if (error) throw error
+
+      setPasswordFeedback({
+        type: 'success',
+        message: 'Senha alterada com sucesso!',
+      })
+      // Limpa os campos após a alteração bem-sucedida
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch {
+      setPasswordFeedback({
+        type: 'error',
+        message: 'Erro ao alterar a senha. Verifique sua conexão e tente novamente.',
+      })
+    } finally {
+      setIsSavingPassword(false)
+    }
   }
 
   /**
-   * @function handleToggleUser
-   * @description Inverte o status de atividade de um usuário (de ativo para inativo e vice-versa).
-   * @param id O identificador do usuário a ser modificado.
+   * @component FeedbackMessage
+   * @description Componente interno que renderiza mensagens de sucesso ou erro inline.
+   * Usa ícones semânticos para reforçar visualmente o tipo de feedback.
    */
-  function handleToggleUser(id: string) {
-    setUsers((prevUsers) =>
-      prevUsers.map((u) => (u.id === id ? { ...u, active: !u.active } : u))
+  const FeedbackMessage = ({ feedback }: { feedback: FeedbackState | null }) => {
+    if (!feedback) return null
+    const isSuccess = feedback.type === 'success'
+    return (
+      <div
+        className={`flex items-center gap-2 text-sm font-medium ${
+          isSuccess ? 'text-[#28b438]' : 'text-[#ff9c9a]'
+        }`}
+      >
+        {isSuccess ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+        <span>{feedback.message}</span>
+      </div>
     )
   }
 
-  /**
-   * @function handleOpenNewUser
-   * @description Prepara o estado para abrir o modal de criação de um novo usuário.
-   * O "porquê": Garante que o formulário esteja limpo e no modo "novo",
-   * resetando o `editingUserId` para `null` e usando o `defaultUserForm`.
-   */
-  function handleOpenNewUser() {
-    setEditingUserId(null)
-    setUserForm(defaultUserForm)
-    setIsUserModalOpen(true)
-  }
-
-  /**
-   * @function handleOpenEditUser
-   * @description Prepara o estado para abrir o modal de edição de um usuário existente.
-   * @param row O objeto do usuário selecionado na tabela.
-   */
-  function handleOpenEditUser(row: User) {
-    setEditingUserId(row.id)
-    setUserForm({ name: row.name, email: row.email, role: row.role })
-    setIsUserModalOpen(true)
-  }
-
-  /**
-   * @function handleSubmitUser
-   * @description Processa a submissão do formulário de usuário, seja para criar ou editar.
-   * @param e O evento do formulário.
-   */
-  function handleSubmitUser(e: React.FormEvent) {
-    e.preventDefault()
-    if (editingUserId) {
-      // Lógica de ATUALIZAÇÃO: encontra o usuário pelo ID e substitui seus dados.
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingUserId
-            ? { ...u, name: userForm.name, email: userForm.email, role: userForm.role as 'admin' | 'funcionario' }
-            : u
-        )
-      )
-    } else {
-      // Lógica de CRIAÇÃO: adiciona um novo usuário à lista com um ID gerado.
-      const newUser: User = {
-        id: String(Date.now()), // Em um app real, seria um UUID gerado no servidor.
-        name: userForm.name,
-        email: userForm.email,
-        role: userForm.role as 'admin' | 'funcionario',
-        active: true, // Novos usuários são criados como ativos por padrão.
-      }
-      setUsers((prev) => [...prev, newUser])
-    }
-    setIsUserModalOpen(false) // Fecha o modal após a conclusão.
-  }
-
-  /**
-   * @function confirmDeleteUser
-   * @description Executa a remoção definitiva do usuário previamente selecionado.
-   * O "porquê": Esta função é separada para ser chamada apenas após a confirmação
-   * do usuário no modal de exclusão, prevenindo exclusões acidentais.
-   */
-  function confirmDeleteUser() {
-    if (!userToDelete) return
-    setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
-    setUserToDelete(null)
-  }
-
-  /**
-   * @const usersColumns
-   * @description Configuração das colunas para a Tabela de Usuários.
-   * O "porquê": Desacopla a definição da estrutura da tabela da sua renderização.
-   * Cada objeto define uma coluna, seu cabeçalho e como renderizar a célula para cada
-   * linha de dados, permitindo a inclusão de componentes complexos como Badges e botões.
-   */
-  const usersColumns = [
-    {
-      key: 'name',
-      header: 'Nome',
-      render: (row: User) => (
-        <div className="flex items-center gap-3">
-          {/* Avatar visual com a inicial do nome para identificação rápida. */}
-          <div className="w-8 h-8 rounded-full bg-[#BAFF1A]/10 border border-[#BAFF1A]/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-[#BAFF1A]">
-              {row.name.charAt(0)}
-            </span>
-          </div>
-          <div>
-            <p className="font-medium text-white text-sm">{row.name}</p>
-            <p className="text-xs text-[#A0A0A0]">{row.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    { key: 'email', header: 'E-mail', render: (row: User) => <span className="hidden">{row.email}</span>, className: 'hidden' },
-    {
-      key: 'role',
-      header: 'Papel',
-      render: (row: User) => (
-        <Badge variant={row.role === 'admin' ? 'brand' : 'muted'}>
-          {row.role === 'admin' ? 'Administrador' : 'Funcionário'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'active',
-      header: 'Status',
-      render: (row: User) => (
-        <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? 'Ativo' : 'Inativo'}</Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Ações',
-      render: (row: User) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => handleToggleUser(row.id)}
-            className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors text-[#A0A0A0] border-[#333333] hover:text-white hover:border-[#555555]"
-            title={row.active ? 'Desativar acesso do usuário' : 'Reativar acesso do usuário'}
-          >
-            {row.active ? 'Desativar' : 'Ativar'}
-          </button>
-          <button
-            onClick={() => handleOpenEditUser(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-white hover:bg-white/5 transition-colors"
-            title="Editar dados do usuário"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setUserToDelete(row)}
-            className="p-1.5 rounded-lg text-[#A0A0A0] hover:text-red-400 hover:bg-red-500/5 transition-colors"
-            title="Excluir usuário permanentemente"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ]
-
   return (
     <div className="flex flex-col min-h-full">
-      {/* Cabeçalho padrão da página. */}
-      <Header title="Configurações" subtitle="Dados da empresa e preferências do sistema" />
+      {/* Cabeçalho padrão da página */}
+      <Header
+        title="Configurações"
+        subtitle="Gerencie as informações da empresa e detalhes da sua conta"
+      />
 
-      <div className="p-6 space-y-8">
-        {/* SEÇÃO 1: Dados Cadastrais da Empresa */}
+      <div className="p-6 space-y-8 max-w-5xl">
+
+        {/* SEÇÃO 1: Dados da Empresa */}
         <section>
-          {/* Cabeçalho da seção com ícone e descrição. */}
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2.5 rounded-lg bg-[#BAFF1A]/10 border border-[#BAFF1A]/20">
               <Building2 className="w-5 h-5 text-[#BAFF1A]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Dados da Empresa</h2>
-              <p className="text-sm text-[#A0A0A0]">Informações que aparecerão em documentos e contratos.</p>
+              <h2 className="text-lg font-bold text-[#f5f5f5]">Dados da Empresa</h2>
+              <p className="text-sm text-[#9e9e9e]">
+                Informações que aparecerão em contratos e relatórios.
+              </p>
             </div>
           </div>
 
           <Card>
-            <form onSubmit={handleSaveCompany} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Nome da Empresa" value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} />
-                <Input label="CNPJ" value={company.taxId} onChange={(e) => setCompany({ ...company, taxId: e.target.value })} />
+            {isLoadingCompany ? (
+              /* Estado de carregamento: exibe spinner centralizado */
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="animate-spin text-[#BAFF1A]" size={32} />
+                <p className="text-[#9e9e9e] text-sm">Carregando dados da empresa...</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Telefone" value={company.phone} onChange={(e) => setCompany({ ...company, phone: e.target.value })} />
-                <Input label="E-mail" type="email" value={company.email} onChange={(e) => setCompany({ ...company, email: e.target.value })} />
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Nome da Empresa"
+                    value={companyData.company_name}
+                    onChange={(e) =>
+                      setCompanyData({ ...companyData, company_name: e.target.value })
+                    }
+                  />
+                  <Input
+                    label="CNPJ"
+                    value={companyData.cnpj}
+                    onChange={(e) =>
+                      setCompanyData({ ...companyData, cnpj: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Telefone"
+                    value={companyData.phone}
+                    onChange={(e) =>
+                      setCompanyData({ ...companyData, phone: e.target.value })
+                    }
+                  />
+                  <Input
+                    label="E-mail"
+                    type="email"
+                    value={companyData.email}
+                    onChange={(e) =>
+                      setCompanyData({ ...companyData, email: e.target.value })
+                    }
+                  />
+                </div>
+                <Input
+                  label="Endereço Completo"
+                  value={companyData.address}
+                  onChange={(e) =>
+                    setCompanyData({ ...companyData, address: e.target.value })
+                  }
+                />
+
+                {/* Área de ações com feedback inline */}
+                <div className="flex items-center justify-between pt-2 gap-4">
+                  <FeedbackMessage feedback={companyFeedback} />
+                  <Button
+                    variant="primary"
+                    size="md"
+                    loading={isSavingCompany}
+                    onClick={handleSaveCompany}
+                    className="ml-auto flex-shrink-0"
+                  >
+                    <Save className="w-4 h-4" />
+                    Salvar Dados da Empresa
+                  </Button>
+                </div>
               </div>
-              <Input label="Endereço" value={company.address} onChange={(e) => setCompany({ ...company, address: e.target.value })} />
-              
-              {/* Área de Ações do Formulário com feedback de salvamento */}
-              <div className="flex items-center justify-between pt-2">
-                {isCompanySaved && (
-                  <p className="text-sm text-green-400 flex items-center gap-1.5 animate-in fade-in">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    Dados da empresa salvos com sucesso!
-                  </p>
-                )}
-                <Button type="submit" className="ml-auto">
-                  <Save className="w-4 h-4" />
-                  Salvar Dados da Empresa
-                </Button>
-              </div>
-            </form>
+            )}
           </Card>
         </section>
 
-        {/* SEÇÃO 2: Gestão de Usuários com acesso ao painel */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <Users className="w-5 h-5 text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">Usuários do Sistema</h2>
-                <p className="text-sm text-[#A0A0A0]">{users.length} usuários com acesso ao painel.</p>
-              </div>
-            </div>
-            <Button size="sm" variant="secondary" onClick={handleOpenNewUser}>
-              <Plus className="w-3.5 h-3.5" />
-              Convidar Novo Usuário
-            </Button>
-          </div>
-
-          <Card padding="none">
-            <Table columns={usersColumns} data={users} keyExtractor={(row) => row.id} />
-          </Card>
-        </section>
-
-        {/* SEÇÃO 3: Preferências de Notificação e Comportamento */}
+        {/* SEÇÃO 2: Segurança — Alteração de Senha */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <Settings className="w-5 h-5 text-amber-400" />
+            <div className="p-2.5 rounded-lg bg-[#2d0363] border border-[#a880ff]/20">
+              <Lock className="w-5 h-5 text-[#a880ff]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Preferências</h2>
-              <p className="text-sm text-[#A0A0A0]">Ajustes de notificações e alertas automáticos.</p>
+              <h2 className="text-lg font-bold text-[#f5f5f5]">Segurança</h2>
+              <p className="text-sm text-[#9e9e9e]">Altere sua senha de acesso ao painel.</p>
             </div>
           </div>
 
           <Card>
-            <div className="space-y-2">
-              {/* Item de Preferência: Notificações por E-mail */}
-              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5">
-                <div className="flex items-center gap-3">
-                  {prefs.emailNotifications ? <Bell className="w-4 h-4 text-[#BAFF1A]" /> : <BellOff className="w-4 h-4 text-[#A0A0A0]" />}
-                  <div>
-                    <p className="text-sm font-medium text-white">Notificações por e-mail</p>
-                    <p className="text-xs text-[#A0A0A0]">Receber alertas gerais no e-mail institucional.</p>
-                  </div>
-                </div>
-                {/* Interruptor (Toggle Switch) customizado */}
+            <div className="space-y-4">
+              {/* Campo: Nova Senha com botão de visibilidade */}
+              <div className="relative">
+                <Input
+                  label="Nova Senha"
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  hint="Mínimo de 6 caracteres."
+                />
                 <button
-                  onClick={() => setPrefs({ ...prefs, emailNotifications: !prefs.emailNotifications })}
-                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${prefs.emailNotifications ? 'bg-[#BAFF1A]' : 'bg-[#333333]'}`}
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[38px] text-[#9e9e9e] hover:text-[#f5f5f5] transition-colors focus:outline-none"
+                  title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
-                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transform transition-transform duration-200 ${prefs.emailNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
 
-              <div className="border-t border-[#333333]" />
-
-              {/* Item de Preferência: Alertas de Vencimento */}
-              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5">
-                <div className="flex items-center gap-3">
-                  <Bell className={`w-4 h-4 ${prefs.expirationNotifications ? 'text-amber-400' : 'text-[#A0A0A0]'}`} />
-                  <div>
-                    <p className="text-sm font-medium text-white">Alertas de vencimento</p>
-                    <p className="text-xs text-[#A0A0A0]">Avisar sobre cobranças e CNHs próximas de vencer.</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setPrefs({ ...prefs, expirationNotifications: !prefs.expirationNotifications })}
-                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${prefs.expirationNotifications ? 'bg-[#BAFF1A]' : 'bg-[#333333]'}`}
-                >
-                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transform transition-transform duration-200 ${prefs.expirationNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
+              {/* Campo: Confirmação de Senha */}
+              <div className="relative">
+                <Input
+                  label="Confirmar Nova Senha"
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
               </div>
 
-              <div className="border-t border-[#333333]" />
-              
-              {/* Item de Preferência: Alertas de Manutenção */}
-              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5">
-                <div className="flex items-center gap-3">
-                  <Bell className={`w-4 h-4 ${prefs.maintenanceNotifications ? 'text-blue-400' : 'text-[#A0A0A0]'}`} />
-                  <div>
-                    <p className="text-sm font-medium text-white">Alertas de manutenção</p>
-                    <p className="text-xs text-[#A0A0A0]">Notificar quando uma manutenção preventiva estiver próxima.</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setPrefs({ ...prefs, maintenanceNotifications: !prefs.maintenanceNotifications })}
-                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${prefs.maintenanceNotifications ? 'bg-[#BAFF1A]' : 'bg-[#333333]'}`}
+              {/* Área de ações com feedback inline */}
+              <div className="flex items-center justify-between pt-2 gap-4">
+                <FeedbackMessage feedback={passwordFeedback} />
+                <Button
+                  variant="primary"
+                  size="md"
+                  loading={isSavingPassword}
+                  onClick={handleSavePassword}
+                  className="ml-auto flex-shrink-0"
                 >
-                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transform transition-transform duration-200 ${prefs.maintenanceNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              {/* Ações e Feedback */}
-              <div className="flex items-center justify-between pt-4">
-                {arePrefsSaved && (
-                   <p className="text-sm text-green-400 flex items-center gap-1.5 animate-in fade-in">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    Preferências salvas com sucesso!
-                  </p>
-                )}
-                <Button onClick={handleSavePrefs} className="ml-auto">
                   <Save className="w-4 h-4" />
-                  Salvar Preferências
+                  Alterar Senha
                 </Button>
               </div>
             </div>
+          </Card>
+        </section>
+
+        {/* SEÇÃO 3: Informações da Conta */}
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2.5 rounded-lg bg-[#3a180f] border border-[#e65e24]/20">
+              <User className="w-5 h-5 text-[#e65e24]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#f5f5f5]">Informações da Conta</h2>
+              <p className="text-sm text-[#9e9e9e]">Detalhes do usuário autenticado no sistema.</p>
+            </div>
+          </div>
+
+          <Card>
+            {isLoadingUser ? (
+              /* Estado de carregamento do usuário */
+              <div className="flex justify-center py-6">
+                <Loader2 className="animate-spin text-[#9e9e9e]" size={28} />
+              </div>
+            ) : userData ? (
+              /* Exibe os dados do usuário logado */
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-[#9e9e9e] mb-1">E-mail de Acesso</p>
+                  <p className="text-[#f5f5f5] font-medium">{userData.email}</p>
+                </div>
+                <div className="border-t border-[#474747]" />
+                <div>
+                  <p className="text-sm text-[#9e9e9e] mb-1">Membro desde</p>
+                  <p className="text-[#f5f5f5] font-medium">{userData.createdAt}</p>
+                </div>
+              </div>
+            ) : (
+              /* Fallback quando os dados do usuário não puderam ser carregados */
+              <div className="py-4 text-center">
+                <p className="text-[#ff9c9a] text-sm">
+                  Não foi possível carregar as informações do usuário.
+                </p>
+              </div>
+            )}
           </Card>
         </section>
       </div>
-
-      {/* MODAL: Gerenciamento de Usuário (Criação e Edição) */}
-      <Modal open={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} title={editingUserId ? 'Editar Usuário' : 'Novo Usuário'} size="sm">
-        <form onSubmit={handleSubmitUser} className="space-y-4">
-          <Input label="Nome" placeholder="Nome completo" value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} required />
-          <Input label="E-mail" type="email" placeholder="email@gomoto.com.br" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required />
-          <Select label="Papel" options={roleOptions} value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })} />
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="ghost" onClick={() => setIsUserModalOpen(false)}>Cancelar</Button>
-            <Button type="submit"><Save className="w-4 h-4" />{editingUserId ? 'Salvar Alterações' : 'Criar Usuário'}</Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* MODAL: Confirmação de Exclusão de Usuário */}
-      <Modal open={!!userToDelete} onClose={() => setUserToDelete(null)} title="Excluir Usuário" size="sm">
-        <div className="space-y-4">
-          <p className="text-[#A0A0A0] text-sm">
-            Tem certeza que deseja excluir permanentemente o acesso de <strong className="text-white font-medium">{userToDelete?.name}</strong>?
-            <br/>
-            <span className="text-red-400 font-bold">Esta ação não pode ser desfeita.</span>
-          </p>
-          <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setUserToDelete(null)}>Cancelar</Button>
-            <Button variant="danger" onClick={confirmDeleteUser}><Trash2 className="w-4 h-4" />Excluir</Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }

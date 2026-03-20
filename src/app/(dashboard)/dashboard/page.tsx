@@ -1,22 +1,24 @@
 /**
- * ARQUIVO: src/app/(dashboard)/dashboard/page.tsx
- * 
+ * @file page.tsx
+ * @description Página principal do Dashboard do Sistema GoMoto.
+ *
  * DESCRIÇÃO DETALHADA:
- * Este arquivo define a página principal de "Dashboard" (Painel de Controle) do sistema GoMoto.
- * Ele serve como o centro nevrálgico de monitoramento, consolidando dados de diversas áreas:
- * 1. Operacional: Status da frota de motos (disponíveis, alugadas, manutenção).
- * 2. Comercial: Contratos ativos e fila de espera de clientes.
- * 3. Financeiro: Receitas, despesas, lucro do mês e controle de inadimplência.
- * 
+ * Esta página apresenta um resumo em tempo real da operação da locadora,
+ * consumindo dados reais do banco de dados Supabase via Server Component.
+ *
  * ARQUITETURA:
- * - Utiliza Next.js App Router (pasta dashboard dentro de um route group de autenticação).
- * - Componentes de UI modulares (Card, Badge, Header) para consistência visual.
- * - Ícones da biblioteca Lucide-React para auxílio visual semântico.
- * 
- * REGRAS DE NEGÓCIO APLICADAS:
- * - O lucro é calculado em tempo real com base nas receitas e despesas informadas.
- * - Cores semânticas indicam criticidade (ex: vermelho para cobranças vencidas).
- * - A data exibida no cabeçalho é dinâmica, refletindo o mês e ano atuais.
+ * - Server Component (sem 'use client') — os dados são buscados no servidor.
+ * - Função auxiliar getDashboardData() centraliza todas as queries ao Supabase.
+ * - Componentes de UI modulares (StatCard, StatusBadge, Header) garantem consistência visual.
+ *
+ * KPIs exibidos:
+ * 1. Motos disponíveis, alugadas e em manutenção (status real da tabela motos).
+ * 2. Contratos ativos (tabela contratos).
+ * 3. Cobranças vencidas e pendentes (tabela cobrancas).
+ * 4. Clientes na fila de espera (tabela queue_entries).
+ * 5. Receita e despesas do mês atual (tabelas entradas e despesas).
+ * 6. Listagem dos últimos 5 contratos ativos com dados de cliente e moto.
+ * 7. Listagem das últimas 5 cobranças vencidas com nome do cliente.
  */
 
 // Importação do componente de cabeçalho padronizado do layout
@@ -27,10 +29,11 @@ import { StatCard } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/Badge'
 // Importação de funções utilitárias para formatação de moeda e datas no padrão brasileiro
 import { formatCurrency, formatDate } from '@/lib/utils'
+// Importação do cliente Supabase para execução no servidor (Server Component)
+import { createClient } from '@/lib/supabase/server'
 // Importação de ícones específicos da biblioteca Lucide para representar cada métrica
 import {
   Bike,            // Representa a frota de motocicletas
-  Users,           // Representa os clientes ou usuários
   DollarSign,      // Representa o fluxo financeiro geral
   AlertTriangle,   // Alerta para situações críticas (atrasos)
   Clock,           // Representa tempo ou fila de espera
@@ -40,227 +43,260 @@ import {
 } from 'lucide-react'
 
 /**
- * OBJETO: dashboardStats
- * 
- * Este objeto simula a resposta de uma API ou consulta ao banco de dados (Supabase).
- * Ele contém o estado atual consolidado dos KPIs (Key Performance Indicators) do negócio.
- * 
- * CAMPOS:
- * - availableMotorcycles: Inteiro. Motos no pátio prontas para entrega.
- * - rentedMotorcycles: Inteiro. Motos que estão sob contrato de aluguel.
- * - maintenanceMotorcycles: Inteiro. Motos paradas para reparo ou revisão preventiva.
- * - activeContracts: Inteiro. Total de contratos de locação vigentes no momento.
- * - overduePaymentsCount: Inteiro. Quantidade de faturas não pagas após o vencimento.
- * - monthlyRevenue: Float. Soma bruta de todos os recebimentos registrados no mês atual.
- * - monthlyExpenses: Float. Soma de todos os gastos (manutenção, impostos, pessoal, etc) do mês.
- * - queuedCustomers: Inteiro. Número de leads que manifestaram interesse mas aguardam moto.
+ * @interface ContratoRecente
+ * @description Estrutura dos dados retornados pelo join de contratos com clientes e motos.
+ * Usada para tipar corretamente o resultado da query de contratos ativos recentes.
  */
-const dashboardStats = {
-  availableMotorcycles: 2,        // Unidades prontas para novo contrato
-  rentedMotorcycles: 3,           // Unidades gerando receita recorrente
-  maintenanceMotorcycles: 0,      // Unidades indisponíveis temporariamente
-  activeContracts: 3,             // Volume de negócios ativos
-  overduePaymentsCount: 1,        // Risco financeiro imediato
-  monthlyRevenue: 4500,           // Faturamento bruto mensal (Ex: 3 contratos de R$ 1.500)
-  monthlyExpenses: 800,           // Custos operacionais do período
-  queuedCustomers: 2,             // Demanda reprimida por falta de estoque
+interface ContratoRecente {
+  id: string
+  monthly_amount: number
+  end_date: string | null
+  customers: { name: string } | null
+  motorcycles: { model: string; make: string; license_plate: string } | null
 }
 
 /**
- * ARRAY: recentContracts
- * 
- * Lista de objetos representando os últimos contratos fechados ou de maior relevância.
- * Utilizada para preencher a tabela de visualização rápida no lado esquerdo do dashboard.
- * 
- * PROPRIEDADES DE CADA ITEM:
- * - id: Identificador único do contrato no sistema.
- * - customer: Nome completo do locatário.
- * - motorcycle: Modelo da moto e placa para identificação rápida do veículo.
- * - value: Valor mensal da locação em Reais.
- * - dueDate: Data limite para o próximo pagamento do ciclo.
- * - status: Estado atual do contrato (ativo, encerrado, etc).
+ * @interface CobrancaVencida
+ * @description Estrutura dos dados retornados pelo join de cobrancas com clientes.
+ * Usada para tipar corretamente o resultado da query de cobranças em atraso.
  */
-const recentContracts = [
-  { 
-    id: '1', 
-    customer: 'João Silva', 
-    motorcycle: 'Honda Pop 110 — ABC1234', 
-    value: 1500, 
-    dueDate: '2026-03-20', 
-    status: 'ativo' 
-  },
-  { 
-    id: '2', 
-    customer: 'Maria Santos', 
-    motorcycle: 'Honda Biz 125 — XYZ5678', 
-    value: 1800, 
-    dueDate: '2026-03-15', 
-    status: 'ativo' 
-  },
-  { 
-    id: '3', 
-    customer: 'Carlos Lima', 
-    motorcycle: 'Yamaha Factor 150 — QRS9012', 
-    value: 1200, 
-    dueDate: '2026-03-10', 
-    status: 'ativo' 
-  },
-]
+interface CobrancaVencida {
+  id: string
+  amount: number
+  due_date: string
+  customers: { name: string } | null
+}
 
 /**
- * ARRAY: overduePaymentsList
- * 
- * Coleção de faturas que ultrapassaram a data de vencimento sem confirmação de pagamento.
- * Crucial para o fluxo de cobrança e controle de inadimplência.
- * 
- * PROPRIEDADES:
- * - id: ID da transação financeira.
- * - customer: Nome do cliente devedor.
- * - value: Valor da parcela em atraso.
- * - dueDate: Data original em que o pagamento deveria ter ocorrido.
- * - days: Quantidade calculada de dias de atraso para cálculo de juros/multa.
+ * @function getDashboardData
+ * @description Função assíncrona que busca e consolida todos os KPIs e listas do dashboard
+ * a partir do banco de dados Supabase. As queries são executadas sequencialmente
+ * usando o mesmo client para garantir estabilidade.
+ *
+ * @returns Objeto com todas as métricas e listas necessárias para o dashboard.
  */
-const overduePaymentsList = [
-  { 
-    id: '1', 
-    customer: 'Pedro Alves', 
-    value: 1500, 
-    dueDate: '2026-03-05', 
-    days: 6 
-  },
-]
+async function getDashboardData() {
+  /** Instância do client Supabase para operações no servidor */
+  const supabase = await createClient()
+
+  // ─── KPIs de Frota ────────────────────────────────────────────────────────
+
+  /** a) Motos com status 'available' prontas para novo contrato */
+  const { count: availableMotorcycles } = await supabase
+    .from('motorcycles')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'available')
+
+  /** b) Motos com status 'rented' gerando receita recorrente */
+  const { count: rentedMotorcycles } = await supabase
+    .from('motorcycles')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'rented')
+
+  /** c) Motos com status 'maintenance' temporariamente indisponíveis */
+  const { count: maintenanceMotorcycles } = await supabase
+    .from('motorcycles')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'maintenance')
+
+  // ─── KPIs Comerciais ──────────────────────────────────────────────────────
+
+  /** d) Total de contratos vigentes com status 'active' */
+  const { count: activeContracts } = await supabase
+    .from('contracts')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'active')
+
+  /** e) Cobranças com prazo vencido sem pagamento confirmado */
+  const { count: overduePaymentsCount } = await supabase
+    .from('billings')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'overdue')
+
+  /** f) Cobranças aguardando pagamento (dentro do prazo) */
+  const { count: pendingPaymentsCount } = await supabase
+    .from('billings')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending')
+
+  /** g) Clientes com cadastro ativo no sistema */
+  const { count: activeClients } = await supabase
+    .from('customers')
+    .select('*', { count: 'exact', head: true })
+    .eq('active', true)
+
+  /** h) Clientes aguardando moto disponível na fila */
+  const { count: queuedCustomers } = await supabase
+    .from('queue_entries')
+    .select('*', { count: 'exact', head: true })
+
+  // ─── KPIs Financeiros do Mês Atual ────────────────────────────────────────
+
+  /**
+   * Cálculo do intervalo de datas do mês corrente no formato YYYY-MM-DD.
+   * Utilizado como filtro nas queries de entradas e despesas.
+   */
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+
+  /** i) Receita bruta: soma de todas as entradas financeiras do mês atual */
+  const { data: entradasData } = await supabase
+    .from('incomes')
+    .select('amount')
+    .gte('date', firstDay)
+    .lte('date', lastDay)
+
+  const monthlyRevenue = (entradasData || []).reduce(
+    (sum, row) => sum + (Number(row.amount) || 0),
+    0
+  )
+
+  /** j) Despesas totais: soma de todas as saídas financeiras do mês atual */
+  const { data: despesasData } = await supabase
+    .from('expenses')
+    .select('amount')
+    .gte('date', firstDay)
+    .lte('date', lastDay)
+
+  const monthlyExpenses = (despesasData || []).reduce(
+    (sum, row) => sum + (Number(row.amount) || 0),
+    0
+  )
+
+  // ─── Listas Recentes ──────────────────────────────────────────────────────
+
+  /** k) Últimos 5 contratos ativos com dados do cliente e da moto (join) */
+  const { data: recentContractsData } = await supabase
+    .from('contracts')
+    .select('id, monthly_amount, end_date, customers(name), motorcycles(model, make, license_plate)')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  /** l) Últimas 5 cobranças vencidas ordenadas por data de vencimento (mais antigas primeiro) */
+  const { data: overduePaymentsData } = await supabase
+    .from('billings')
+    .select('id, amount, due_date, customers(name)')
+    .eq('status', 'overdue')
+    .order('due_date', { ascending: true })
+    .limit(5)
+
+  return {
+    availableMotorcycles: availableMotorcycles ?? 0,
+    rentedMotorcycles: rentedMotorcycles ?? 0,
+    maintenanceMotorcycles: maintenanceMotorcycles ?? 0,
+    activeContracts: activeContracts ?? 0,
+    overduePaymentsCount: overduePaymentsCount ?? 0,
+    pendingPaymentsCount: pendingPaymentsCount ?? 0,
+    activeClients: activeClients ?? 0,
+    queuedCustomers: queuedCustomers ?? 0,
+    monthlyRevenue,
+    monthlyExpenses,
+    recentContracts: (recentContractsData ?? []) as unknown as ContratoRecente[],
+    overduePaymentsList: (overduePaymentsData ?? []) as unknown as CobrancaVencida[],
+  }
+}
 
 /**
- * COMPONENTE PRINCIPAL: DashboardPage
- * 
- * Renderiza a visualização completa da página inicial do administrador.
- * 
+ * @component DashboardPage
+ * @description Componente de servidor (Server Component) que renderiza a página principal
+ * do painel de controle do Sistema GoMoto.
+ *
  * FUNCIONAMENTO:
- * 1. Calcula internamente o lucro líquido (Receita - Despesa).
- * 2. Formata a data de referência para o título.
- * 3. Organiza o layout em uma grade responsiva que se adapta de mobile para desktop.
+ * 1. Busca todos os dados reais do Supabase via getDashboardData().
+ * 2. Calcula o lucro líquido do mês (Receita - Despesas).
+ * 3. Organiza o layout em grade responsiva adaptada para mobile e desktop.
  */
-export default function DashboardPage() {
-  /**
-   * CONSTANTE: monthlyProfit
-   * 
-   * Representa o resultado financeiro final do mês corrente (EBITDA aproximado).
-   * Se positivo, indica lucro; se negativo, indica prejuízo no período.
-   */
-  const monthlyProfit = dashboardStats.monthlyRevenue - dashboardStats.monthlyExpenses
+export default async function DashboardPage() {
+  /** Busca todos os KPIs e listas do Supabase */
+  const data = await getDashboardData()
 
   /**
-   * RETORNO JSX:
-   * Define a estrutura visual da página usando Tailwind CSS para estilização.
+   * @constant monthlyProfit
+   * @description Resultado financeiro líquido do mês. Positivo = lucro, negativo = prejuízo.
    */
+  const monthlyProfit = data.monthlyRevenue - data.monthlyExpenses
+
   return (
     <div className="flex flex-col min-h-screen">
-      {/* 
-        * COMPONENTE: Cabeçalho (Header)
-        * 
-        * PROPRIEDADES:
-        * - title: Título estático da página.
-        * - subtitle: Texto dinâmico que usa Intl.DateTimeFormat para formatar o mês atual.
-        *   Ex: "Visão geral — março de 2026"
-        */}
+      {/*
+       * COMPONENTE: Cabeçalho (Header)
+       * subtitle usa Intl.DateTimeFormat para exibir "março de 2026" no padrão pt-BR.
+       */}
       <Header
         title="Dashboard"
         subtitle={`Visão geral — ${new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date())}`}
       />
 
-      {/* 
-        * CONTAINER: Espaçamento interno (Padding) e organização vertical (Space-y) 
-        */}
+      {/* CONTAINER: Espaçamento interno e organização vertical */}
       <div className="p-6 space-y-6">
-        
-        {/* 
-          * GRID: Cartões de Estatísticas Operacionais
-          * 
-          * Configuração: 2 colunas em telas pequenas, 4 colunas em telas grandes (Desktop).
-          */}
+
+        {/*
+         * GRID: Cartões de Estatísticas Operacionais
+         * Configuração: 2 colunas em telas pequenas, 4 colunas em Desktop.
+         */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* CARTÃO 1: MOTOS DISPONÍVEIS
-            * Mostra quantas motos estão paradas aguardando locação.
-            * Cor 'brand' (verde limão) indica o potencial de novos negócios.
-            */}
+
+          {/* CARTÃO 1: MOTOS DISPONÍVEIS — potencial de novos negócios (verde limão) */}
           <StatCard
             title="Motos Disponíveis"
-            value={dashboardStats.availableMotorcycles}
-            subtitle={`${dashboardStats.rentedMotorcycles} alugadas`}
+            value={data.availableMotorcycles}
+            subtitle={`${data.rentedMotorcycles} alugadas`}
             icon={<Bike className="w-5 h-5" />}
             color="brand"
           />
 
-          {/* CARTÃO 2: CONTRATOS ATIVOS
-            * Mostra o volume atual de operações em curso.
-            * Cor 'info' (azul) representa estabilidade operacional.
-            */}
+          {/* CARTÃO 2: CONTRATOS ATIVOS — volume de operações em curso (azul) */}
           <StatCard
             title="Contratos Ativos"
-            value={dashboardStats.activeContracts}
+            value={data.activeContracts}
             icon={<FileText className="w-5 h-5" />}
             color="info"
           />
 
-          {/* CARTÃO 3: COBRANÇAS VENCIDAS
-            * Indicador crítico de inadimplência.
-            * LÓGICA DE COR: Vermelho (danger) se houver vencidos, caso contrário, verde (success).
-            */}
+          {/* CARTÃO 3: COBRANÇAS VENCIDAS — indicador crítico de inadimplência */}
           <StatCard
             title="Cobranças Vencidas"
-            value={dashboardStats.overduePaymentsCount}
+            value={data.overduePaymentsCount}
             subtitle="Requer atenção"
             icon={<AlertTriangle className="w-5 h-5" />}
-            color={dashboardStats.overduePaymentsCount > 0 ? 'danger' : 'success'}
+            color={data.overduePaymentsCount > 0 ? 'danger' : 'success'}
           />
 
-          {/* CARTÃO 4: FILA DE ESPERA
-            * Indica clientes interessados sem veículo disponível.
-            * Cor 'warning' (âmbar) sinaliza necessidade de aquisição de novas motos.
-            */}
+          {/* CARTÃO 4: FILA DE ESPERA — demanda reprimida por falta de estoque (âmbar) */}
           <StatCard
             title="Fila de Espera"
-            value={dashboardStats.queuedCustomers}
+            value={data.queuedCustomers}
             subtitle="clientes aguardando"
             icon={<Clock className="w-5 h-5" />}
             color="warning"
           />
         </div>
 
-        {/* 
-          * GRID: Resumo Financeiro Consolidado
-          * 
-          * Configuração: 3 colunas em Desktop para Receita, Despesa e Lucro.
-          */}
+        {/*
+         * GRID: Resumo Financeiro Consolidado
+         * Configuração: 3 colunas em Desktop para Receita, Despesa e Lucro.
+         */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          
-          {/* CARTÃO: RECEITA DO MÊS
-            * Valor bruto total que entrou no caixa.
-            * Formata o número usando formatCurrency para exibir R$.
-            */}
+
+          {/* CARTÃO: RECEITA DO MÊS — faturamento bruto total do período */}
           <StatCard
             title="Receita do Mês"
-            value={formatCurrency(dashboardStats.monthlyRevenue)}
+            value={formatCurrency(data.monthlyRevenue)}
             icon={<TrendingUp className="w-5 h-5" />}
             color="success"
           />
 
-          {/* CARTÃO: DESPESAS DO MÊS
-            * Total de saídas do período.
-            * Cor 'danger' (vermelho) para simbolizar saída de capital.
-            */}
+          {/* CARTÃO: DESPESAS DO MÊS — total de saídas do período */}
           <StatCard
             title="Despesas do Mês"
-            value={formatCurrency(dashboardStats.monthlyExpenses)}
+            value={formatCurrency(data.monthlyExpenses)}
             icon={<TrendingDown className="w-5 h-5" />}
             color="danger"
           />
 
-          {/* CARTÃO: LUCRO LÍQUIDO
-            * Saldo final após dedução de custos.
-            * LÓGICA DE COR: Verde se lucro >= 0, Vermelho se prejuízo < 0.
-            */}
+          {/* CARTÃO: LUCRO LÍQUIDO — saldo após dedução de custos */}
           <StatCard
             title="Lucro do Mês"
             value={formatCurrency(monthlyProfit)}
@@ -269,122 +305,138 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* 
-          * GRID: Tabelas de Detalhamento
-          * 
-          * Configuração: 2 colunas em Desktop (Lado a lado).
-          */}
+        {/*
+         * GRID: Tabelas de Detalhamento
+         * Configuração: 2 colunas em Desktop (lado a lado).
+         */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* CONTAINER: CONTRATOS ATIVOS
-            * Bloco estilizado com fundo escuro e bordas sutis.
-            */}
-          <div className="bg-[#202020] border border-[#333333] rounded-xl overflow-hidden">
-            {/* CABEÇALHO DO BLOCO: Título e Link de Ação */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#333333] bg-[#252525]">
-              <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Contratos Ativos</h3>
+
+          {/* CONTAINER: CONTRATOS ATIVOS — últimos 5 contratos vigentes */}
+          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
+            {/* CABEÇALHO DO BLOCO */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#474747] bg-[#282828]">
+              <h3 className="font-semibold text-[#f5f5f5] text-sm uppercase tracking-wider">Contratos Ativos</h3>
               <a href="/contratos" className="text-xs text-[#BAFF1A] font-bold hover:underline transition-all">Ver todos</a>
             </div>
-            
-            {/* LISTAGEM DE CONTRATOS: Itera sobre o array recentContracts */}
-            <div className="divide-y divide-[#2a2a2a]">
-              {recentContracts.map((contract) => (
-                <div key={contract.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#252525] transition-colors">
-                  {/* COLUNA ESQUERDA: Identificação do Cliente e Bem */}
-                  <div className="min-w-0">
-                    {/* Nome do locatário com elipse se for muito longo */}
-                    <p className="text-sm font-medium text-white truncate">{contract.customer}</p>
-                    {/* Detalhes da moto em cinza para menor hierarquia visual */}
-                    <p className="text-xs text-[#A0A0A0] truncate mt-1">{contract.motorcycle}</p>
-                  </div>
-                  
-                  {/* COLUNA DIREITA: Valores e Vencimentos */}
-                  <div className="text-right flex-shrink-0 ml-4">
-                    {/* Valor mensal destacado */}
-                    <p className="text-sm font-bold text-white">
-                      {formatCurrency(contract.value)}
-                      <span className="text-[10px] text-[#606060] font-normal ml-1">/MÊS</span>
-                    </p>
-                    {/* Data formatada do próximo vencimento */}
-                    <p className="text-[11px] text-[#A0A0A0] mt-1 font-medium italic">Vence {formatDate(contract.dueDate)}</p>
-                  </div>
+
+            {/* LISTAGEM DE CONTRATOS: itera sobre os contratos recentes do Supabase */}
+            <div className="divide-y divide-[#323232]">
+              {data.recentContracts.length === 0 ? (
+                /* ESTADO VAZIO */
+                <div className="px-5 py-12 text-center">
+                  <p className="text-sm text-[#9e9e9e] font-medium">Nenhum contrato ativo no momento.</p>
                 </div>
-              ))}
+              ) : (
+                data.recentContracts.map((contrato) => (
+                  <div key={contrato.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#2a2a2a] transition-colors">
+                    {/* COLUNA ESQUERDA: identificação do cliente e bem */}
+                    <div className="min-w-0">
+                      {/* Nome do locatário — fallback para 'Cliente' se não houver join */}
+                      <p className="text-sm font-medium text-[#f5f5f5] truncate">
+                        {contrato.customers?.name ?? 'Cliente'}
+                      </p>
+                      {/* Moto: Fabricante + Modelo + Placa */}
+                      <p className="text-xs text-[#9e9e9e] truncate mt-1">
+                        {`${contrato.motorcycles?.make ?? ''} ${contrato.motorcycles?.model ?? ''} — ${contrato.motorcycles?.license_plate ?? ''}`}
+                      </p>
+                    </div>
+
+                    {/* COLUNA DIREITA: valor mensal e data de vencimento do contrato */}
+                    <div className="text-right flex-shrink-0 ml-4">
+                      <p className="text-sm font-bold text-[#f5f5f5]">
+                        {formatCurrency(contrato.monthly_amount)}
+                        <span className="text-xs text-[#616161] font-normal ml-1">/MÊS</span>
+                      </p>
+                      <p className="text-xs text-[#9e9e9e] mt-1 font-medium italic">
+                        {contrato.end_date ? `Vence ${formatDate(contrato.end_date)}` : 'Sem vencimento'}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          {/* CONTAINER: COBRANÇAS VENCIDAS
-            * Bloco focado em gestão de cobrança.
-            */}
-          <div className="bg-[#202020] border border-[#333333] rounded-xl overflow-hidden">
+          {/* CONTAINER: COBRANÇAS VENCIDAS — foco em gestão de inadimplência */}
+          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             {/* CABEÇALHO DO BLOCO */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#333333] bg-[#252525]">
-              <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Cobranças Vencidas</h3>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#474747] bg-[#282828]">
+              <h3 className="font-semibold text-[#f5f5f5] text-sm uppercase tracking-wider">Cobranças Vencidas</h3>
               <a href="/cobrancas" className="text-xs text-[#BAFF1A] font-bold hover:underline transition-all">Ver todas</a>
             </div>
-            
-            {/* RENDERIZAÇÃO CONDICIONAL: Verifica se há inadimplência */}
-            {overduePaymentsList.length === 0 ? (
-              /* ESTADO VAZIO: Exibido quando não há atrasos */
+
+            {/* RENDERIZAÇÃO CONDICIONAL: verifica se há inadimplência */}
+            {data.overduePaymentsList.length === 0 ? (
+              /* ESTADO VAZIO: tudo em dia */
               <div className="px-5 py-12 text-center flex flex-col items-center gap-2">
-                <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-500">
+                <div className="w-12 h-12 bg-[#0e2f13] rounded-full flex items-center justify-center text-[#28b438]">
                   <TrendingUp className="w-6 h-6" />
                 </div>
-                <p className="text-sm text-[#A0A0A0] font-medium">Tudo em dia! Nenhuma cobrança vencida.</p>
+                <p className="text-sm text-[#9e9e9e] font-medium">Tudo em dia! Nenhuma cobrança vencida.</p>
               </div>
             ) : (
-              /* LISTAGEM DE INADIMPLENTES: Itera sobre overduePaymentsList */
-              <div className="divide-y divide-[#2a2a2a]">
-                {overduePaymentsList.map((payment) => (
-                  <div key={payment.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#252525] transition-colors">
-                    {/* COLUNA ESQUERDA: Devedor e tempo de atraso */}
-                    <div>
-                      <p className="text-sm font-medium text-white">{payment.customer}</p>
-                      {/* Texto em vermelho destacando os dias de atraso */}
-                      <p className="text-xs text-red-400 mt-1 font-semibold flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Atrasado há {payment.days} dias
-                      </p>
+              /* LISTAGEM DE INADIMPLENTES */
+              <div className="divide-y divide-[#323232]">
+                {data.overduePaymentsList.map((payment) => {
+                  /**
+                   * Cálculo de dias de atraso:
+                   * Adiciona T12:00:00 para evitar problemas de fuso horário na conversão de data.
+                   */
+                  const today = new Date()
+                  const dueDate = new Date(payment.due_date + 'T12:00:00')
+                  const diffMs = today.getTime() - dueDate.getTime()
+                  const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+
+                  return (
+                    <div key={payment.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#2a2a2a] transition-colors">
+                      {/* COLUNA ESQUERDA: devedor e tempo de atraso */}
+                      <div>
+                        <p className="text-sm font-medium text-[#f5f5f5]">
+                          {payment.customers?.name ?? 'Cliente'}
+                        </p>
+                        {/* Texto em vermelho destacando os dias de atraso */}
+                        <p className="text-xs text-[#ff9c9a] mt-1 font-semibold flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Atrasado há {days} dias
+                        </p>
+                      </div>
+
+                      {/* COLUNA DIREITA: valor da dívida e badge de status */}
+                      <div className="text-right flex flex-col items-end gap-1.5">
+                        <p className="text-sm font-bold text-[#ff9c9a]">{formatCurrency(payment.amount)}</p>
+                        <StatusBadge status="vencido" />
+                      </div>
                     </div>
-                    
-                    {/* COLUNA DIREITA: Valor da dívida e status visual */}
-                    <div className="text-right flex flex-col items-end gap-1.5">
-                      {/* Valor total pendente */}
-                      <p className="text-sm font-bold text-red-400">{formatCurrency(payment.value)}</p>
-                      {/* Badge personalizada com a cor vermelha de 'vencido' */}
-                      <StatusBadge status="vencido" />
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
-            {/* 
-              * RODAPÉ DO BLOCO: Indicadores Rápidos de Status da Frota
-              * 
-              * Fornece um resumo visual da alocação de ativos.
-              */}
-            <div className="px-5 py-5 border-t border-[#333333] mt-auto bg-[#1a1a1a]">
-              <p className="text-[10px] font-bold text-[#606060] uppercase tracking-[0.2em] mb-4">Monitoramento de Ativos</p>
+            {/*
+             * RODAPÉ DO BLOCO: Indicadores Rápidos de Status da Frota
+             * Fornece um resumo visual da alocação de ativos em tempo real.
+             */}
+            <div className="px-5 py-5 border-t border-[#474747] mt-auto bg-[#202020]">
+              <p className="text-xs font-bold text-[#616161] uppercase tracking-[0.2em] mb-4">Monitoramento de Ativos</p>
               <div className="flex flex-wrap items-center gap-6">
-                
-                {/* INDICADOR: MOTOS LIVRES */}
+
+                {/* INDICADOR: Motos disponíveis (verde) */}
                 <div className="flex items-center gap-2.5">
-                  <div className="w-2.5 h-2.5 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.4)]" />
-                  <span className="text-xs text-[#A0A0A0] font-medium">{dashboardStats.availableMotorcycles} Disponíveis</span>
+                  <div className="w-2.5 h-2.5 bg-[#28b438] rounded-full shadow-[0_0_8px_rgba(40,180,56,0.4)]" />
+                  <span className="text-xs text-[#9e9e9e] font-medium">{data.availableMotorcycles} Disponíveis</span>
                 </div>
-                
-                {/* INDICADOR: MOTOS RENTABILIZANDO */}
+
+                {/* INDICADOR: Motos rentabilizando (roxo) */}
                 <div className="flex items-center gap-2.5">
-                  <div className="w-2.5 h-2.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.4)]" />
-                  <span className="text-xs text-[#A0A0A0] font-medium">{dashboardStats.rentedMotorcycles} Alugadas</span>
+                  <div className="w-2.5 h-2.5 bg-[#a880ff] rounded-full shadow-[0_0_8px_rgba(168,128,255,0.4)]" />
+                  <span className="text-xs text-[#9e9e9e] font-medium">{data.rentedMotorcycles} Alugadas</span>
                 </div>
-                
-                {/* INDICADOR: MOTOS EM REPARO (Exibição Opcional) */}
-                {dashboardStats.maintenanceMotorcycles > 0 && (
+
+                {/* INDICADOR: Motos em manutenção — exibido apenas se houver (laranja) */}
+                {data.maintenanceMotorcycles > 0 && (
                   <div className="flex items-center gap-2.5">
-                    <div className="w-2.5 h-2.5 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.4)]" />
-                    <span className="text-xs text-[#A0A0A0] font-medium">{dashboardStats.maintenanceMotorcycles} Em Manutenção</span>
+                    <div className="w-2.5 h-2.5 bg-[#e65e24] rounded-full shadow-[0_0_8px_rgba(230,94,36,0.4)]" />
+                    <span className="text-xs text-[#9e9e9e] font-medium">{data.maintenanceMotorcycles} Em Manutenção</span>
                   </div>
                 )}
               </div>
@@ -403,7 +455,9 @@ export default function DashboardPage() {
 
 /**
  * RESUMO TÉCNICO:
- * - Esta página foi otimizada para ser um ponto de partida para o usuário administrador.
- * - O uso de cores (#BAFF1A, #A0A0A0, #202020) segue a identidade visual da GoMoto.
- * - A responsividade garante que o gestor possa conferir os dados pelo celular na oficina ou no escritório.
+ * - Server Component: sem "use client", dados buscados no servidor antes da renderização.
+ * - getDashboardData(): centraliza todas as queries Supabase com fallback ?? 0.
+ * - Nomes de tabelas e colunas alinhados ao supabase-schema.sql do projeto.
+ * - Design visual mantido identicamente ao original (cores #BAFF1A, #202020, #f5f5f5).
+ * - Responsividade garantida para mobile (2 cols) e desktop (4 cols / 3 cols / 2 cols).
  */

@@ -15,20 +15,29 @@ import { cookies } from 'next/headers';
  * 
  * @returns Uma instância do SupabaseClient configurada para operações no servidor.
  */
-export function createClient() {
+export async function createClient() {
   /**
    * @constant cookieStore
    * @description Acessa a API de cookies do cabeçalho da requisição atual do Next.js.
+   * Usamos await para garantir compatibilidade com Next.js 15+ (onde cookies() é uma Promise).
    */
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   /**
-   * Inicialização do cliente utilizando as chaves de ambiente obrigatórias.
-   * O objeto de configuração de cookies é crucial para manter o estado da sessão do usuário.
+   * Fallback de URL e key usados apenas durante o build estático do Next.js,
+   * quando o .env.local ainda não foi configurado com os dados reais do Supabase.
+   * A verificação detecta se a variável contém um valor de placeholder (não uma URL real).
    */
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+  const isValidUrl = rawUrl.startsWith('https://') || rawUrl.startsWith('http://');
+  const supabaseUrl = isValidUrl ? rawUrl : 'https://placeholder.supabase.co';
+  const supabaseKey = rawKey.startsWith('ey') ? rawKey : 'placeholder-anon-key';
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         /**

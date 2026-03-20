@@ -48,13 +48,13 @@ interface BadgeProps {
  * feita aqui e reflete em todos os Badges da aplicação.
  */
 const variants: Record<BadgeVariant, string> = {
-  success: 'bg-green-500/12 text-green-400 border border-green-500/20',
-  warning: 'bg-amber-500/12 text-amber-400 border border-amber-500/20',
-  danger: 'bg-red-500/12 text-red-400 border border-red-500/20',
-  info: 'bg-blue-500/12 text-blue-400 border border-blue-500/20',
-  muted: 'bg-white/5 text-[#A0A0A0] border border-white/10',
-  brand: 'bg-[#BAFF1A]/12 text-[#BAFF1A] border border-[#BAFF1A]/20',
-  orange: 'bg-orange-600/12 text-orange-400 border border-orange-600/20',
+  success: 'bg-[#0e2f13] text-[#28b438]',
+  warning: 'bg-[#3a180f] text-[#e65e24]',
+  danger: 'bg-[#7c1c1c] text-[#ff9c9a]',
+  info: 'bg-[#2d0363] text-[#a880ff]',
+  muted: 'bg-[#323232] text-[#9e9e9e]',
+  brand: 'bg-[#BAFF1A]/15 text-[#BAFF1A]',
+  orange: 'bg-[#3a180f] text-[#e65e24]',
 }
 
 /**
@@ -127,7 +127,7 @@ export function Badge({ variant = 'muted', children, className }: BadgeProps) {
       // A função `cn` (classnames) mescla as classes de forma inteligente.
       className={cn(
         // Classes base: definem a estrutura fundamental do Badge.
-        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
         // Classes dinâmicas: aplicam o estilo da variante escolhida.
         variants[variant],
         // Classes externas: permitem customizações adicionais ao usar o componente.
