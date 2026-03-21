@@ -408,13 +408,85 @@ export default function MotorcyclesPage() {
     } else {
       /**
        * CASO CRIAÇÃO: Inclui km_current como quilometragem inicial de entrada na frota.
-       * O padrão 0 é aceitável aqui pois é o ponto de partida do histórico do veículo.
+       * Após inserir a moto, semeia automaticamente os registros de manutenção preventiva
+       * com base nos dados coletados no Passo 2 (bootstrapItems).
        */
-      await supabase.from('motorcycles').insert({
-        ...motorcycleData,
-        km_current: form.currentKm ? parseInt(form.currentKm, 10) : 0,
-      })
-      // TODO: salvar bootstrapItems na tabela manutencoes quando o módulo for implementado
+      const { data: newMoto, error: insertError } = await supabase
+        .from('motorcycles')
+        .insert({
+          ...motorcycleData,
+          km_current: form.currentKm ? parseInt(form.currentKm, 10) : 0,
+        })
+        .select('id')
+        .single()
+
+      if (insertError || !newMoto?.id) {
+        console.error('Erro ao inserir moto:', insertError)
+        setSaving(false)
+        return
+      }
+
+      const newMotoId = newMoto.id
+      const currentKm = form.currentKm ? parseInt(form.currentKm, 10) : 0
+      const today = new Date().toISOString().split('T')[0]
+
+      /**
+       * Semente de manutenções: para cada item da lista padrão, criamos UM registro pendente
+       * representando a PRÓXIMA revisão agendada. A referência de quando foi feita pela última vez
+       * (KM ou data informados no Passo 2) é usada apenas para calcular o vencimento.
+       * Se não informado, assume-se 0 km / data de hoje — podendo gerar itens já vencidos
+       * caso a moto já tenha quilômetros rodados.
+       */
+      const maintenanceRecords: Record<string, unknown>[] = []
+
+      for (const item of BOOTSTRAP_MAINTENANCE_ITEMS) {
+        if (item.type === 'km') {
+          const lastKm = bootstrapItems[item.id] ? parseInt(bootstrapItems[item.id], 10) : 0
+          const nextDueKm = lastKm + item.interval
+
+          maintenanceRecords.push({
+            motorcycle_id: newMotoId,
+            type: 'preventive',
+            description: item.name,
+            predicted_km: nextDueKm,
+            completed: false,
+            observations: nextDueKm <= currentKm
+              ? `Vencida — deveria ter sido feita aos ${nextDueKm.toLocaleString('pt-BR')} km`
+              : lastKm === 0
+                ? 'Sem histórico anterior — calculado a partir de 0 km na entrada da frota'
+                : `Última realizada aos ${lastKm.toLocaleString('pt-BR')} km`,
+          })
+        } else {
+          // item.type === 'data'
+          const lastDateStr = bootstrapItems[item.id] || today
+          const lastDate = new Date(lastDateStr + 'T12:00:00')
+          const nextDueDate = new Date(lastDate)
+          nextDueDate.setDate(nextDueDate.getDate() + item.interval)
+          const nextDueDateStr = nextDueDate.toISOString().split('T')[0]
+
+          maintenanceRecords.push({
+            motorcycle_id: newMotoId,
+            type: 'inspection',
+            description: item.name,
+            scheduled_date: nextDueDateStr,
+            completed: false,
+            observations: `Última realizada em ${lastDateStr === today ? 'data não informada (assumido hoje)' : lastDateStr}`,
+          })
+        }
+      }
+
+      // Insere todos os registros de manutenção em lote
+      try {
+        const { error: maintenanceError } = await supabase
+          .from('maintenances')
+          .insert(maintenanceRecords)
+
+        if (maintenanceError) {
+          console.error('Erro ao inserir manutenções iniciais:', maintenanceError)
+        }
+      } catch (err) {
+        console.error('Erro inesperado ao inserir manutenções iniciais:', err)
+      }
     }
 
     await fetchMotorcycles() // Recarrega os dados do banco
