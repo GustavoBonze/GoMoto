@@ -7,7 +7,7 @@
  *
  * FUNCIONALIDADES:
  * 1. Listagem de clientes ativos em tabela com busca por nome, CPF ou telefone.
- * 2. CRUD completo: criar, editar, visualizar detalhes e excluir clientes.
+ * 2. CRUD completo: editar, visualizar detalhes e excluir clientes.
  * 3. Proteção na exclusão: verifica se o cliente possui contrato ativo.
  * 4. Seção separada de ex-clientes (active = false) com motivo e data de saída.
  * 5. Link direto para WhatsApp de cada cliente.
@@ -18,7 +18,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Plus, Edit2, Trash2, Eye, Search, UserX, MessageCircle,
+  Edit2, Trash2, Eye, Search, UserX, MessageCircle,
 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -55,7 +55,7 @@ const CNH_CATEGORY_OPTIONS = [
 
 /**
  * @interface FormState
- * @description Formato plano dos campos do formulário de cadastro/edição.
+ * @description Formato plano dos campos do formulário de edição.
  * Os nomes de campo usam camelCase (diferente das colunas do banco que usam snake_case).
  */
 interface FormState {
@@ -126,6 +126,8 @@ export default function ClientesPage() {
   // ---- Estados de dados ----
   /** @state customers - Lista completa de clientes retornada pelo Supabase. */
   const [customers, setCustomers] = useState<Customer[]>([])
+  /** @state activeContractsMap - Mapa de customer_id -> info da moto/contrato ativo */
+  const [activeContractsMap, setActiveContractsMap] = useState<Map<string, { license_plate: string; model: string; monthly_amount: number }>>(new Map())
   /** @state loading - Controla o indicador de carregamento da tabela. */
   const [loading, setLoading] = useState(true)
   /** @state error - Armazena mensagem de erro de rede, se houver. */
@@ -136,9 +138,9 @@ export default function ClientesPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
   // ---- Estados dos modals ----
-  /** @state showForm - Controla a visibilidade do modal de cadastro/edição. */
+  /** @state showForm - Controla a visibilidade do modal de edição. */
   const [showForm, setShowForm] = useState(false)
-  /** @state editingCustomer - null = novo cadastro; objeto = edição de cliente existente. */
+  /** @state editingCustomer - objeto = edição de cliente existente. */
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   /** @state deletingCustomer - Cliente aguardando confirmação de exclusão. */
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
@@ -161,25 +163,50 @@ export default function ClientesPage() {
 
   /**
    * @function fetchCustomers
-   * @description Busca todos os clientes no Supabase, ordenados por nome.
-   * Chamada no mount inicial e após cada operação CRUD.
+   * @description Busca todos os clientes não promovidos da fila, ordenados por nome,
+   * e busca informações de contratos e motos associadas.
    */
   const fetchCustomers = async () => {
     setLoading(true)
     setError(null)
     const supabase = createClient()
 
-    const { data, error: supabaseError } = await supabase
+    const { data: customersData, error: supabaseError } = await supabase
       .from('customers')
       .select('*')
+      .eq('in_queue', false)
       .order('name', { ascending: true })
 
     if (supabaseError) {
       setError(supabaseError.message)
       alert(`Erro ao buscar clientes: ${supabaseError.message}`)
     } else {
-      setCustomers(data ?? [])
+      setCustomers(customersData ?? [])
     }
+
+    const { data: contractsData, error: contractsError } = await supabase
+      .from('contracts')
+      .select('customer_id, status, monthly_amount, motorcycles(license_plate, model)')
+      .eq('status', 'active')
+
+    if (contractsError) {
+      console.error('Erro ao buscar contratos ativos:', contractsError.message)
+    } else if (contractsData) {
+      const map = new Map<string, { license_plate: string; model: string; monthly_amount: number }>()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      contractsData.forEach((contract: any) => {
+        const moto = Array.isArray(contract.motorcycles) ? contract.motorcycles[0] : contract.motorcycles
+        if (moto) {
+          map.set(contract.customer_id, {
+            license_plate: moto.license_plate,
+            model: moto.model,
+            monthly_amount: contract.monthly_amount
+          })
+        }
+      })
+      setActiveContractsMap(map)
+    }
+
     setLoading(false)
   }
 
@@ -192,13 +219,6 @@ export default function ClientesPage() {
   // Handlers de abertura de modals
   // ---------------------------------------------------------------------------
 
-  /** Abre o modal para cadastrar um novo cliente. */
-  const handleNewClick = () => {
-    setFormState(defaultFormState)
-    setEditingCustomer(null)
-    setShowForm(true)
-  }
-
   /** Abre o modal de edição pré-populado com os dados do cliente selecionado. */
   const handleEditClick = (customer: Customer) => {
     setFormState(customerToForm(customer))
@@ -207,16 +227,18 @@ export default function ClientesPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Handler: Salvar (criar ou editar)
+  // Handler: Salvar (editar)
   // ---------------------------------------------------------------------------
 
   /**
    * @function handleSave
    * @description Envia os dados do formulário ao Supabase.
-   * Cria um novo registro se editingCustomer for null; atualiza se for um objeto.
+   * Atualiza o registro existente.
    * Mapeia os campos camelCase do form para os nomes snake_case do banco.
    */
   const handleSave = async () => {
+    if (!editingCustomer) return
+
     setSaving(true)
     const supabase = createClient()
 
@@ -239,32 +261,19 @@ export default function ClientesPage() {
       observations:              formState.notes            || null,
     }
 
-    if (editingCustomer !== null) {
-      // Modo edição: atualiza o registro existente
-      const { error: updateError } = await supabase
-        .from('customers')
-        .update(dbObj)
-        .eq('id', editingCustomer.id)
+    // Modo edição: atualiza o registro existente
+    const { error: updateError } = await supabase
+      .from('customers')
+      .update(dbObj)
+      .eq('id', editingCustomer.id)
 
-      if (updateError) {
-        alert(`Erro ao atualizar cliente: ${updateError.message}`)
-      } else {
-        setShowForm(false)
-        await fetchCustomers()
-      }
+    if (updateError) {
+      alert(`Erro ao atualizar cliente: ${updateError.message}`)
     } else {
-      // Modo criação: insere novo registro com valores padrão
-      const { error: insertError } = await supabase
-        .from('customers')
-        .insert({ ...dbObj, active: true, in_queue: false })
-
-      if (insertError) {
-        alert(`Erro ao criar cliente: ${insertError.message}`)
-      } else {
-        setShowForm(false)
-        await fetchCustomers()
-      }
+      setShowForm(false)
+      await fetchCustomers()
     }
+    
     setSaving(false)
   }
 
@@ -373,6 +382,21 @@ export default function ClientesPage() {
       ),
     },
     {
+      key: 'current_motorcycle',
+      header: 'Moto Atual',
+      render: (row: Customer) => {
+        const contractInfo = activeContractsMap.get(row.id)
+        if (contractInfo) {
+          return (
+            <Badge variant="brand">
+              {contractInfo.license_plate} — {contractInfo.model}
+            </Badge>
+          )
+        }
+        return <span className="text-[#616161]">-</span>
+      },
+    },
+    {
       key: 'status',
       header: 'Status',
       render: (row: Customer) =>
@@ -424,12 +448,7 @@ export default function ClientesPage() {
     <div className="min-h-screen bg-[#121212]">
       <Header
         title="Clientes"
-        actions={
-          <Button variant="primary" onClick={handleNewClick}>
-            <Plus className="w-4 h-4" />
-            Novo Cliente
-          </Button>
-        }
+        subtitle="Clientes promovidos da fila de espera"
       />
 
       <div className="p-6 space-y-6">
@@ -535,12 +554,12 @@ export default function ClientesPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* MODAL: Cadastro / Edição de Cliente                                 */}
+      {/* MODAL: Edição de Cliente                                 */}
       {/* ------------------------------------------------------------------ */}
       <Modal
         open={showForm}
         onClose={() => setShowForm(false)}
-        title={editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}
+        title="Editar Cliente"
         size="lg"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -759,7 +778,48 @@ export default function ClientesPage() {
               )}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-[#474747]">
+            {/* SEÇÃO: DOCUMENTOS ANEXADOS */}
+            {(viewingCustomer.drivers_license_photo_url || viewingCustomer.document_photo_url) && (
+              <div className="mt-6 pt-6 border-t border-[#323232]">
+                <h4 className="text-sm font-semibold text-[#f5f5f5] mb-4">Documentos Anexados</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {viewingCustomer.drivers_license_photo_url && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-[#616161] uppercase tracking-wide">Foto da CNH</p>
+                      <a href={viewingCustomer.drivers_license_photo_url} target="_blank" rel="noopener noreferrer" className="block relative group rounded-lg overflow-hidden border border-[#474747]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={viewingCustomer.drivers_license_photo_url}
+                          alt="CNH do Cliente"
+                          className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-sm text-white font-medium bg-black/60 px-3 py-1.5 rounded-full">Ver tamanho original</span>
+                        </div>
+                      </a>
+                    </div>
+                  )}
+                  {viewingCustomer.document_photo_url && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-[#616161] uppercase tracking-wide">Comprovante de Residência / Outro</p>
+                      <a href={viewingCustomer.document_photo_url} target="_blank" rel="noopener noreferrer" className="block relative group rounded-lg overflow-hidden border border-[#474747]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={viewingCustomer.document_photo_url}
+                          alt="Documento do Cliente"
+                          className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-sm text-white font-medium bg-black/60 px-3 py-1.5 rounded-full">Ver tamanho original</span>
+                        </div>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 border-t border-[#474747] mt-6">
               <Button variant="secondary" onClick={() => setViewingCustomer(null)}>
                 Fechar
               </Button>

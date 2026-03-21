@@ -565,7 +565,7 @@ export default function MotorcyclesPage() {
               const contract = contractByMotoId[moto.id]
               const customer = contract?.customer
               const weeklyValue = contract?.monthly_amount
-                ? formatCurrency(contract.monthly_amount / 4)
+                ? formatCurrency(contract.monthly_amount)
                 : null
 
               return (
@@ -960,6 +960,23 @@ export default function MotorcyclesPage() {
               </div>
               <div className="flex flex-col items-end gap-3">
                 <StatusBadge status={motorcycleDetails.status} />
+                
+                {motorcycleDetails.status === 'rented' && (() => {
+                  const contract = contracts.find(c => c.motorcycle_id === motorcycleDetails.id && c.status === 'active')
+                  if (!contract) return null;
+                  const customerName = contract.customer?.name || 'Cliente desconhecido'
+                  const weeklyValue = contract.monthly_amount ? formatCurrency(contract.monthly_amount) : 'N/A'
+                  return (
+                    <div className="flex flex-col items-end gap-1 mt-2">
+                      <div className="flex items-center gap-1.5 text-sm text-[#f5f5f5]">
+                        <User className="w-4 h-4 text-[#a880ff]" />
+                        <span className="font-medium">{customerName}</span>
+                      </div>
+                      <span className="text-xs font-bold text-[#BAFF1A]">{weeklyValue} / semana</span>
+                    </div>
+                  )
+                })()}
+
                 {/* Repetição do selo de manutenção para ênfase */}
                 {motorcycleDetails.maintenance_up_to_date ? (
                   <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438]/30 text-[#28b438] text-xs font-black uppercase">
@@ -1101,3 +1118,4 @@ function DetailRow({
     </div>
   )
 }
+
