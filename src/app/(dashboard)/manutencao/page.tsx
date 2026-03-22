@@ -1,40 +1,10 @@
-/**
- * @file src/app/(dashboard)/manutencao/page.tsx
- * @description Página de gerenciamento de manutenções da frota GoMoto.
- *
- * @summary
- * Central de controle do histórico e agendamento de revisões de cada veículo.
- * Ao cadastrar uma nova moto (wizard em /motos), o sistema semeia automaticamente
- * os itens de manutenção preventiva padrão. Esta tela permite acompanhar o
- * ciclo de vida completo: pendente → concluído → nova revisão agendada.
- *
- * @funcionalidades
- * 1. **Cards de KPIs**: Custo do mês corrente, total de pendentes e total de concluídas.
- * 2. **Filtros combinados**: Busca textual + filtro por tipo (preventiva/corretiva/vistoria) + filtro por status.
- * 3. **Tabela com coluna "Previsto"**: Exibe data agendada OU km previsto, conforme o tipo de item.
- * 4. **Marcar como concluída**: Botão rápido na linha — define completed_date como hoje.
- * 5. **Criação restrita a corretivas**: Novas manutenções via modal são sempre do tipo corretivo.
- *    As preventivas e vistorias são criadas automaticamente ao cadastrar uma moto.
- * 6. **Edição completa**: Editar e excluir qualquer manutenção via modais.
- *
- * @arquitetura
- * - **Client Component**: Toda a interatividade (filtros, modais, CRUD) é gerenciada no cliente.
- * - **Supabase direto**: Queries via `createClient()` no browser — sem API intermediária.
- * - **Join automático**: `select('*, motorcycles(...)')` retorna placa/marca/modelo junto ao registro.
- * - **Design System Bonze**: Cores, espaçamentos e layout seguem `design-system-bonze.md` e o
- *   padrão visual estabelecido na tela de Fila de Locadores.
- *   - Background tela: `#121212` (neutral-900)
- *   - Cards/containers: `#202020` (neutral-850)
- *   - Bordas: `#474747` (neutral-750)
- *   - Cor de marca: `#BAFF1A` (green-lime-500)
- *   - Atenção/pendente: `#e65e24` (yellow-600)
- *   - Sucesso/concluído: `#28b438` (green-500)
- */
-
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Wrench, CheckCircle2, Clock, Trash2, Edit2, Search } from 'lucide-react'
+import {
+  Plus, Wrench, CheckCircle2, AlertTriangle, Clock, Trash2, Edit2,
+  Search, Camera, FileText, ChevronDown, Gauge, Info, DollarSign,
+} from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Maintenance } from '@/types'
@@ -45,37 +15,86 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Header } from '@/components/layout/Header'
 
-// ─── TIPOS LOCAIS ─────────────────────────────────────────────────────────────
+// ─── TIPOS ──────────────────────────────────────────────────────────────────
+
+/**
+ * @type MaintenanceStatus
+ * @description Define os possíveis estados de uma manutenção no ciclo de vida do sistema.
+ * Por que existe: Facilita a categorização, filtragem e a estilização (cores, ícones) das manutenções na interface. Serve como base para alertas e priorização.
+ * Onde é usado: Na tipagem estendida `MaintenanceWithMoto`, cálculos de status, filtros de busca e na renderização visual dos badges de status.
+ */
+type MaintenanceStatus = 'overdue' | 'upcoming' | 'scheduled' | 'completed'
+
+/**
+ * @type Responsibility
+ * @description Enumeração para identificar o responsável financeiro por um item de manutenção.
+ * Por que existe: O sistema lida com aluguel de motos, logo é necessário saber quem arca com os custos das peças/serviços (empresa, cliente ou ambos).
+ * Onde é usado: No tipo `ItemFinancial` e no modal de conclusão (etapa 2) para cálculo do repasse de custos na fatura do cliente.
+ */
+type Responsibility = 'company' | 'customer' | 'split'
+
+/**
+ * @type ItemFinancial
+ * @description Estrutura de dados que armazena os detalhes financeiros de um item de manutenção na etapa de conclusão.
+ * Por que existe: Permite capturar o custo individual de múltiplos itens de manutenção realizados de uma só vez, além da responsabilidade e comprovação (fotos).
+ * Onde é usado: No estado `completionFinancials` para controlar o formulário financeiro da segunda etapa da conclusão de manutenção.
+ */
+type ItemFinancial = {
+  id: string
+  description: string
+  cost: string
+  responsibility: Responsibility
+  has_odometer_photo: boolean
+  has_invoice_photo: boolean
+}
+
+/**
+ * @type ContractInfo
+ * @description Representa as informações básicas do contrato ativo de uma motocicleta.
+ * Por que existe: Usado para definir a responsabilidade financeira padrão de uma manutenção corretiva (ex: contrato "promise" / promessa de compra pode cobrar do cliente, aluguel divide ou assume o custo).
+ * Onde é usado: No estado `activeContract` para influenciar as regras de negócio no momento de conclusão da manutenção e aviso de descontos.
+ */
+type ContractInfo = {
+  type: 'rental' | 'promise'
+  client_name: string
+  next_billing_date: string | null
+}
 
 /**
  * @type MaintenanceWithMoto
- * @description Estende Maintenance com os dados da moto obtidos via join do Supabase.
- * O join é feito na query com `motorcycles(license_plate, model, make)`.
+ * @description Tipo que estende a entidade `Maintenance` base, adicionando os dados relacionados da motocicleta e o status dinâmico calculado no front-end.
+ * Por que existe: A API do Supabase retorna a manutenção fazendo um "join" com a tabela `motorcycles`. O front-end também injeta propriedades extras (`_status`) para facilitar renderização.
+ * Onde é usado: Na listagem de manutenções, agrupamento por moto e passagem de propriedades para os modais e componentes filhos.
  */
 type MaintenanceWithMoto = Maintenance & {
   motorcycles: {
     license_plate: string
     model: string
     make: string
+    km_current: number
   } | null
+  _status?: MaintenanceStatus
 }
 
 /**
  * @type MotorcycleOption
- * @description Dados mínimos de uma moto para popular o select do formulário.
+ * @description Representa os dados essenciais de uma motocicleta retornados do banco para popular as opções de seleção (Dropdowns/Selects).
+ * Por que existe: Para não carregar dados desnecessários das motos quando só precisamos de placa, modelo e quilometragem para a interface de escolhas.
+ * Onde é usado: Nos estados `motorcycles`, opções do formulário de criação/edição e no filtro de motocicletas.
  */
 type MotorcycleOption = {
   id: string
   license_plate: string
   model: string
   make: string
+  km_current: number
 }
 
 /**
  * @type MaintenanceFormData
- * @description Estrutura do formulário de criação e edição de manutenções.
- * Campos numéricos (actual_km, cost) são mantidos como string para compatibilidade com inputs HTML —
- * a conversão para number ocorre apenas no payload enviado ao Supabase.
+ * @description Estrutura do formulário principal de criação e edição de manutenções.
+ * Por que existe: Para centralizar todos os campos que o usuário preenche na criação/edição de uma manutenção, separando os tipos da API da lógica do formulário em React (onde tudo costuma iniciar como string).
+ * Onde é usado: No estado `formData` para controlar as inputs controladas do React (controlled components).
  */
 type MaintenanceFormData = {
   motorcycle_id: string
@@ -90,12 +109,19 @@ type MaintenanceFormData = {
   observations: string
 }
 
-// ─── CONSTANTES DE MÓDULO ─────────────────────────────────────────────────────
+// ─── CONSTANTES ─────────────────────────────────────────────────────────────
+
+/**
+ * @constant supabase
+ * @description Instância de cliente do Supabase inicializada para o componente (client-side).
+ * Impacto se alterado: Quebra toda a comunicação com a base de dados (leitura, escrita, deleção).
+ */
+const supabase = createClient()
 
 /**
  * @constant INITIAL_FORM
- * @description Estado inicial do formulário — usado para reset após salvar ou cancelar.
- * `workshop` já vem pré-preenchido com o nome padrão da oficina da frota.
+ * @description Estado inicial do formulário de manutenção. Fornece valores em branco ou defaults sensatos.
+ * Impacto se alterado: Modifica os campos padrões ao abrir o modal de "Nova Manutenção". Por exemplo, o tipo default começa como "corrective" e oficina como "Oficina do Careca".
  */
 const INITIAL_FORM: MaintenanceFormData = {
   motorcycle_id: '',
@@ -112,8 +138,8 @@ const INITIAL_FORM: MaintenanceFormData = {
 
 /**
  * @constant TYPE_LABEL_MAP
- * @description Mapeamento de tipo técnico para rótulo em português.
- * Usado na exibição do campo de tipo no modal de edição (somente leitura).
+ * @description Mapa de tradução (dicionário) para converter o tipo em inglês da manutenção para a exibição (label) amigável em português na interface do usuário.
+ * Impacto se alterado: Muda os textos de exibição da coluna "Tipo" nos selects e crachás de tipagem.
  */
 const TYPE_LABEL_MAP: Record<string, string> = {
   preventive: 'Preventiva',
@@ -121,118 +147,583 @@ const TYPE_LABEL_MAP: Record<string, string> = {
   inspection: 'Vistoria',
 }
 
-// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
+/**
+ * @constant KM_POR_DIA
+ * @description Estimativa média de quilômetros rodados por uma moto de aluguel/trabalho em um dia. É calculado dividindo 1000 km por 7 dias.
+ * Impacto se alterado: Afeta as previsões de data para as próximas manutenções. Se aumentar, o sistema estimará que a manutenção ocorrerá mais cedo.
+ */
+const KM_POR_DIA = 1000 / 7
 
 /**
- * @component MaintenancePage
- * @description Página principal de manutenções com CRUD completo, filtros e KPIs.
- * Os dados são carregados do Supabase na montagem e re-buscados após cada operação de escrita.
+ * @constant STANDARD_INTERVALS
+ * @description Dicionário com os intervalos padrões (em quilometragem ou dias) para diferentes tipos de manutenções e vistorias de rotina.
+ * Impacto se alterado: Afeta toda a lógica de alerta de manutenções próximas ou vencidas, além da sugestão automática de agendamento de novas manutenções quando uma é concluída.
+ */
+const STANDARD_INTERVALS: Record<string, { interval_km?: number; interval_days?: number }> = {
+  // Óleo e filtros
+  'Troca de óleo':              { interval_km: 1000 },
+  'Troca de oleo':              { interval_km: 1000 },
+  'Troca de óleo e filtro':     { interval_km: 1000 },
+  'Filtro de óleo':             { interval_km: 4000 },
+  'Filtro de ar':               { interval_km: 4000 },
+  // Velas
+  'Vela de ignição':            { interval_km: 4000 },
+  'Velas de ignição':           { interval_km: 4000 },
+  // Transmissão
+  'Kit de transmissão':         { interval_km: 8000 },
+  // Pneus
+  'Pneu traseiro':              { interval_km: 8000 },
+  'Pneu dianteiro':             { interval_km: 16000 },
+  // Freios
+  'Freio dianteiro':            { interval_km: 10000 },
+  'Freio traseiro':             { interval_km: 8000 },
+  'Pastilha de freio dianteira':{ interval_km: 10000 },
+  'Pastilha de freio traseira': { interval_km: 8000 },
+  'Lona de freio traseira':     { interval_km: 8000 },
+  'Lona de freio dianteira':    { interval_km: 10000 },
+  // Amortecedores
+  'Amortecedor':                { interval_km: 15000 },
+  'Amortecedores':              { interval_km: 15000 },
+  // Revisão geral
+  'Revisão geral':              { interval_km: 6000 },
+  // Vistorias
+  'Vistoria de entrega':        { interval_days: 180 },
+  'Vistoria periódica':         { interval_days: 180 },
+  'Vistoria mensal':            { interval_days: 30 },
+}
+
+/**
+ * @constant STATUS_COLORS
+ * @description Mapeamento centralizado de cores mágicas para uso consistente nos badges e textos de cada status de manutenção.
+ * Impacto se alterado: Reflete em toda a página onde o status é renderizado de forma visual sem alterar as classes originais em linha.
+ */
+const STATUS_COLORS = {
+  overdue:   { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]' },
+  upcoming:  { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]' },
+  scheduled: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]' },
+  completed: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]' },
+}
+
+// ─── HELPERS DE CÁLCULO ─────────────────────────────────────────────────────
+
+/**
+ * @function normalize
+ * @description Remove acentos e caracteres especiais, além de converter toda a string para letras minúsculas.
+ * @param {string} s - String de entrada (ex: "Troca de óleo").
+ * @returns {string} String normalizada e limpa (ex: "troca de oleo").
+ * @example normalize('Atenção') // retorna 'atencao'
+ */
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+/**
+ * @function getInterval
+ * @description Realiza uma busca tolerante a falhas no dicionário de intervalos. Ela verifica primeiro por match exato, depois ignorando maiúsculas e por último ignorando acentos/espaços em branco.
+ * @param {string} description - Descrição da manutenção (ex: "troca de OLEO").
+ * @returns {{ interval_km?: number; interval_days?: number } | undefined} Objeto contendo a quilometragem ou dias de intervalo, ou `undefined` se não encontrado.
+ * @example getInterval('Troca de oleo') // retorna { interval_km: 1000 }
+ */
+function getInterval(description: string) {
+  if (STANDARD_INTERVALS[description]) return STANDARD_INTERVALS[description]
+  const lower = description.toLowerCase()
+  const normalizedDesc = normalize(description)
+  for (const key of Object.keys(STANDARD_INTERVALS)) {
+    if (key.toLowerCase() === lower) return STANDARD_INTERVALS[key]
+    if (normalize(key) === normalizedDesc) return STANDARD_INTERVALS[key]
+  }
+  return undefined
+}
+
+/**
+ * @function fmtKm
+ * @description Formata um número bruto representando uma quilometragem em uma string formatada no padrão brasileiro, anexando " km" ao final.
+ * @param {number} km - Quilometragem numérica (ex: 15000).
+ * @returns {string} Quilometragem formatada (ex: "15.000 km").
+ * @example fmtKm(1234.5) // retorna "1.235 km"
+ */
+function fmtKm(km: number): string {
+  return `${Math.round(km).toLocaleString('pt-BR')} km`
+}
+
+/**
+ * @function diffKm
+ * @description Calcula a diferença em quilômetros entre a KM prevista da manutenção e a KM atual da moto.
+ * @param {MaintenanceWithMoto} m - Objeto de manutenção populado com os dados da motocicleta.
+ * @returns {number | null} Valor numérico da diferença (negativo indica que a manutenção está vencida). Retorna null se não houver previsão em KM.
+ * @example diffKm({ predicted_km: 15000, motorcycles: { km_current: 16000 } }) // retorna -1000
+ */
+function diffKm(m: MaintenanceWithMoto): number | null {
+  if (m.predicted_km === null || m.predicted_km === undefined) return null
+  return m.predicted_km - (m.motorcycles?.km_current ?? 0)
+}
+
+/**
+ * @function diffDias
+ * @description Calcula a diferença em dias entre a data atual e a data agendada para uma manutenção.
+ * @param {MaintenanceWithMoto} m - Objeto de manutenção.
+ * @returns {number | null} Diferença em dias (valores negativos indicam atraso). Retorna null se não houver data agendada.
+ * @example diffDias({ scheduled_date: '2023-10-10' }) // retorna 5 (se hoje for 2023-10-05)
+ */
+function diffDias(m: MaintenanceWithMoto): number | null {
+  if (!m.scheduled_date) return null
+  const today = new Date()
+  const due = new Date(m.scheduled_date + 'T12:00:00')
+  return Math.floor((due.getTime() - today.getTime()) / 86400000)
+}
+
+/**
+ * @function calcularStatus
+ * @description Determina o status lógico de uma manutenção combinando as regras de distância em KM e/ou prazo em dias, além do status de finalização.
+ * A função aplica um "limiar" (threshold) de 10% de antecedência para classificar uma manutenção como "Próxima" (`upcoming`), e a marca como `overdue` se ultrapassar as marcas.
+ * @param {MaintenanceWithMoto} m - Objeto de manutenção com os dados da motocicleta.
+ * @returns {MaintenanceStatus} O status correspondente (vencida, próxima, agendada, concluída).
+ * @example calcularStatus(maintenanceObject) // retorna 'upcoming'
+ */
+function calcularStatus(m: MaintenanceWithMoto): MaintenanceStatus {
+  // Se a manutenção já foi concluída, não precisa de cálculos adicionais.
+  if (m.completed) return 'completed'
+  const kmCurrent = m.motorcycles?.km_current ?? 0
+
+  // Tratamento para manutenções controladas por odômetro (quilometragem)
+  if (m.predicted_km !== null && m.predicted_km !== undefined) {
+    if (kmCurrent >= m.predicted_km) return 'overdue'
+    const interval = getInterval(m.description)
+    // 10% do intervalo padrão ou 100km se não encontrar intervalo
+    const threshold = interval?.interval_km ? Math.round(interval.interval_km * 0.10) : 100
+    if (kmCurrent >= m.predicted_km - threshold) return 'upcoming'
+    return 'scheduled'
+  }
+
+  // Tratamento para manutenções baseadas no tempo (datas)
+  if (m.scheduled_date) {
+    const today = new Date()
+    const due = new Date(m.scheduled_date + 'T12:00:00')
+    if (today >= due) return 'overdue'
+    const interval = getInterval(m.description)
+    // 10% dos dias do intervalo padrão ou 18 dias como tolerância padrão
+    const thresholdDays = interval?.interval_days ? Math.round(interval.interval_days * 0.10) : 18
+    const thresholdDate = new Date(due)
+    thresholdDate.setDate(thresholdDate.getDate() - thresholdDays)
+    if (today >= thresholdDate) return 'upcoming'
+    return 'scheduled'
+  }
+
+  // Fallback seguro caso não haja data nem quilometragem (ex: adicionada sem previsão)
+  return 'scheduled'
+}
+
+// ─── COMPONENTES AUXILIARES ─────────────────────────────────────────────────
+
+/**
+ * @function BadgeStatus
+ * @description Um componente visual que renderiza uma etiqueta arredondada e colorida dependendo do status atual da manutenção.
+ * @param {{ status: MaintenanceStatus }} props - O status semântico extraído ou calculado.
+ * @returns {JSX.Element} Renderização do badge indicativo de status.
+ */
+function BadgeStatus({ status }: { status: MaintenanceStatus }) {
+  const map: Record<MaintenanceStatus, { label: string; cls: string }> = {
+    overdue:   { label: 'Vencida',   cls: `${STATUS_COLORS.overdue.bg} ${STATUS_COLORS.overdue.text}` },
+    upcoming:  { label: 'Próxima',   cls: `${STATUS_COLORS.upcoming.bg} ${STATUS_COLORS.upcoming.text}` },
+    scheduled: { label: 'Agendada',  cls: `${STATUS_COLORS.scheduled.bg} ${STATUS_COLORS.scheduled.text}` },
+    completed: { label: 'Concluída', cls: `${STATUS_COLORS.completed.bg} ${STATUS_COLORS.completed.text}` },
+  }
+  const b = map[status]
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${b.cls}`}>
+      {b.label}
+    </span>
+  )
+}
+
+/**
+ * @function SituacaoCell
+ * @description Um sub-componente de tabela que desenha de forma amigável a situação da manutenção (ex: "Faltam 500km", "Vencida há 3 dias", "Vence hoje").
+ * Isola a complexidade condicional dos retornos textuais da tabela principal.
+ * @param {{ m: MaintenanceWithMoto }} props - A manutenção com os dados da motocicleta atrelados.
+ * @returns {JSX.Element} Elemento formatado exibindo tempo/quilometragem faltante ou excedida.
+ */
+function SituacaoCell({ m }: { m: MaintenanceWithMoto }) {
+  if (m.completed) {
+    // Se a manutenção está completa, exibe o nome da oficina onde o serviço foi feito
+    return <span className="text-xs text-[#9e9e9e]">{m.workshop ?? '—'}</span>
+  }
+  const km = diffKm(m)
+  const dias = diffDias(m)
+
+  // Prioriza exibir diferença quilométrica quando houver
+  if (km !== null) {
+    if (km <= 0) return <span className="text-sm font-medium text-[#ff9c9a]">Vencida há {fmtKm(Math.abs(km))}</span>
+    return (
+      <span className={`text-sm font-medium ${km <= 100 ? 'text-[#e65e24]' : 'text-[#9e9e9e]'}`}>
+        Faltam {fmtKm(km)}
+      </span>
+    )
+  }
+
+  // Senão, analisa datas (temporal)
+  if (dias !== null) {
+    if (dias < 0) return <span className="text-sm font-medium text-[#ff9c9a]">Vencida há {Math.abs(dias)} dias</span>
+    if (dias === 0) return <span className="text-sm font-medium text-[#e65e24]">Vence hoje</span>
+    return (
+      <span className={`text-sm font-medium ${dias <= 18 ? 'text-[#e65e24]' : 'text-[#9e9e9e]'}`}>
+        Em {dias} dias
+      </span>
+    )
+  }
+
+  // Retorno neutro caso faltem ambos os indicadores
+  return <span className="text-[#9e9e9e]">—</span>
+}
+
+// ─── COMPONENTE PRINCIPAL ───────────────────────────────────────────────────
+
+/**
+ * @function MaintenancePage
+ * @description Ponto de entrada e centralizador (Página) para a tela de controle de Manutenções no painel do sistema GoMoto.
+ * Organiza agrupamentos listados, KPI cards, form para novas manutenções e engloba o fluxo de conclusão avançada de 2 etapas.
+ * @returns {JSX.Element} A interface principal de manutenções compilada com seus modais auxiliares.
  */
 export default function MaintenancePage() {
 
-  // ── Estado dos dados ────────────────────────────────────────────────────────
-  /** Lista de manutenções com dados de moto embutidos (join). */
+  // ── ESTADOS: Dados ────────────────────────────────────────────────────────
+  
+  // [maintenances, setMaintenances]: Armazena a listagem em bruto de todos os registros de manutenções vindos da base.
+  // Exemplo de valor: [{ id: '123', description: 'Troca de óleo', ... }]
   const [maintenances, setMaintenances] = useState<MaintenanceWithMoto[]>([])
-  /** Lista de motos para popular o select no formulário. */
+  
+  // [motorcycles, setMotorcycles]: Guarda lista leve (placa, modelo e KM) de todas as motos do sistema (para filtros e popular Selects).
+  // Exemplo de valor: [{ id: '1', license_plate: 'ABC-1234', make: 'Honda', ... }]
   const [motorcycles, setMotorcycles] = useState<MotorcycleOption[]>([])
-  /** Controla o spinner da tabela durante o carregamento inicial. */
-  const [loading, setLoading] = useState<boolean>(true)
-  /** Controla o estado de loading dos botões de salvar. */
-  const [saving, setSaving] = useState<boolean>(false)
 
-  // ── Estado de filtros ───────────────────────────────────────────────────────
-  /** Texto digitado na barra de busca — filtra por descrição, placa, marca e modelo. */
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  /** Filtro por tipo: preventiva, corretiva, vistoria ou todos. */
-  const [typeFilter, setTypeFilter] = useState<'all' | 'preventive' | 'corrective' | 'inspection'>('all')
-  /** Filtro por status: concluída, pendente ou todos. */
-  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all')
-  /** Filtro por moto específica — UUID ou 'all' para exibir todas agrupadas. */
-  const [motorcycleFilter, setMotorcycleFilter] = useState<string>('all')
+  // ── ESTADOS: UI e Carregamento ────────────────────────────────────────────
 
-  // ── Estado dos modais ───────────────────────────────────────────────────────
-  /** Controla a visibilidade do modal de criação/edição. */
-  const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false)
-  /** Controla a visibilidade do modal de confirmação de exclusão. */
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false)
-  /** Manutenção em edição — null quando o modal está em modo criação. */
+  // [loading, setLoading]: Informa se o componente está buscando dados primários iniciais na montagem para rodar o loading-spinner.
+  const [loading, setLoading] = useState(true)
+  
+  // [saving, setSaving]: Indica se há uma requisição HTTP ocorrendo no ato de salvar o formulário principal.
+  const [saving, setSaving] = useState(false)
+  
+  // [completing, setCompleting]: Bloqueia cliques excessivos no botão de confirmar conclusão enquanto a etapa 2 roda.
+  const [completing, setCompleting] = useState(false)
+
+  // ── ESTADOS: Filtros de Visualização ──────────────────────────────────────
+  
+  // [statusFilter, setStatusFilter]: Gerencia a aba/tab ativa ('all', 'overdue', 'upcoming', 'scheduled', 'completed').
+  const [statusFilter, setStatusFilter] = useState('all')
+  
+  // [motorcycleFilter, setMotorcycleFilter]: Guarda o ID da moto selecionada no select filter para isolar as views para 1 moto.
+  const [motorcycleFilter, setMotorcycleFilter] = useState('')
+  
+  // [typeFilter, setTypeFilter]: Refina a busca ('preventive', 'corrective', 'inspection').
+  const [typeFilter, setTypeFilter] = useState('all')
+  
+  // [searchQuery, setSearchQuery]: Termo textual de busca dinâmica inserido no campo de lupa.
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // ── ESTADOS: UI de Agrupamento das Tabelas (Accordion) ────────────────────
+  
+  // [collapsedMotos, setCollapsedMotos]: Guarda os IDs das motocicletas que estão fechadas/colapsadas no painel visual da lista.
+  const [collapsedMotos, setCollapsedMotos] = useState<Set<string>>(new Set())
+  
+  // [historyMotos, setHistoryMotos]: Mantém registro dos IDs das motocicletas onde o histórico de manutenções passadas (concluídas) está sendo exibido.
+  const [historyMotos, setHistoryMotos] = useState<Set<string>>(new Set())
+
+  /**
+   * @function toggleMoto
+   * @description Alterna a visibilidade (expandido/colapsado) da sanfona (accordion) que lista os itens de uma motocicleta específica.
+   * Pré-condição: Nenhuma.
+   * Efeitos colaterais: Altera o estado `collapsedMotos` adicionando ou removendo o ID.
+   * @param {string} id - O ID exclusivo da motocicleta.
+   */
+  function toggleMoto(id: string) {
+    setCollapsedMotos((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  /**
+   * @function toggleHistory
+   * @description Exibe ou oculta os itens de manutenção já concluídos (histórico) na área interna expandida de uma moto.
+   * Pré-condição: O agrupamento da moto precisa estar expandido para ver isso.
+   * Efeitos colaterais: Altera o estado `historyMotos` armazenando quais motos têm histórico exibido.
+   * @param {string} id - O ID exclusivo da motocicleta.
+   */
+  function toggleHistory(id: string) {
+    setHistoryMotos((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  // ── ESTADOS: Controle de Modais ───────────────────────────────────────────
+  
+  // [isFormModalOpen, setIsFormModalOpen]: Visibilidade do Modal de nova manutenção / edição.
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  
+  // [isDeleteModalOpen, setIsDeleteModalOpen]: Visibilidade do Modal de confirmação para deletar o registro.
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  
+  // [isCompleteModalOpen, setIsCompleteModalOpen]: Visibilidade do Modal inteligente da Conclusão.
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false)
+  
+  // [isKmModalOpen, setIsKmModalOpen]: Visibilidade do Modal focado estritamente na atualização rápida da KM da moto.
+  const [isKmModalOpen, setIsKmModalOpen] = useState(false)
+  
+  // [editingMaintenance, setEditingMaintenance]: Objeto contendo os dados da manutenção caso o modo edição seja invocado (ao invés de inserção).
   const [editingMaintenance, setEditingMaintenance] = useState<MaintenanceWithMoto | null>(null)
-  /** ID da manutenção marcada para exclusão — null quando nenhuma está selecionada. */
+  
+  // [completingMaintenance, setCompletingMaintenance]: Armazena a linha raiz/principal que acionou o processo multi-passo de conclusão da manutenção.
+  const [completingMaintenance, setCompletingMaintenance] = useState<MaintenanceWithMoto | null>(null)
+  
+  // [deletingId, setDeletingId]: Armazena temporariamente o ID do item focado para exclusão antes do aceite de confirmação.
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  
+  // [kmForm, setKmForm]: Representa o mini-estado para o modal embutido de atualização ágil da KM atual de uma moto.
+  const [kmForm, setKmForm] = useState({ motorcycle_id: '', km_current: '' })
 
-  // ── Estado do formulário ────────────────────────────────────────────────────
-  /** Dados atuais do formulário — compartilhado entre os modos criação e edição. */
+  // ── ESTADOS: Dados do Formulário CRUD Genérico ────────────────────────────
+  
+  // [formData, setFormData]: Controle das "inputs" no formulário clássico de adição ou alteração. Inicia vazio / com padrão.
   const [formData, setFormData] = useState<MaintenanceFormData>(INITIAL_FORM)
 
-  // ─── BUSCA DE DADOS ──────────────────────────────────────────────────────────
+  // ── ESTADOS: Fluxo de Conclusão Inteligente (2 Etapas) ────────────────────
+  
+  // [completionStep, setCompletionStep]: Guia qual 'página' do modal renderizar (1 ou 2).
+  const [completionStep, setCompletionStep] = useState<1 | 2>(1)
+  
+  // [completionKm, setCompletionKm]: O registro fundamental da KM do odômetro exato da saída da oficina neste reparo.
+  const [completionKm, setCompletionKm] = useState('')
+  
+  // [completionWorkshop, setCompletionWorkshop]: A oficina que realizou o reparo. Inicia com um "default".
+  const [completionWorkshop, setCompletionWorkshop] = useState('Oficina do Careca')
+  
+  // [completionObservations, setCompletionObservations]: Parecer técnico extra feito pelo mecânico ou analista.
+  const [completionObservations, setCompletionObservations] = useState('')
+  
+  // [completionDate, setCompletionDate]: Momento ISO temporal estrito de quando ocorreu a finalização real deste trabalho.
+  const [completionDate, setCompletionDate] = useState(new Date().toISOString().split('T')[0])
+  
+  // [completionExtras, setCompletionExtras]: Array de manutenções irmãs (da mesma moto) que estão pendentes e sugeridas na mesma vez.
+  const [completionExtras, setCompletionExtras] = useState<MaintenanceWithMoto[]>([])
+  
+  // [completionAllSiblings, setCompletionAllSiblings]: Todas as pendências de itens para a mesma moto, usado apenas para cálculos de previsão futura independente de ser marcada na checkbox ou não.
+  const [completionAllSiblings, setCompletionAllSiblings] = useState<MaintenanceWithMoto[]>([])
+  
+  // [completionExtraIds, setCompletionExtraIds]: Array de strings das checkboxes selecionadas marcando "realizei essa também" (venda cruzada).
+  const [completionExtraIds, setCompletionExtraIds] = useState<string[]>([])
+  
+  // [completionFinancials, setCompletionFinancials]: Array de dados do checkout da etapa 2. Informações de grana, custo e imagens por item consertado.
+  const [completionFinancials, setCompletionFinancials] = useState<ItemFinancial[]>([])
+  
+  // [activeContract, setActiveContract]: Retém o estado temporal da moto em questão sobre seus contratos a fim de decidir "quem paga a conta do conserto".
+  const [activeContract, setActiveContract] = useState<ContractInfo | null>(null)
+  
+  // [discountConfirmed, setDiscountConfirmed]: Garantia em tela avisando que descontar o valor do cliente requer a ciência de quem tá logado no painel.
+  const [discountConfirmed, setDiscountConfirmed] = useState(false)
+
+  // ─── BUSCA DE DADOS ASSÍNCRONOS ───────────────────────────────────────────
 
   /**
    * @function fetchMaintenances
-   * @description Busca todas as manutenções do Supabase com join na tabela de motos.
-   * Ordenadas por data de criação decrescente para exibir os registros mais recentes primeiro.
+   * @description Realiza a query (via Supabase) para obter toda a tabela de manutenções combinada as dependências da moto (placa, marca).
+   * Pré-condição: Cliente do Supabase disponível e autenticado.
+   * Efeitos colaterais: Popula o array gigantesco no state `maintenances`.
    */
   const fetchMaintenances = useCallback(async () => {
-    const supabase = createClient()
     const { data, error } = await supabase
       .from('maintenances')
-      .select('*, motorcycles(license_plate, model, make)')
+      .select('*, motorcycles(license_plate, model, make, km_current)')
       .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Erro ao buscar manutencoes:', error)
-      return
-    }
+    if (error) { console.error('Erro ao buscar manutencoes:', error); return }
     setMaintenances((data as MaintenanceWithMoto[]) || [])
   }, [])
 
   /**
    * @function fetchMotorcycles
-   * @description Busca somente os campos necessários das motos para popular o select do formulário.
-   * Ordenadas por placa para facilitar a busca visual pelo usuário.
+   * @description Captura um dataset super reduzido da entidade de motocicletas na base, puramente para municiar selects.
+   * Pré-condição: Nenhuma.
+   * Efeitos colaterais: Insere listagem no state `motorcycles`.
    */
   const fetchMotorcycles = useCallback(async () => {
-    const supabase = createClient()
     const { data, error } = await supabase
       .from('motorcycles')
-      .select('id, license_plate, model, make')
+      .select('id, license_plate, model, make, km_current')
       .order('license_plate')
-
-    if (error) {
-      console.error('Erro ao buscar motos:', error)
-      return
-    }
+    if (error) { console.error('Erro ao buscar motos:', error); return }
     setMotorcycles((data as MotorcycleOption[]) || [])
   }, [])
 
-  /**
-   * @effect Carregamento inicial paralelo de manutenções e motos.
-   * Usa Promise.all para minimizar o tempo de loading da página.
-   */
+  // Hook primário de carregamento em massa da página
+  // Chama as requisições de buscar motocicletas e manutenções concorrentemente e remove o loader ao resolver.
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       setLoading(true)
       await Promise.all([fetchMaintenances(), fetchMotorcycles()])
       setLoading(false)
     }
-    loadData()
+    load()
   }, [fetchMaintenances, fetchMotorcycles])
 
-  // ─── AÇÕES DE CRUD ──────────────────────────────────────────────────────────
+  // ─── DADOS COMPUTADOS (USANDO MEMOIZAÇÃO) ─────────────────────────────────
+
+  /**
+   * Computação: Injeta a label interna `_status` via processamento lógico de forma preventiva
+   * para não chamar essa rotina pesada a cada render dentro dos laços.
+   */
+  const withStatus = useMemo(() =>
+    maintenances.map((m) => ({ ...m, _status: calcularStatus(m) })),
+    [maintenances]
+  )
+
+  /**
+   * Computação de Filtros em Cascata: Subtrai o array completo com base nas ações textuais, tabs de situação e selects do cabeçalho de busca.
+   * Por fim, ordena para que sempre os problemas em aberto e mais graves subam para a linha visual do gestor.
+   */
+  const filtered = useMemo(() => {
+    return withStatus
+      .filter((m) => {
+        if (statusFilter !== 'all' && m._status !== statusFilter) return false
+        if (motorcycleFilter && m.motorcycle_id !== motorcycleFilter) return false
+        if (typeFilter !== 'all' && m.type !== typeFilter) return false
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase()
+          if (![m.description, m.motorcycles?.license_plate, m.motorcycles?.model, m.motorcycles?.make]
+            .some((v) => v?.toLowerCase().includes(q))) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        // Mapeamento hierárquico simples para a ordenação natural do risco
+        const order: Record<MaintenanceStatus, number> = { overdue: 0, upcoming: 1, scheduled: 2, completed: 3 }
+        return order[a._status!] - order[b._status!]
+      })
+  }, [withStatus, statusFilter, motorcycleFilter, typeFilter, searchQuery])
+
+  /**
+   * Computação da Estrutura Visual Principal: 
+   * A lógica visual agrupa as manutenções pelo ID da moto pertencente (Sanfonas / Accordions).
+   */
+  const groupedByMoto = useMemo(() => {
+    const map = new Map<string, { motorcycle_id: string; moto: MaintenanceWithMoto['motorcycles']; items: (MaintenanceWithMoto & { _status: MaintenanceStatus })[] }>()
+
+    filtered.forEach((m) => {
+      if (!map.has(m.motorcycle_id)) {
+        map.set(m.motorcycle_id, { motorcycle_id: m.motorcycle_id, moto: m.motorcycles, items: [] })
+      }
+      map.get(m.motorcycle_id)!.items.push(m as MaintenanceWithMoto & { _status: MaintenanceStatus })
+    })
+
+    // Organiza também o layout raiz: Motos com falhas gravíssimas pulam pro topo e com 0 erro descem.
+    return Array.from(map.values()).sort((a, b) => {
+      const worst = (items: { _status: MaintenanceStatus }[]) =>
+        items.some((i) => i._status === 'overdue') ? 0
+        : items.some((i) => i._status === 'upcoming') ? 1
+        : items.some((i) => i._status === 'scheduled') ? 2
+        : 3
+      return worst(a.items) - worst(b.items)
+    })
+  }, [filtered])
+
+  /**
+   * Computação de Estatísticas KPIs:
+   * Separa quantidades totais em uma árvore concisa para uso rápido dos Cartões no Topo do painel.
+   * Filtra também a string padrão ISO pelo mês vigente ("YYYY-MM") para rastrear o gasto estrito daquele mês.
+   */
+  const totals = useMemo(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    return {
+      overdue:   withStatus.filter((m) => m._status === 'overdue').length,
+      upcoming:  withStatus.filter((m) => m._status === 'upcoming').length,
+      scheduled: withStatus.filter((m) => m._status === 'scheduled').length,
+      completed: withStatus.filter((m) => m._status === 'completed').length,
+      costThisMonth: withStatus
+        .filter((m) => m._status === 'completed' && m.completed_date?.startsWith(currentMonth))
+        .reduce((acc, m) => acc + (m.cost ?? 0), 0),
+    }
+  }, [withStatus])
+
+  /**
+   * @constant tabs
+   * @description Array iterável desenhado a partir dos totais que rende as "Pílulas" superiores que o usuário clica.
+   */
+  const tabs = [
+    { value: 'all',       label: 'Todas',      count: withStatus.length },
+    { value: 'overdue',   label: 'Vencidas',   count: totals.overdue },
+    { value: 'upcoming',  label: 'Próximas',   count: totals.upcoming },
+    { value: 'scheduled', label: 'Agendadas',  count: totals.scheduled },
+    { value: 'completed', label: 'Realizadas', count: totals.completed },
+  ]
+
+  /**
+   * @constant motorcycleSelectOptions
+   * @description Derivado transformado apenas para se conectar na biblioteca de selects provendo o texto formatado no layout `{placa} - {marca} {modelo}`
+   */
+  const motorcycleSelectOptions = useMemo(() => [
+    { value: '', label: 'Selecione a moto...' },
+    ...motorcycles.map((m) => ({ value: m.id, label: `${m.license_plate} — ${m.make} ${m.model}` })),
+  ], [motorcycles])
+
+  // ─── HANDLERS DOS EVENTOS GLOBAIS ─────────────────────────────────────────
+
+  /**
+   * @function closeFormModal
+   * @description Reset universal para os estados envolvidos em criação/edição. Zera o formulário para o default de novo.
+   * Pré-condição: Formulário em modo popup ativo.
+   * Efeitos colaterais: Remove target `editingMaintenance` e altera dados do form.
+   */
+  const closeFormModal = useCallback(() => {
+    setIsFormModalOpen(false)
+    setEditingMaintenance(null)
+    setFormData(INITIAL_FORM)
+  }, [])
+
+  /**
+   * @function closeDeleteModal
+   * @description Cancelador gentil do pop-up de alerta de exclusão.
+   */
+  const closeDeleteModal = useCallback(() => {
+    setIsDeleteModalOpen(false)
+    setDeletingId(null)
+  }, [])
+
+  /**
+   * @function closeCompleteModal
+   * @description Reset de estado mais intrincado, devolvendo cada pedaço fracionário do assistente em 2 etapas para sua neutralidade.
+   */
+  const closeCompleteModal = useCallback(() => {
+    setIsCompleteModalOpen(false)
+    setCompletingMaintenance(null)
+    setCompletionStep(1)
+    setCompletionKm('')
+    setCompletionWorkshop('Oficina do Careca')
+    setCompletionObservations('')
+    setCompletionDate(new Date().toISOString().split('T')[0])
+    setCompletionExtras([])
+    setCompletionAllSiblings([])
+    setCompletionExtraIds([])
+    setCompletionFinancials([])
+    setActiveContract(null)
+    setDiscountConfirmed(false)
+  }, [])
 
   /**
    * @function handleSave
-   * @description Persiste a manutenção no Supabase — cria ou atualiza conforme `editingMaintenance`.
-   * Sanitiza os campos numéricos e garante que `completed_date` só é enviado quando concluída.
+   * @description Manda o Supabase atualizar o nó especifico se o modo for "edição" (Update) ou engatar novo array se for modo "inclusão" (Insert).
+   * Pré-condição: Validação de placa selecionada e de um texto no campo principal description.
+   * Efeitos colaterais: Post de query e recarga com a lista repaginada pelo backend.
    */
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!formData.motorcycle_id || !formData.description) {
       alert('Por favor, preencha a moto e a descrição.')
       return
     }
-
     setSaving(true)
-    const supabase = createClient()
-
+    
+    // Tratamos aqui conversões de tipos de Strings capturadas no HTML para Ints, Floats ou nulls para respeitar as chaves nativas postgres
     const payload = {
       motorcycle_id: formData.motorcycle_id,
       type: formData.type,
@@ -245,653 +736,1016 @@ export default function MaintenancePage() {
       workshop: formData.workshop || null,
       observations: formData.observations || null,
     }
-
     try {
       if (editingMaintenance) {
-        const { error } = await supabase
-          .from('maintenances')
-          .update(payload)
-          .eq('id', editingMaintenance.id)
-
-        if (error) { console.error('Erro ao editar manutencao:', error); return }
+        await supabase.from('maintenances').update(payload).eq('id', editingMaintenance.id)
       } else {
-        const { error } = await supabase
-          .from('maintenances')
-          .insert([payload])
-
-        if (error) { console.error('Erro ao criar manutencao:', error); return }
+        await supabase.from('maintenances').insert([payload])
       }
-
-      // Fecha e limpa o modal após sucesso
-      setIsFormModalOpen(false)
-      setFormData(INITIAL_FORM)
-      setEditingMaintenance(null)
+      closeFormModal()
       fetchMaintenances()
     } catch (err) {
-      console.error('Erro inesperado ao salvar manutencao:', err)
+      console.error('Erro ao salvar manutencao:', err)
     } finally {
       setSaving(false)
     }
-  }
+  }, [formData, editingMaintenance, closeFormModal, fetchMaintenances])
 
   /**
    * @function handleDelete
-   * @description Exclui permanentemente a manutenção cujo ID está em `deletingId`.
-   * Só é chamada após confirmação no modal de exclusão.
+   * @description Destrói definitivamente a tupla da manutenção na base de dados (Exclusão Irreversível).
+   * Pré-condição: ID já carregada na variável transitória do alerta de perigo.
    */
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!deletingId) return
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('maintenances')
-      .delete()
-      .eq('id', deletingId)
-
-    if (error) { console.error('Erro ao excluir manutencao:', error); return }
-
-    setIsDeleteModalOpen(false)
-    setDeletingId(null)
+    await supabase.from('maintenances').delete().eq('id', deletingId)
+    closeDeleteModal()
     fetchMaintenances()
-  }
+  }, [deletingId, closeDeleteModal, fetchMaintenances])
 
   /**
-   * @function handleMarkCompleted
-   * @description Marca uma manutenção como concluída com a data de hoje, sem abrir o modal.
-   * Atalho rápido disponível no botão verde (CheckCircle2) na coluna de ações da tabela.
-   * @param {string} id - UUID da manutenção a ser concluída.
+   * @function handleOpenComplete
+   * @description Puxa dados de inteligência preparatória do fluxo avançado da "Etapa 1".
+   * Aciona endpoints para descobrir o tipo contratual da moto engatando defaults amigáveis na finança e varre pendências adjacentes da motocicleta na oficina.
+   * @param {MaintenanceWithMoto} maintenance - Entidade mãe selecionada via check.
    */
-  const handleMarkCompleted = async (id: string) => {
-    const supabase = createClient()
-    const today = new Date().toISOString().split('T')[0]
-    const { error } = await supabase
-      .from('maintenances')
-      .update({ completed: true, completed_date: today })
-      .eq('id', id)
+  const handleOpenComplete = useCallback(async (maintenance: MaintenanceWithMoto) => {
+    setCompletingMaintenance(maintenance)
+    setCompletionStep(1)
+    setCompletionKm(maintenance.motorcycles?.km_current?.toString() ?? '')
+    setCompletionWorkshop(maintenance.workshop || 'Oficina do Careca')
+    setCompletionObservations(maintenance.observations || '')
+    setCompletionDate(new Date().toISOString().split('T')[0])
+    setCompletionExtraIds([])
+    setCompletionFinancials([])
+    setDiscountConfirmed(false)
 
-    if (error) { console.error('Erro ao marcar como concluida:', error); return }
-    fetchMaintenances()
-  }
+    // Busca se existe contrato formal para a mesma moto
+    const { data: contractData } = await supabase
+      .from('contracts')
+      .select('contract_type, next_billing_date, customers(name)')
+      .eq('motorcycle_id', maintenance.motorcycle_id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    // Amarra o dono à inteligência de precificação
+    if (contractData) {
+      const customers = contractData.customers as unknown as { name: string } | null
+      setActiveContract({
+        type: (contractData.contract_type as 'rental' | 'promise') || 'rental',
+        client_name: customers?.name || 'Cliente',
+        next_billing_date: contractData.next_billing_date,
+      })
+    } else {
+      setActiveContract(null)
+    }
+
+    // Busca irmãos (outros serviços parados) na MESMA moto.
+    const { data: siblingsData } = await supabase
+      .from('maintenances')
+      .select('*, motorcycles(license_plate, model, make, km_current)')
+      .eq('motorcycle_id', maintenance.motorcycle_id)
+      .eq('completed', false)
+      .neq('id', maintenance.id)
+
+    // Revalida com o sistema se são ou não urgentes
+    const allSiblings = ((siblingsData as MaintenanceWithMoto[]) || [])
+      .map((s) => ({ ...s, _status: calcularStatus(s) }))
+
+    // Ficam as prioridades ou estourados do tempo para o cross-selling de mecânica
+    const siblings = allSiblings.filter((s) => s._status === 'overdue' || s._status === 'upcoming')
+
+    setCompletionAllSiblings(allSiblings)
+    setCompletionExtras(siblings)
+    setIsCompleteModalOpen(true)
+  }, [])
+
+  /**
+   * @function handleConfirmComplete
+   * @description Salva em lote os dados do balanço final das reparações da moto, e insere novos calendários no DB por meio de projeções de KM.
+   * Efeitos colaterais: Iterativamente chama Updates por array marcado na grid, e por conseguinte Inserts dos "Filhos da Rotina" como a futura troca de peça. No final sincroniza os hodômetros mestre da Moto principal na base geral.
+   */
+  const handleConfirmComplete = useCallback(async () => {
+    if (!completingMaintenance || !completionKm) return
+    setCompleting(true)
+    try {
+      const actualKm = parseInt(completionKm, 10)
+
+      // Varredura para salvar a responsabilidade, fotos e custo individual
+      for (let i = 0; i < completionFinancials.length; i++) {
+        const fin = completionFinancials[i]
+        const itemId = i === 0 ? completingMaintenance.id : completionExtraIds[i - 1]
+        await supabase.from('maintenances').update({
+          completed: true,
+          completed_date: completionDate,
+          actual_km: actualKm,
+          cost: fin.cost ? parseFloat(fin.cost) : null,
+          workshop: completionWorkshop || null,
+          observations: completionObservations || null,
+          responsibility: fin.responsibility,
+          odometer_photo_url: fin.has_odometer_photo ? 'pendente' : null,
+          invoice_photo_url: fin.has_invoice_photo ? 'pendente' : null,
+        }).eq('id', itemId)
+      }
+
+      // Fallback pra salvar manutenção em si caso não tenha havido etapa com grid preenchida
+      if (completionFinancials.length === 0) {
+        await supabase.from('maintenances').update({
+          completed: true,
+          completed_date: completionDate,
+          actual_km: actualKm,
+          workshop: completionWorkshop || null,
+          observations: completionObservations || null,
+        }).eq('id', completingMaintenance.id)
+      }
+
+      // Função de Auto-agendar (Gerar repetição no DB de consertos periódicos)
+      const itemsToSchedule = [
+        completingMaintenance,
+        ...completionExtras.filter((e) => completionExtraIds.includes(e.id)),
+      ]
+
+      for (const item of itemsToSchedule) {
+        const interval = getInterval(item.description)
+        if (!interval) continue
+        const next: Record<string, unknown> = {
+          motorcycle_id: item.motorcycle_id,
+          type: item.type,
+          description: item.description,
+          completed: false,
+        }
+        if (interval.interval_km) next.predicted_km = actualKm + interval.interval_km
+        if (interval.interval_days) {
+          const d = new Date(completionDate)
+          d.setDate(d.getDate() + interval.interval_days)
+          next.scheduled_date = d.toISOString().split('T')[0]
+        }
+        await supabase.from('maintenances').insert([next])
+      }
+
+      // Auto-corretor do Hodômetro da base das motocicletas baseado no que informaram. Nunca aceita medição que "diminui a KM", pois não faz sentido lógico e seria erro de form.
+      const { data: motoData } = await supabase
+        .from('motorcycles').select('km_current').eq('id', completingMaintenance.motorcycle_id).single()
+      if (motoData && actualKm > (motoData.km_current || 0)) {
+        await supabase.from('motorcycles').update({ km_current: actualKm }).eq('id', completingMaintenance.motorcycle_id)
+      }
+
+      closeCompleteModal()
+      await Promise.all([fetchMaintenances(), fetchMotorcycles()])
+    } catch (err) {
+      console.error('Erro ao confirmar conclusao:', err)
+    } finally {
+      setCompleting(false)
+    }
+  }, [completingMaintenance, completionKm, completionDate, completionWorkshop, completionObservations, completionExtraIds, completionFinancials, completionExtras, closeCompleteModal, fetchMaintenances, fetchMotorcycles])
 
   /**
    * @function handleOpenEdit
-   * @description Popula o formulário com os dados do registro e abre o modal em modo edição.
-   * Converte campos numéricos de volta para string para compatibilidade com os inputs HTML.
-   * @param {MaintenanceWithMoto} maintenance - Registro a ser editado.
+   * @description Passa os valores conhecidos de volta às strings visuais do painel React permitindo Update manual do gestor.
+   * @param {MaintenanceWithMoto} m - Dados pré-existentes.
    */
-  const handleOpenEdit = (maintenance: MaintenanceWithMoto) => {
-    setEditingMaintenance(maintenance)
+  const handleOpenEdit = useCallback((m: MaintenanceWithMoto) => {
+    setEditingMaintenance(m)
     setFormData({
-      motorcycle_id: maintenance.motorcycle_id,
-      type: maintenance.type,
-      description: maintenance.description,
-      scheduled_date: maintenance.scheduled_date || '',
-      actual_km: maintenance.actual_km?.toString() || '',
-      cost: maintenance.cost?.toString() || '',
-      completed: maintenance.completed,
-      completed_date: maintenance.completed_date || '',
-      workshop: maintenance.workshop || '',
-      observations: maintenance.observations || '',
+      motorcycle_id: m.motorcycle_id,
+      type: m.type,
+      description: m.description,
+      scheduled_date: m.scheduled_date || '',
+      actual_km: m.actual_km?.toString() || '',
+      cost: m.cost?.toString() || '',
+      completed: m.completed,
+      completed_date: m.completed_date || '',
+      workshop: m.workshop || '',
+      observations: m.observations || '',
     })
     setIsFormModalOpen(true)
-  }
-
-  // ─── FILTRAGEM LOCAL ────────────────────────────────────────────────────────
+  }, [])
 
   /**
-   * @constant filteredMaintenances
-   * @description Aplica em memória os filtros de busca, tipo, status e moto sobre a lista completa.
-   * Recalculado quando qualquer filtro ou a lista de manutenções muda.
+   * @function handleOpenDelete
+   * @description Armazena Id e mostra janela modal de advertência.
+   * @param {string} id - Id alocada pro banco excluir depois.
    */
-  const filteredMaintenances = useMemo(() => {
-    return maintenances.filter((m) => {
-      const query = searchQuery.toLowerCase()
-      const matchSearch =
-        m.description.toLowerCase().includes(query) ||
-        (m.motorcycles && (
-          m.motorcycles.license_plate.toLowerCase().includes(query) ||
-          m.motorcycles.model.toLowerCase().includes(query) ||
-          m.motorcycles.make.toLowerCase().includes(query)
-        ))
-
-      const matchType = typeFilter === 'all' || m.type === typeFilter
-      const matchStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'completed' ? m.completed : !m.completed)
-      const matchMoto = motorcycleFilter === 'all' || m.motorcycle_id === motorcycleFilter
-
-      return matchSearch && matchType && matchStatus && matchMoto
-    })
-  }, [maintenances, searchQuery, typeFilter, statusFilter, motorcycleFilter])
+  const handleOpenDelete = useCallback((id: string) => {
+    setDeletingId(id)
+    setIsDeleteModalOpen(true)
+  }, [])
 
   /**
-   * @constant groupedMaintenances
-   * @description Agrupa as manutenções filtradas por moto quando o filtro de moto é "todas".
-   * Cada entrada do array contém os dados da moto e a lista de manutenções vinculadas.
-   * Quando uma moto específica está selecionada, retorna null (tabela plana sem agrupamento).
+   * @function handleUpdateKm
+   * @description Handler avulso utilitário focado só para o "Modal KM", ele poupa tempo de acessar os menus principais caso só falte alinhar o contador da moto.
    */
-  const groupedMaintenances = useMemo(() => {
-    if (motorcycleFilter !== 'all') return null
+  const handleUpdateKm = useCallback(async () => {
+    if (!kmForm.motorcycle_id || !kmForm.km_current) return
+    await supabase.from('motorcycles')
+      .update({ km_current: parseInt(kmForm.km_current, 10) })
+      .eq('id', kmForm.motorcycle_id)
+    setIsKmModalOpen(false)
+    setKmForm({ motorcycle_id: '', km_current: '' })
+    await Promise.all([fetchMaintenances(), fetchMotorcycles()])
+  }, [kmForm, fetchMaintenances, fetchMotorcycles])
 
-    const groupMap: Record<string, { moto: MotorcycleOption | undefined; items: MaintenanceWithMoto[] }> = {}
-
-    filteredMaintenances.forEach((m) => {
-      if (!groupMap[m.motorcycle_id]) {
-        groupMap[m.motorcycle_id] = {
-          moto: motorcycles.find((mc) => mc.id === m.motorcycle_id),
-          items: [],
-        }
-      }
-      groupMap[m.motorcycle_id].items.push(m)
-    })
-
-    return Object.values(groupMap)
-  }, [filteredMaintenances, motorcycleFilter, motorcycles])
-
-  // ─── KPIs (ESTATÍSTICAS DO CABEÇALHO) ───────────────────────────────────────
-
-  /** Mês atual no formato YYYY-MM — usado para filtrar o custo do período corrente. */
-  const currentMonth = new Date().toISOString().slice(0, 7)
-
-  /** Soma dos custos de manutenções concluídas no mês atual (card "Custo do Mês"). */
-  const totalCostThisMonth = maintenances
-    .filter((m) => m.completed && m.completed_date?.startsWith(currentMonth))
-    .reduce((acc, m) => acc + (m.cost ?? 0), 0)
-
-  /** Quantidade de manutenções ainda não concluídas (card "Pendentes"). */
-  const totalPending = maintenances.filter((m) => !m.completed).length
-
-  /** Quantidade de manutenções já concluídas (card "Concluídas"). */
-  const totalCompleted = maintenances.filter((m) => m.completed).length
-
-  // ─── OPTIONS DO SELECT DE MOTOS ──────────────────────────────────────────────
-
-  /**
-   * Opções do select de moto no formulário — geradas a partir da lista carregada do Supabase.
-   * Primeiro item é o placeholder vazio para forçar seleção explícita.
-   */
-  const motorcycleSelectOptions = [
-    { value: '', label: 'Selecione a moto...' },
-    ...motorcycles.map((m) => ({
-      value: m.id,
-      label: `${m.license_plate} — ${m.make} ${m.model}`,
-    })),
-  ]
-
-  // ─── RENDER ─────────────────────────────────────────────────────────────────
+  // ─── RENDER ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-[#121212] p-6 sm:p-8">
-
-      {/* Cabeçalho com título, subtítulo e botão de ação principal */}
+    <div className="flex flex-col min-h-full bg-[#121212]">
+      {/* ── CABEÇALHO GLOBAL ───────────────────────────────────────────────
+          Renderiza título principal da rota do app e botões fixos de ação. */}
       <Header
         title="Manutenção"
-        subtitle="Gerencie revisões, serviços e histórico da frota"
+        subtitle="Controle inteligente por km e data"
         actions={
-          // Botão primário para abrir o modal de nova manutenção — reseta o formulário antes
-          <Button
-            variant="primary"
-            onClick={() => {
-              setEditingMaintenance(null)
-              setFormData(INITIAL_FORM)
-              setIsFormModalOpen(true)
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            Nova Manutenção
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => { setKmForm({ motorcycle_id: '', km_current: '' }); setIsKmModalOpen(true) }}>
+              <Gauge className="w-4 h-4" />
+              Atualizar KM
+            </Button>
+            <Button variant="primary" onClick={() => { setEditingMaintenance(null); setFormData(INITIAL_FORM); setIsFormModalOpen(true) }}>
+              <Plus className="w-4 h-4" />
+              Nova Manutenção
+            </Button>
+          </div>
         }
       />
 
-      {/* Cards de estatísticas rápidas — visão geral do estado da manutenção da frota */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="p-6 space-y-5">
 
-        {/* Card: custo total de manutenções concluídas no mês corrente */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#474747] bg-[#202020] p-6">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
-            <Wrench className="h-6 w-6" />
+        {/* ── KPI CARDS ────────────────────────────────────────────────────────
+            Mostram de forma gritante e quantitativa a soma situacional global.
+            Usam das extrações do memo totals. */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7c1c1c]/40 text-[#ff9c9a]">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Vencidas</p>
+              <p className="text-2xl font-bold text-[#ff9c9a]">{totals.overdue}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-[#9e9e9e]">Custo do Mês</p>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(totalCostThisMonth)}</p>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3a180f]/60 text-[#e65e24]">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Próximas</p>
+              <p className="text-2xl font-bold text-[#e65e24]">{totals.upcoming}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2d0363]/60 text-[#a880ff]">
+              <Wrench className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Agendadas</p>
+              <p className="text-2xl font-bold text-[#a880ff]">{totals.scheduled}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0e2f13] text-[#28b438]">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Realizadas mês</p>
+              <p className="text-2xl font-bold text-[#28b438]">{totals.completed}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Custo do Mês</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(totals.costThisMonth)}</p>
+            </div>
           </div>
         </div>
 
-        {/* Card: manutenções pendentes — cor de atenção (#e65e24) indica itens que precisam de ação */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#474747] bg-[#202020] p-6">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#e65e24]/10 text-[#e65e24]">
-            <Clock className="h-6 w-6" />
+        {/* ── BARRA DE FERRAMENTAS DE FILTROS ──────────────────────────────────
+            Oferece abas (Tabs) para visualizações pré-selecionadas e dropdowns + box textual para refinar com precisão uma busca por placa ou texto. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+          {/* Abas e pílulas de status principais do sistema controladas no state de statusFilter */}
+          <div className="flex gap-2 flex-wrap">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  statusFilter === tab.value
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className="ml-1.5 opacity-70">({tab.count})</span>
+                )}
+              </button>
+            ))}
           </div>
-          <div>
-            <p className="text-sm font-medium text-[#9e9e9e]">Pendentes</p>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{totalPending}</p>
+
+          {/* Filtros secundários: Motor, Tipo e Lupa de Texto livre que interagem com o memo 'filtered' */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={motorcycleFilter}
+              onChange={(e) => setMotorcycleFilter(e.target.value)}
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+            >
+              <option value="">Todas as motos</option>
+              {motorcycles.map((m) => (
+                <option key={m.id} value={m.id} className="bg-[#202020]">
+                  {m.license_plate} — {m.make} {m.model}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+            >
+              <option value="all">Todos os tipos</option>
+              <option value="preventive">Preventiva</option>
+              <option value="corrective">Corretiva</option>
+              <option value="inspection">Vistoria</option>
+            </select>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#616161]" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Card: manutenções concluídas — cor de sucesso (#28b438) indica histórico positivo */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#474747] bg-[#202020] p-6">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#28b438]/10 text-[#28b438]">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#9e9e9e]">Concluídas</p>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{totalCompleted}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Barra de filtros: busca textual + tipo + status na mesma linha */}
-      <div className="flex flex-col gap-3 sm:flex-row">
-
-        {/* Campo de busca com ícone de lupa posicionado absolutamente */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9e9e9e]" />
-          <input
-            type="text"
-            placeholder="Buscar por descrição ou moto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-[#474747] bg-[#202020] py-2.5 pl-10 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none"
-          />
-        </div>
-
-        {/* Filtro por moto — "Todas as Motos" exibe agrupado; selecionando uma exibe lista plana */}
-        <select
-          value={motorcycleFilter}
-          onChange={(e) => setMotorcycleFilter(e.target.value)}
-          className="rounded-xl border border-[#474747] bg-[#202020] px-3 py-2.5 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
-        >
-          <option value="all">Todas as Motos</option>
-          {motorcycles.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.license_plate} — {m.make} {m.model}
-            </option>
-          ))}
-        </select>
-
-        {/* Filtro por tipo de manutenção */}
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as 'all' | 'preventive' | 'corrective' | 'inspection')}
-          className="rounded-xl border border-[#474747] bg-[#202020] px-3 py-2.5 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
-        >
-          <option value="all">Todos os Tipos</option>
-          <option value="preventive">Preventiva</option>
-          <option value="corrective">Corretiva</option>
-          <option value="inspection">Vistoria</option>
-        </select>
-
-        {/* Filtro por status */}
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'completed' | 'pending')}
-          className="rounded-xl border border-[#474747] bg-[#202020] px-3 py-2.5 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
-        >
-          <option value="all">Todos os Status</option>
-          <option value="completed">Concluída</option>
-          <option value="pending">Pendente</option>
-        </select>
-      </div>
-
-      {/* ─── TABELA DE MANUTENÇÕES ─────────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+        {/* ── TABELA AGRUPADA POR MOTO (ACCORDION) ──────────────────────────────
+            Essa é a visualização mestre. Em vez de listas infinitas de problemas variados soltos, a visão aglomera a Moto. Isso ajuda o funcionário focar em qual moto levar no guincho hoje e o que resolver ao mesmo tempo com ela parada lá. */}
         {loading ? (
-          // Estado de carregamento — spinner centralizado enquanto aguarda o Supabase
-          <div className="flex items-center justify-center py-16">
+          <div className="flex items-center justify-center py-20">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#BAFF1A] border-t-transparent" />
           </div>
-        ) : filteredMaintenances.length === 0 ? (
-          // Estado vazio — exibido quando não há registros ou nenhum bate nos filtros
-          <div className="flex flex-col items-center justify-center p-12 text-center">
+        ) : groupedByMoto.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
             <Wrench className="mb-4 h-12 w-12 text-[#474747]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma manutenção encontrada.</p>
-            <p className="mt-1 text-sm text-[#9e9e9e]">
-              Cadastre uma nova moto ou ajuste os filtros acima.
-            </p>
+            <p className="mt-1 text-sm text-[#9e9e9e]">Ajuste os filtros ou cadastre uma nova manutenção.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-[#f5f5f5]">
+          <div className="space-y-2">
+            {groupedByMoto.map(({ motorcycle_id, moto, items }) => {
+              // Computação inline do render para decidir se mostra a tab direta da Moto só com histório concluído ou mixa pendência + histórico sanfona
+              const showDirectCompleted = statusFilter === 'completed'
+              const pending   = showDirectCompleted ? items : items.filter((i) => i._status !== 'completed')
+              const completed = items.filter((i) => i._status === 'completed')
 
-              {/* Cabeçalho da tabela — fundo escuro (#121212) e texto em caixa alta */}
-              <thead className="bg-[#121212] text-xs uppercase text-[#9e9e9e]">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Previsto</th>
-                  <th className="px-6 py-4 font-medium">Moto</th>
-                  <th className="px-6 py-4 font-medium">Tipo</th>
-                  <th className="px-6 py-4 font-medium">Descrição</th>
-                  <th className="px-6 py-4 font-medium">KM Real</th>
-                  <th className="px-6 py-4 font-medium">Custo</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 text-right font-medium">Ações</th>
-                </tr>
-              </thead>
+              const nOverdue  = pending.filter((i) => i._status === 'overdue').length
+              const nUpcoming = pending.filter((i) => i._status === 'upcoming').length
+              const nScheduled = pending.filter((i) => i._status === 'scheduled').length
+              
+              // Define o tom visual da luz/bolinha indicadora de gravidade na ponta esquerda do accordion com base no pior cenário retornado.
+              const light = nOverdue > 0 ? 'red' : nUpcoming > 0 ? 'amber' : 'green'
+              const isExpanded = !collapsedMotos.has(motorcycle_id)
+              const showHist   = historyMotos.has(motorcycle_id)
 
-              {/* Corpo da tabela — linhas separadas por divide e com hover sutil */}
-              <tbody className="divide-y divide-[#474747]">
-                {groupedMaintenances
-                  ? (
-                    /*
-                     * Modo agrupado (filtro "Todas as Motos"):
-                     * Para cada moto, exibe uma linha de cabeçalho com a placa/nome
-                     * seguida pelas manutenções vinculadas a ela.
-                     */
-                    groupedMaintenances.map(({ moto, items }) => (
-                      <>
-                        {/* Linha de cabeçalho do grupo — fundo destaque e placa em negrito */}
-                        <tr key={`group-${moto?.id}`} className="bg-[#2a2a2a]">
-                          <td colSpan={8} className="px-6 py-2.5">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-[#BAFF1A]">
-                              {moto
-                                ? `${moto.license_plate} — ${moto.make} ${moto.model}`
-                                : 'Moto desconhecida'}
-                            </span>
-                            <span className="ml-2 text-xs text-[#616161]">
-                              ({items.length} {items.length === 1 ? 'item' : 'itens'})
-                            </span>
-                          </td>
-                        </tr>
+              return (
+                <div key={motorcycle_id} className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
 
-                        {/* Linhas de manutenção do grupo */}
-                        {items.map((m) => (
-                          <tr key={m.id} className="transition-colors hover:bg-[#121212]/50">
-                            <td className="whitespace-nowrap px-6 py-4 font-medium text-[#f5f5f5]">
-                              {m.scheduled_date
-                                ? formatDate(m.scheduled_date + 'T12:00:00')
-                                : m.predicted_km
-                                  ? `${m.predicted_km.toLocaleString('pt-BR')} km`
-                                  : '—'}
-                            </td>
-                            {/* Coluna de moto omitida no modo agrupado — já está no cabeçalho */}
-                            <td className="whitespace-nowrap px-6 py-4 text-[#474747]">—</td>
-                            <td className="px-6 py-4"><StatusBadge status={m.type} /></td>
-                            <td className="px-6 py-4">{m.description}</td>
-                            <td className="whitespace-nowrap px-6 py-4 text-[#9e9e9e]">
-                              {m.actual_km ? `${m.actual_km.toLocaleString('pt-BR')} km` : '—'}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-[#9e9e9e]">
-                              {m.cost ? formatCurrency(m.cost) : '—'}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4">
-                              {m.completed ? <StatusBadge status="paid" /> : <StatusBadge status="pending" />}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {/* Editar: cor secundária (#323232) — ação neutra, vem primeiro */}
-                                <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
-                                  onClick={() => handleOpenEdit(m)} title="Editar">
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                {/* Concluir: cor primária (#BAFF1A) — ação positiva principal, aparece só em pendentes */}
-                                {!m.completed && (
-                                  <Button variant="primary" size="sm" className="h-8 w-8 p-0"
-                                    onClick={() => handleMarkCompleted(m.id)} title="Marcar como concluída">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {/* Excluir: cor danger (#bf1d1e) — ação destrutiva, sempre por último */}
-                                <Button variant="danger" size="sm" className="h-8 w-8 p-0"
-                                  onClick={() => { setDeletingId(m.id); setIsDeleteModalOpen(true) }} title="Excluir">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </>
-                    ))
-                  ) : (
-                    /*
-                     * Modo plano (moto específica selecionada):
-                     * Exibe todas as manutenções da moto em lista simples sem agrupamento.
-                     */
-                    filteredMaintenances.map((m) => (
-                      <tr key={m.id} className="transition-colors hover:bg-[#121212]/50">
+                  {/* Cabeçalho Ativador (Chevron): Traz placa, modelo atualizado e contadores (bagdes) curtos de itens atrasados embutidos */}
+                  <button
+                    onClick={() => toggleMoto(motorcycle_id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+                  >
+                    <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      light === 'red' ? 'bg-[#ff3e3c]' : light === 'amber' ? 'bg-[#e65e24]' : 'bg-[#28b438]'
+                    }`} />
+                    <span className="font-mono font-bold text-[#f5f5f5] text-sm">{moto?.license_plate}</span>
+                    <span className="text-sm text-[#9e9e9e]">{moto?.make} {moto?.model}</span>
+                    {moto?.km_current != null && (
+                      <span className="text-xs text-[#616161]">· {fmtKm(moto.km_current)}</span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1.5">
+                      {nOverdue > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7c1c1c] text-[#ff9c9a]">
+                          {nOverdue} vencida{nOverdue > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {nUpcoming > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#3a180f] text-[#e65e24]">
+                          {nUpcoming} próxima{nUpcoming > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {nScheduled > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#2d0363] text-[#a880ff]">
+                          {nScheduled} agendada{nScheduled > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </button>
 
-                        {/*
-                         * Previsto: data agendada para itens de vistoria (por período)
-                         * ou km previsto para itens preventivos (por quilometragem).
-                         */}
-                        <td className="whitespace-nowrap px-6 py-4 font-medium text-[#f5f5f5]">
-                          {m.scheduled_date
-                            ? formatDate(m.scheduled_date + 'T12:00:00')
-                            : m.predicted_km
-                              ? `${m.predicted_km.toLocaleString('pt-BR')} km`
-                              : '—'}
-                        </td>
+                  {/* Miolo do bloco sanfona que renderiza as tabelas quando ele está solto (not collapsed) */}
+                  {isExpanded && (
+                    <div className="border-t border-[#474747]">
 
-                        {/* Placa + marca + modelo para identificação rápida da moto */}
-                        <td className="whitespace-nowrap px-6 py-4 text-[#9e9e9e]">
-                          {m.motorcycles
-                            ? `${m.motorcycles.license_plate} — ${m.motorcycles.make} ${m.motorcycles.model}`
-                            : '—'}
-                        </td>
+                      {/* AREA 1: ITENS PENDENTES — Monta a tr de predição do odômetro. Se tiver em "Atrasada", "Proxima", ela cai aqui no loop da Moto */}
+                      {pending.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm text-[#f5f5f5]">
+                            <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
+                              <tr>
+                                <th className="px-4 py-3 font-medium">Item</th>
+                                <th className="px-4 py-3 font-medium">Previsão</th>
+                                <th className="px-4 py-3 font-medium">Situação</th>
+                                <th className="px-4 py-3 font-medium">Status</th>
+                                <th className="px-4 py-3 text-right font-medium">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#474747]">
+                              {pending.map((item) => (
+                                <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors">
+                                  <td className="px-4 py-3">
+                                    <p className="font-medium text-[#f5f5f5]">{item.description}</p>
+                                    <StatusBadge status={item.type} />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {item.predicted_km != null ? (
+                                      <div>
+                                        <p className="text-[#f5f5f5]">{fmtKm(item.predicted_km)}</p>
+                                        <p className="text-xs text-[#616161]">Atual: {fmtKm(moto?.km_current ?? 0)}</p>
+                                      </div>
+                                    ) : item.scheduled_date ? (
+                                      <p className="text-[#f5f5f5]">{formatDate(item.scheduled_date + 'T12:00:00')}</p>
+                                    ) : <span className="text-[#9e9e9e]">—</span>}
+                                  </td>
+                                  <td className="px-4 py-3"><SituacaoCell m={item} /></td>
+                                  <td className="px-4 py-3"><BadgeStatus status={item._status!} /></td>
+                                  <td className="px-4 py-3 text-right">
+                                    {/* Botões do Action principal controlando Modais CRUD e de Conclusão */}
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)} title="Editar">
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                      <Button variant="primary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenComplete(item)} title="Registrar conclusão">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                      </Button>
+                                      <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)} title="Excluir">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : !showDirectCompleted ? (
+                        <p className="text-center text-[#616161] py-5 text-sm">Todas as manutenções em dia.</p>
+                      ) : null}
 
-                        {/* Badge colorido: preventiva (roxo), corretiva (laranja), vistoria (cinza) */}
-                        <td className="px-6 py-4">
-                          <StatusBadge status={m.type} />
-                        </td>
+                      {/* AREA 2: HISTÓRICO — Condição ativada apenas se o toggle primário estiver como view='completed'. Tabela escura/cinza sinaliza encerramentos e recibos */}
+                      {showDirectCompleted && completed.length > 0 && pending.length === 0 && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                            <tbody className="divide-y divide-[#474747]">
+                              {completed.map((item) => (
+                                <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors opacity-80">
+                                  <td className="px-4 py-3 w-64">
+                                    <p className="text-[#f5f5f5]">{item.description}</p>
+                                    <StatusBadge status={item.type} />
+                                  </td>
+                                  <td className="px-4 py-3 text-[#9e9e9e]">
+                                    {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
+                                    {item.completed_date && <p className="text-xs">{formatDate(item.completed_date + 'T12:00:00')}</p>}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex gap-1">
+                                      <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
+                                      <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)}><Edit2 className="h-4 w-4" /></Button>
+                                      <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
 
-                        {/* Nome do item ou serviço */}
-                        <td className="px-6 py-4">{m.description}</td>
+                      {/* AREA 3: HISTÓRICO COLAPSÁVEL — Condição onde a view normal é mista, mas exibe-se um botão que baixa uma gaveta extra exibindo o passivo da moto. */}
+                      {!showDirectCompleted && completed.length > 0 && (
+                        <div className={pending.length > 0 ? 'border-t border-[#474747]' : ''}>
+                          <button
+                            onClick={() => toggleHistory(motorcycle_id)}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-xs text-[#616161] hover:text-[#9e9e9e] transition-colors"
+                          >
+                            <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${showHist ? '' : '-rotate-90'}`} />
+                            {showHist
+                              ? 'Ocultar histórico'
+                              : `Ver histórico (${completed.length} realizada${completed.length > 1 ? 's' : ''})`}
+                          </button>
 
-                        {/* KM registrado no painel no momento do serviço */}
-                        <td className="whitespace-nowrap px-6 py-4 text-[#9e9e9e]">
-                          {m.actual_km ? `${m.actual_km.toLocaleString('pt-BR')} km` : '—'}
-                        </td>
-
-                        {/* Valor gasto no serviço — vazio até a manutenção ser concluída */}
-                        <td className="whitespace-nowrap px-6 py-4 text-[#9e9e9e]">
-                          {m.cost ? formatCurrency(m.cost) : '—'}
-                        </td>
-
-                        {/* Badge de status: "Concluída" (verde) ou "Pendente" (laranja) */}
-                        <td className="whitespace-nowrap px-6 py-4">
-                          {m.completed ? <StatusBadge status="paid" /> : <StatusBadge status="pending" />}
-                        </td>
-
-                        {/* Coluna de ações — ordem: Editar → Concluir → Excluir (padrão do design system) */}
-                        <td className="whitespace-nowrap px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-
-                            {/* Editar: cor secundária (#323232) — ação neutra, vem primeiro */}
-                            <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
-                              onClick={() => handleOpenEdit(m)} title="Editar">
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-
-                            {/* Concluir: cor primária (#BAFF1A) — ação positiva principal, aparece só em pendentes */}
-                            {!m.completed && (
-                              <Button variant="primary" size="sm" className="h-8 w-8 p-0"
-                                onClick={() => handleMarkCompleted(m.id)} title="Marcar como concluída">
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                            )}
-
-                            {/* Excluir: cor danger (#bf1d1e) — ação destrutiva, sempre por último */}
-                            <Button variant="danger" size="sm" className="h-8 w-8 p-0"
-                              onClick={() => { setDeletingId(m.id); setIsDeleteModalOpen(true) }} title="Excluir">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          {showHist && (
+                            <div className="border-t border-[#323232] overflow-x-auto">
+                              <table className="w-full text-left text-sm">
+                                <tbody className="divide-y divide-[#323232]">
+                                  {/* Limitamos histórico colapsado com "slice" pra não afogar interface */}
+                                  {completed.slice(0, 5).map((item) => (
+                                    <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors opacity-70">
+                                      <td className="px-4 py-3 w-64">
+                                        <p className="text-[#c7c7c7]">{item.description}</p>
+                                        <StatusBadge status={item.type} />
+                                      </td>
+                                      <td className="px-4 py-3 text-[#9e9e9e]">
+                                        {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
+                                        {item.completed_date && <p className="text-xs">{formatDate(item.completed_date + 'T12:00:00')}</p>}
+                                      </td>
+                                      <td className="px-4 py-3 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex gap-1">
+                                          <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
+                                          <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)}><Edit2 className="h-4 w-4" /></Button>
+                                          <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-              </tbody>
-            </table>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
 
       {/* ===================================================================
-          MODAIS
+          MODAIS E DIÁLOGOS DE SUPERPOSIÇÃO
           =================================================================== */}
 
-      {/* Modal: Criação e Edição de Manutenção
-          Título muda dinamicamente conforme o modo. Ao fechar, reseta o formulário. */}
-      <Modal
-        open={isFormModalOpen}
-        onClose={() => {
-          setIsFormModalOpen(false)
-          setEditingMaintenance(null)
-          setFormData(INITIAL_FORM)
-        }}
-        title={editingMaintenance ? 'Editar Manutenção' : 'Nova Manutenção'}
-        size="lg"
-      >
+      {/* MODAL 1: FORMULÁRIO DE NOVA / EDITAR MANUTENÇÃO (CRUD PURO) */}
+      <Modal open={isFormModalOpen} onClose={closeFormModal} title={editingMaintenance ? 'Editar Manutenção' : 'Nova Manutenção'} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-            {/* Moto vinculada à manutenção */}
             <Select
               label="Motocicleta *"
               value={formData.motorcycle_id}
               onChange={(e) => setFormData({ ...formData, motorcycle_id: e.target.value })}
               options={motorcycleSelectOptions}
             />
-
-            {/*
-             * Tipo:
-             * - Criação: sempre "Corretiva" (campo somente leitura) — preventivas e vistorias
-             *   são criadas automaticamente pelo sistema ao cadastrar uma moto.
-             * - Edição: exibe o tipo original do registro (somente leitura), sem permitir alteração.
-             */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-[#9e9e9e]">Tipo</label>
-              <div className="flex h-10 items-center rounded-xl border border-[#474747] bg-[#121212] px-3 text-sm text-[#f5f5f5]">
-                {editingMaintenance
-                  ? TYPE_LABEL_MAP[formData.type] || formData.type
-                  : 'Corretiva'}
+              <label className="mb-1.5 block text-sm font-medium text-[#c7c7c7]">Tipo</label>
+              <div className="flex h-12 items-center rounded-lg border border-[#323232] bg-[#323232] px-3 text-sm text-[#9e9e9e] cursor-not-allowed">
+                {editingMaintenance ? TYPE_LABEL_MAP[formData.type] || formData.type : 'Corretiva'}
               </div>
             </div>
-
-            {/* Descrição ocupa largura total (col-span-2) */}
             <div className="md:col-span-2">
               <Input
                 label="Descrição *"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Ex: Troca de óleo, Revisão 10.000 km..."
+                placeholder="Ex: Troca do cabo do freio..."
               />
             </div>
-
-            {/* Data de agendamento do serviço */}
-            <Input
-              label="Data Agendada"
-              type="date"
-              value={formData.scheduled_date}
-              onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
-            />
-
-            {/* Quilometragem registrada no painel no momento do serviço */}
-            <Input
-              label="KM no Serviço"
-              type="number"
-              value={formData.actual_km}
-              onChange={(e) => setFormData({ ...formData, actual_km: e.target.value })}
-              placeholder="Ex: 15500"
-            />
-
-            {/* Custo total do serviço e peças */}
-            <Input
-              label="Custo (R$)"
-              type="number"
-              step="0.01"
-              value={formData.cost}
-              onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-              placeholder="0.00"
-            />
-
-            {/* Oficina ou mecânico responsável */}
-            <Input
-              label="Oficina / Mecânico"
-              value={formData.workshop}
-              onChange={(e) => setFormData({ ...formData, workshop: e.target.value })}
-            />
-
-            {/* Data de conclusão — visível apenas quando "Marcar como concluída" está ativo */}
+            <Input label="Data Agendada" type="date" value={formData.scheduled_date} onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })} />
+            <Input label="KM no Serviço" type="number" value={formData.actual_km} onChange={(e) => setFormData({ ...formData, actual_km: e.target.value })} placeholder="Ex: 15500" />
+            <Input label="Custo (R$)" type="number" step="0.01" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })} placeholder="0.00" />
+            <Input label="Oficina / Mecânico" value={formData.workshop} onChange={(e) => setFormData({ ...formData, workshop: e.target.value })} />
             {formData.completed && (
-              <Input
-                label="Data de Conclusão"
-                type="date"
-                value={formData.completed_date}
-                onChange={(e) => setFormData({ ...formData, completed_date: e.target.value })}
-              />
+              <Input label="Data de Conclusão" type="date" value={formData.completed_date} onChange={(e) => setFormData({ ...formData, completed_date: e.target.value })} />
             )}
           </div>
-
-          {/* Notas livres sobre o serviço, peças trocadas ou observações do mecânico */}
-          <Textarea
-            label="Observações"
-            value={formData.observations}
-            onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-            rows={3}
-          />
-
-          {/*
-           * Checkbox de conclusão — ao marcar, preenche completed_date com hoje.
-           * Ao desmarcar, limpa a data para não enviar valor incorreto ao banco.
-           */}
+          <Textarea label="Observações" value={formData.observations} onChange={(e) => setFormData({ ...formData, observations: e.target.value })} rows={2} />
           <label className="flex w-max cursor-pointer items-center gap-2 text-sm text-[#f5f5f5]">
             <input
               type="checkbox"
               checked={formData.completed}
-              onChange={(e) => {
-                const isChecked = e.target.checked
-                setFormData({
-                  ...formData,
-                  completed: isChecked,
-                  completed_date: isChecked ? new Date().toISOString().split('T')[0] : '',
-                })
-              }}
-              className="h-4 w-4 rounded border-[#474747] bg-[#121212] text-[#BAFF1A] focus:ring-[#BAFF1A]"
+              onChange={(e) => setFormData({ ...formData, completed: e.target.checked, completed_date: e.target.checked ? new Date().toISOString().split('T')[0] : '' })}
+              className="h-4 w-4 rounded border-[#474747] accent-[#BAFF1A]"
             />
             Marcar como concluída
           </label>
-
-          {/* Rodapé do modal: cancelar (secundário) e salvar (primário) */}
           <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setIsFormModalOpen(false)
-                setEditingMaintenance(null)
-                setFormData(INITIAL_FORM)
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>
-              Salvar
+            <Button variant="secondary" onClick={closeFormModal}>Cancelar</Button>
+            <Button variant="primary" onClick={handleSave} loading={saving}>Salvar</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL 2: FLUXO INTELIGENTE — REGISTRO ASSISTIDO DE CONCLUSÃO */}
+      <Modal
+        open={isCompleteModalOpen}
+        onClose={closeCompleteModal}
+        title={completionStep === 1 ? 'Registrar Conclusão — Etapa 1 de 2' : 'Registrar Conclusão — Etapa 2 de 2'}
+        size="lg"
+      >
+        {completingMaintenance && (
+          <div className="space-y-4">
+
+            {/* Quadro superior exibe metadados de leitura rápida sobre a ação sendo despachada */}
+            <div className="rounded-xl border border-[#474747] bg-[#121212] px-4 py-3 space-y-1">
+              <p className="text-sm font-semibold text-[#f5f5f5]">{completingMaintenance.description}</p>
+              <p className="text-xs text-[#9e9e9e]">
+                {completingMaintenance.motorcycles
+                  ? `${completingMaintenance.motorcycles.license_plate} — ${completingMaintenance.motorcycles.make} ${completingMaintenance.motorcycles.model}`
+                  : '—'}
+              </p>
+              {completingMaintenance.predicted_km != null && (
+                <p className="text-xs text-[#e65e24]">KM previsto: {fmtKm(completingMaintenance.predicted_km)}</p>
+              )}
+              {completingMaintenance.scheduled_date && (
+                <p className="text-xs text-[#e65e24]">Data prevista: {formatDate(completingMaintenance.scheduled_date + 'T12:00:00')}</p>
+              )}
+            </div>
+
+            {/* ── ETAPA 1 ── Coleta Base (KM e Data). Mostra previsão instantânea do impacto no futuro das peças consertadas. */}
+            {completionStep === 1 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Input label="KM do Odômetro *" type="number" value={completionKm} onChange={(e) => setCompletionKm(e.target.value)} placeholder="Ex: 15500" />
+                  <Input label="Data de Conclusão *" type="date" value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} />
+                  <div className="md:col-span-2">
+                    <Input label="Oficina / Mecânico" value={completionWorkshop} onChange={(e) => setCompletionWorkshop(e.target.value)} />
+                  </div>
+                </div>
+                <Textarea label="Observações" value={completionObservations} onChange={(e) => setCompletionObservations(e.target.value)} rows={2} />
+
+                {/* Bloco Dinâmico: Timeline Preview das próximas manutenções combinadas calculadas (itens marcados agora e itens já aguardando). */}
+                {(() => {
+                  if (!completionKm) {
+                    return (
+                      <div className="flex items-center gap-2 rounded-xl border border-[#474747] bg-[#202020] px-4 py-2 text-[#9e9e9e]">
+                        <Info className="h-4 w-4 shrink-0" />
+                        <span className="text-sm">Preencha o KM acima para ver a estimativa da próxima manutenção.</span>
+                      </div>
+                    )
+                  }
+                  const km = parseInt(completionKm, 10)
+                  if (isNaN(km)) return null
+
+                  const completingItems = [
+                    completingMaintenance,
+                    ...completionExtras.filter((e) => completionExtraIds.includes(e.id)),
+                  ]
+                  const completingIds = new Set(completingItems.map((i) => i.id))
+
+                  type NextItem = { description: string; sortKm: number; label: string }
+
+                  // Mapeia novas provisões que o sistema fará automaticamente a partir deste conserto caso exista um intervalo padrão de reincidência na tabela STANDARD_INTERVALS
+                  const fromCompleting: NextItem[] = completingItems
+                    .map((item): NextItem | null => {
+                      const interval = getInterval(item.description)
+                      if (!interval) return null
+                      const parts: string[] = []
+                      let sortKm = Infinity
+                      if (interval.interval_km) {
+                        const nextKm = km + interval.interval_km
+                        const weeksEst = Math.round(interval.interval_km / KM_POR_DIA / 7)
+                        parts.push(`${nextKm.toLocaleString('pt-BR')} km (~${weeksEst} sem.)`)
+                        sortKm = nextKm
+                      }
+                      if (interval.interval_days) {
+                        parts.push(`~${Math.round(interval.interval_days / 7)} semanas`)
+                        if (sortKm === Infinity) sortKm = km + interval.interval_days * KM_POR_DIA
+                      }
+                      return { description: item.description, sortKm, label: parts.join(' / ') }
+                    })
+                    .filter((x): x is NextItem => x !== null)
+
+                  // Mapeia irmãos já abertos que permanecem pedindo conserto (para consolidar cronologia comparada)
+                  const fromOthers: NextItem[] = completionAllSiblings
+                    .filter((s) => !completingIds.has(s.id))
+                    .map((s): NextItem | null => {
+                      if (s.predicted_km != null) {
+                        const remaining = s.predicted_km - km
+                        const label = remaining > 0
+                          ? `${s.predicted_km.toLocaleString('pt-BR')} km (faltam ${remaining.toLocaleString('pt-BR')} km)`
+                          : `${s.predicted_km.toLocaleString('pt-BR')} km (vencida)`
+                        return { description: s.description, sortKm: s.predicted_km, label }
+                      }
+                      if (s.scheduled_date) {
+                        const due = new Date(s.scheduled_date + 'T12:00:00')
+                        const daysLeft = Math.round((due.getTime() - Date.now()) / 86400000)
+                        const label = daysLeft > 0 ? `${formatDate(s.scheduled_date + 'T12:00:00')} (em ${daysLeft} dias)` : `${formatDate(s.scheduled_date + 'T12:00:00')} (vencida)`
+                        return { description: s.description, sortKm: km + Math.max(0, daysLeft) * KM_POR_DIA, label }
+                      }
+                      return null
+                    })
+                    .filter((x): x is NextItem => x !== null)
+
+                  const nextItems = [...fromCompleting, ...fromOthers]
+                    .sort((a, b) => a.sortKm - b.sortKm)
+
+                  if (nextItems.length === 0) return null
+
+                  return (
+                    <div className="rounded-xl border border-[#154f1d] bg-[#0e2f13] px-4 py-3 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[#28b438]">
+                        Próximas manutenções agendadas
+                      </p>
+                      {nextItems.map((item, idx) => (
+                        <div key={item.description} className="flex items-center justify-between gap-4">
+                          <span className={`text-sm ${idx === 0 ? 'font-medium text-[#f5f5f5]' : 'text-[#9e9e9e]'}`}>
+                            {idx === 0 && <span className="mr-1 text-[#28b438]">↑</span>}
+                            {item.description}
+                          </span>
+                          <span className={`text-xs whitespace-nowrap ${idx === 0 ? 'font-medium text-[#28b438]' : 'text-[#616161]'}`}>
+                            {item.label}
+                          </span>
+                        </div>
+                      ))}
+                      <p className="text-xs text-[#28b438] border-t border-[#154f1d] pt-2">
+                        Próxima ida à oficina: {nextItems[0].description}
+                      </p>
+                    </div>
+                  )
+                })()}
+
+                {/* Sugestão de Cross-sell Inteligente — se tem item vencido ou muito na beira na mesma moto, incentiva já marcar o checkbox e emendar o reparo de uma vez */}
+                {completionExtras.length > 0 && (() => {
+                  const hasOverdue = completionExtras.some((e) => e._status === 'overdue')
+
+                  return (
+                    <div className="rounded-xl border border-[#3a180f] bg-[#3a180f]/40 px-4 py-3 space-y-2">
+                      <p className="text-xs font-semibold text-[#e65e24]">
+                        {hasOverdue
+                          ? 'Atenção — itens vencidos desta moto (aproveite a ida à oficina):'
+                          : 'Quase na hora — itens próximos do prazo desta moto:'}
+                      </p>
+                      {completionExtras.map((extra) => {
+                        const isOverdue = extra._status === 'overdue'
+                        const kmLeft = diffKm(extra)
+                        const daysLeft = diffDias(extra)
+
+                        return (
+                          <label key={extra.id} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={completionExtraIds.includes(extra.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setCompletionExtraIds((prev) => [...prev, extra.id])
+                                else setCompletionExtraIds((prev) => prev.filter((id) => id !== extra.id))
+                              }}
+                              className="h-4 w-4 rounded border-[#474747] bg-[#121212] accent-[#e65e24]"
+                            />
+                            <span className="text-sm text-[#f5f5f5]">{extra.description}</span>
+                            {extra.predicted_km != null && (
+                              <span className={`text-xs ${isOverdue ? 'text-[#ff9c9a]' : 'text-[#e65e24]'}`}>
+                                {isOverdue
+                                  ? 'VENCIDA'
+                                  : kmLeft !== null ? `faltam ${fmtKm(kmLeft)}` : ''}
+                              </span>
+                            )}
+                            {extra.predicted_km == null && extra.scheduled_date && (
+                              <span className={`text-xs ${isOverdue ? 'text-[#ff9c9a]' : 'text-[#e65e24]'}`}>
+                                {isOverdue
+                                  ? 'VENCIDA'
+                                  : daysLeft !== null ? `${daysLeft} dias` : ''}
+                              </span>
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+
+                <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
+                  <Button variant="secondary" onClick={closeCompleteModal}>Cancelar</Button>
+                  {/* Botão de Avanço, compila a matriz de finanças inicial antes de renderizar a Tela 2 */}
+                  <Button
+                    variant="primary"
+                    disabled={!completionKm || !completionDate}
+                    onClick={() => {
+                      const allItems = [
+                        completingMaintenance,
+                        ...completionExtras.filter((e) => completionExtraIds.includes(e.id)),
+                      ]
+                      const defaultResp: Responsibility = activeContract?.type === 'promise' ? 'customer' : 'split'
+                      setCompletionFinancials(allItems.map((item) => ({
+                        id: item.id,
+                        description: item.description,
+                        cost: '',
+                        responsibility: item.type === 'corrective' ? defaultResp : 'company',
+                        has_odometer_photo: false,
+                        has_invoice_photo: false,
+                      })))
+                      setCompletionStep(2)
+                    }}
+                  >
+                    Próximo →
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── ETAPA 2 ── Bloco financeiro: Lança quem paga o conserto, os custos brutos e as confirmações de anexos por cada serviço marcado. */}
+            {completionStep === 2 && (
+              <div className="space-y-4">
+                <p className="text-xs text-[#9e9e9e]">Preencha o custo e o responsável por cada item:</p>
+
+                <div className="space-y-3">
+                  {completionFinancials.map((fin, idx) => (
+                    <div key={fin.id} className="rounded-xl border border-[#474747] bg-[#121212] p-4 space-y-3">
+                      <p className="text-sm font-semibold text-[#f5f5f5]">{fin.description}</p>
+
+                      {/* Toggle de Responsabilidade e Custos (Split, Company, Customer) */}
+                      <div className="flex flex-wrap gap-2">
+                        {(['split', 'company', 'customer'] as Responsibility[]).map((resp) => (
+                          <button
+                            key={resp}
+                            type="button"
+                            onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, responsibility: resp } : f))}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                              fin.responsibility === resp
+                                ? resp === 'split' ? 'bg-[#2d0363] text-[#a880ff]'
+                                  : resp === 'company' ? 'bg-[#0e2f13] text-[#28b438]'
+                                  : 'bg-[#7c1c1c] text-[#ff9c9a]'
+                                : 'bg-[#323232] text-[#9e9e9e] hover:bg-[#474747]'
+                            }`}
+                          >
+                            {resp === 'split' ? '50/50' : resp === 'company' ? 'Empresa' : 'Cliente'}
+                          </button>
+                        ))}
+                        <span className="text-xs text-[#616161] self-center">
+                          {fin.responsibility === 'split' && 'Custo dividido entre empresa e cliente.'}
+                          {fin.responsibility === 'company' && 'Sairá do caixa da empresa.'}
+                          {fin.responsibility === 'customer' && 'Cliente pagou — lançado em Despesas.'}
+                        </span>
+                      </div>
+
+                      <div className="flex gap-3 items-end">
+                        <div className="flex-1">
+                          <Input
+                            label="Custo (R$)"
+                            type="number"
+                            step="0.01"
+                            value={fin.cost}
+                            onChange={(e) => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, cost: e.target.value } : f))}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="flex gap-2 pb-0.5">
+                          {/* Marcações manuais servindo de lembrete/checklist se as fotos fiscais e operacionais foram tiradas. */}
+                          <button
+                            type="button"
+                            onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_odometer_photo: !f.has_odometer_photo } : f))}
+                            title="Marcar foto do odômetro"
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_odometer_photo ? 'border-[#BAFF1A] bg-[#BAFF1A]/10 text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
+                          >
+                            <Camera className="h-3.5 w-3.5" /> KM
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_invoice_photo: !f.has_invoice_photo } : f))}
+                            title="Marcar foto da nota fiscal"
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_invoice_photo ? 'border-[#BAFF1A] bg-[#BAFF1A]/10 text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
+                          >
+                            <FileText className="h-3.5 w-3.5" /> NF
+                          </button>
+                        </div>
+                      </div>
+
+                      {fin.cost && parseFloat(fin.cost) > 0 && (
+                        <p className="text-xs text-[#9e9e9e] border-t border-[#474747] pt-2">
+                          {fin.responsibility === 'company' && `→ Despesas da empresa: ${formatCurrency(parseFloat(fin.cost))}`}
+                          {fin.responsibility === 'customer' && `→ Pago pelo cliente: ${formatCurrency(parseFloat(fin.cost))}`}
+                          {fin.responsibility === 'split' && `→ Empresa: ${formatCurrency(parseFloat(fin.cost) / 2)} / Cliente: ${formatCurrency(parseFloat(fin.cost) / 2)}`}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Resumo financeiro consolidado gerando o DRE micro da operação do dia para a interface */}
+                {(() => {
+                  const totalEmpresa = completionFinancials.reduce((acc, f) => {
+                    const c = parseFloat(f.cost) || 0
+                    return acc + (f.responsibility === 'company' ? c : f.responsibility === 'split' ? c / 2 : 0)
+                  }, 0)
+                  const totalCliente = completionFinancials.reduce((acc, f) => {
+                    const c = parseFloat(f.cost) || 0
+                    return acc + (f.responsibility === 'customer' ? c : f.responsibility === 'split' ? c / 2 : 0)
+                  }, 0)
+                  const hasSplit = completionFinancials.some((f) => f.responsibility === 'split')
+
+                  return (
+                    <div className="rounded-xl border border-[#474747] bg-[#202020] px-4 py-3 space-y-2">
+                      <p className="text-xs font-medium text-[#9e9e9e] uppercase tracking-wider">Resumo Financeiro</p>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[#f5f5f5]">Despesa da empresa</span>
+                        <span className="font-semibold text-[#28b438]">{formatCurrency(totalEmpresa)}</span>
+                      </div>
+                      {totalCliente > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-[#f5f5f5]">Pago pelo cliente</span>
+                          <span className="font-semibold text-[#ff9c9a]">{formatCurrency(totalCliente)}</span>
+                        </div>
+                      )}
+                      {/* Checkbox de responsabilidade exigindo o ciente que isso afeta o boleto mensal de aluguel ou compra de quem detém a moto. */}
+                      {hasSplit && activeContract && totalCliente > 0 && (
+                        <label className="flex items-start gap-2 cursor-pointer mt-2 pt-2 border-t border-[#474747]">
+                          <input
+                            type="checkbox"
+                            checked={discountConfirmed}
+                            onChange={(e) => setDiscountConfirmed(e.target.checked)}
+                            className="h-4 w-4 mt-0.5 rounded border-[#474747] bg-[#121212] accent-[#BAFF1A]"
+                          />
+                          <span className="text-xs text-[#9e9e9e]">
+                            Confirmo que será cobrado desconto de {formatCurrency(totalCliente)} para {activeContract.client_name}
+                            {activeContract.next_billing_date ? ` na cobrança de ${formatDate(activeContract.next_billing_date + 'T12:00:00')}` : ''}
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                <div className="flex justify-between gap-3 border-t border-[#474747] pt-4">
+                  <Button variant="secondary" onClick={() => setCompletionStep(1)}>← Voltar</Button>
+                  <div className="flex gap-3">
+                    <Button variant="secondary" onClick={closeCompleteModal}>Cancelar</Button>
+                    <Button variant="primary" onClick={handleConfirmComplete} loading={completing}>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Confirmar Conclusão
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL 3: ATALHO DE KM — Utilizado estritamente para consertar métricas de motos fora da oficina. */}
+      <Modal open={isKmModalOpen} onClose={() => setIsKmModalOpen(false)} title="Atualizar KM da Moto" size="sm">
+        <div className="space-y-4">
+          <Select
+            label="Moto *"
+            value={kmForm.motorcycle_id}
+            onChange={(e) => {
+              const moto = motorcycles.find((m) => m.id === e.target.value)
+              setKmForm({ motorcycle_id: e.target.value, km_current: moto?.km_current?.toString() ?? '' })
+            }}
+            options={motorcycleSelectOptions}
+          />
+          {kmForm.motorcycle_id && (
+            <p className="text-xs text-[#9e9e9e]">
+              KM atual: <span className="text-[#f5f5f5] font-medium">
+                {fmtKm(motorcycles.find((m) => m.id === kmForm.motorcycle_id)?.km_current ?? 0)}
+              </span>
+            </p>
+          )}
+          <Input
+            label="Novo KM *"
+            type="number"
+            value={kmForm.km_current}
+            onChange={(e) => setKmForm({ ...kmForm, km_current: e.target.value })}
+            placeholder="Ex: 16500"
+          />
+          <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
+            <Button variant="secondary" onClick={() => setIsKmModalOpen(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleUpdateKm} disabled={!kmForm.motorcycle_id || !kmForm.km_current}>
+              <Gauge className="w-4 h-4" />
+              Atualizar
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Modal: Confirmação de Exclusão
-          Tamanho "sm" — apenas texto de aviso e dois botões (cancelar / confirmar).
-          A exclusão é permanente: não há soft-delete na tabela maintenances. */}
-      <Modal
-        open={isDeleteModalOpen}
-        onClose={() => { setIsDeleteModalOpen(false); setDeletingId(null) }}
-        title="Confirmar Exclusão"
-        size="sm"
-      >
+      {/* MODAL 4: CONFIRMAÇÃO DE DELEÇÃO — Impede cliques acidentais de destruirem histórico da base. */}
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Confirmar Exclusão" size="sm">
         <div className="space-y-4">
-          <p className="text-[#c7c7c7]">
-            Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.
-          </p>
+          <p className="text-[#c7c7c7]">Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.</p>
           <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => { setIsDeleteModalOpen(false); setDeletingId(null) }}
-            >
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              Excluir
-            </Button>
+            <Button variant="secondary" onClick={closeDeleteModal}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDelete}>Excluir</Button>
           </div>
         </div>
       </Modal>
