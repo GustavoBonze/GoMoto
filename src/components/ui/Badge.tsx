@@ -78,6 +78,9 @@ const statusLabels: Record<string, { label: string; variant: BadgeVariant }> = {
   pending: { label: 'Pendente', variant: 'warning' },
   overdue: { label: 'Vencido', variant: 'danger' },
   loss: { label: 'Prejuízo', variant: 'orange' },
+
+  /** Status de Manutenção */
+  completed: { label: 'Concluída', variant: 'success' },
   
   /** Status de Clientes ou Registros Gerais */
   active: { label: 'Ativo', variant: 'success' },
