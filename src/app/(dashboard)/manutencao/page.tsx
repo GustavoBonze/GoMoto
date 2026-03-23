@@ -401,7 +401,7 @@ export default function MaintenancePage() {
   // [loading, setLoading]: Informa se o componente está buscando dados primários iniciais na montagem para rodar o loading-spinner.
   const [loading, setLoading] = useState(true)
   
-  // [saving, setSaving]: Indica se há uma requisição HTTP ocorrendo no ato de salvar o formulário principal.
+  // [saving, setSaving]: Indica se há uma requisição ao Supabase em andamento ao salvar o formulário.
   const [saving, setSaving] = useState(false)
   
   // [completing, setCompleting]: Bloqueia cliques excessivos no botão de confirmar conclusão enquanto a etapa 2 roda.
@@ -495,7 +495,7 @@ export default function MaintenancePage() {
   // [completionStep, setCompletionStep]: Guia qual 'página' do modal renderizar (1 ou 2).
   const [completionStep, setCompletionStep] = useState<1 | 2>(1)
   
-  // [completionKm, setCompletionKm]: O registro fundamental da KM do odômetro exato da saída da oficina neste reparo.
+  // [completionKm, setCompletionKm]: Quilometragem do odômetro no momento da conclusão da manutenção.
   const [completionKm, setCompletionKm] = useState('')
   
   // [completionWorkshop, setCompletionWorkshop]: A oficina que realizou o reparo. Inicia com um "default".
@@ -513,16 +513,16 @@ export default function MaintenancePage() {
   // [completionAllSiblings, setCompletionAllSiblings]: Todas as pendências de itens para a mesma moto, usado apenas para cálculos de previsão futura independente de ser marcada na checkbox ou não.
   const [completionAllSiblings, setCompletionAllSiblings] = useState<MaintenanceWithMoto[]>([])
   
-  // [completionExtraIds, setCompletionExtraIds]: Array de strings das checkboxes selecionadas marcando "realizei essa também" (venda cruzada).
+  // [completionExtraIds, setCompletionExtraIds]: Array de IDs das manutenções adicionais selecionadas para conclusão conjunta.
   const [completionExtraIds, setCompletionExtraIds] = useState<string[]>([])
   
-  // [completionFinancials, setCompletionFinancials]: Array de dados do checkout da etapa 2. Informações de grana, custo e imagens por item consertado.
+  // [completionFinancials, setCompletionFinancials]: Array de dados financeiros da etapa 2. Armazena custo, responsável e status das fotos dos comprovantes por item.
   const [completionFinancials, setCompletionFinancials] = useState<ItemFinancial[]>([])
   
-  // [activeContract, setActiveContract]: Retém o estado temporal da moto em questão sobre seus contratos a fim de decidir "quem paga a conta do conserto".
+  // [activeContract, setActiveContract]: Armazena o contrato ativo da moto para determinar a responsabilidade financeira padrão da manutenção.
   const [activeContract, setActiveContract] = useState<ContractInfo | null>(null)
   
-  // [discountConfirmed, setDiscountConfirmed]: Garantia em tela avisando que descontar o valor do cliente requer a ciência de quem tá logado no painel.
+  // [discountConfirmed, setDiscountConfirmed]: Estado do checkbox de confirmação do usuário sobre o repasse de custos para a fatura do cliente.
   const [discountConfirmed, setDiscountConfirmed] = useState(false)
 
   // ─── BUSCA DE DADOS ASSÍNCRONOS ───────────────────────────────────────────
@@ -531,7 +531,7 @@ export default function MaintenancePage() {
    * @function fetchMaintenances
    * @description Realiza a query (via Supabase) para obter toda a tabela de manutenções combinada as dependências da moto (placa, marca).
    * Pré-condição: Cliente do Supabase disponível e autenticado.
-   * Efeitos colaterais: Popula o array gigantesco no state `maintenances`.
+   * Efeitos colaterais: Popula o array no estado `maintenances`.
    */
   const fetchMaintenances = useCallback(async () => {
     const { data, error } = await supabase
@@ -544,7 +544,7 @@ export default function MaintenancePage() {
 
   /**
    * @function fetchMotorcycles
-   * @description Captura um dataset super reduzido da entidade de motocicletas na base, puramente para municiar selects.
+   * @description Busca dados parciais das motocicletas para preencher as opções dos selects da interface.
    * Pré-condição: Nenhuma.
    * Efeitos colaterais: Insere listagem no state `motorcycles`.
    */
@@ -692,7 +692,7 @@ export default function MaintenancePage() {
 
   /**
    * @function closeCompleteModal
-   * @description Reset de estado mais intrincado, devolvendo cada pedaço fracionário do assistente em 2 etapas para sua neutralidade.
+   * @description Reseta todos os estados do fluxo de conclusão para os valores iniciais.
    */
   const closeCompleteModal = useCallback(() => {
     setIsCompleteModalOpen(false)
@@ -712,7 +712,7 @@ export default function MaintenancePage() {
 
   /**
    * @function handleSave
-   * @description Manda o Supabase atualizar o nó especifico se o modo for "edição" (Update) ou engatar novo array se for modo "inclusão" (Insert).
+   * @description Insere um novo registro ou atualiza uma manutenção existente no banco de dados, dependendo do modo ativo (criação ou edição).
    * Pré-condição: Validação de placa selecionada e de um texto no campo principal description.
    * Efeitos colaterais: Post de query e recarga com a lista repaginada pelo backend.
    */
@@ -753,7 +753,7 @@ export default function MaintenancePage() {
 
   /**
    * @function handleDelete
-   * @description Destrói definitivamente a tupla da manutenção na base de dados (Exclusão Irreversível).
+   * @description Exclui permanentemente o registro da manutenção no banco de dados.
    * Pré-condição: ID já carregada na variável transitória do alerta de perigo.
    */
   const handleDelete = useCallback(async () => {
@@ -788,7 +788,7 @@ export default function MaintenancePage() {
       .eq('status', 'active')
       .maybeSingle()
 
-    // Amarra o dono à inteligência de precificação
+    // Associa os dados do contrato ativo para definir as regras de responsabilidade financeira
     if (contractData) {
       const customers = contractData.customers as unknown as { name: string } | null
       setActiveContract({
@@ -812,7 +812,7 @@ export default function MaintenancePage() {
     const allSiblings = ((siblingsData as MaintenanceWithMoto[]) || [])
       .map((s) => ({ ...s, _status: calcularStatus(s) }))
 
-    // Ficam as prioridades ou estourados do tempo para o cross-selling de mecânica
+    // Filtra as manutenções pendentes (vencidas ou próximas) para sugerir realização conjunta
     const siblings = allSiblings.filter((s) => s._status === 'overdue' || s._status === 'upcoming')
 
     setCompletionAllSiblings(allSiblings)
@@ -822,8 +822,8 @@ export default function MaintenancePage() {
 
   /**
    * @function handleConfirmComplete
-   * @description Salva em lote os dados do balanço final das reparações da moto, e insere novos calendários no DB por meio de projeções de KM.
-   * Efeitos colaterais: Iterativamente chama Updates por array marcado na grid, e por conseguinte Inserts dos "Filhos da Rotina" como a futura troca de peça. No final sincroniza os hodômetros mestre da Moto principal na base geral.
+   * @description Atualiza em lote os itens de manutenção concluídos e agenda automaticamente as próximas ocorrências com base nos intervalos padrão.
+   * Efeitos colaterais: Executa updates nos registros selecionados, insere os próximos agendamentos calculados e sincroniza o odômetro da motocicleta no banco.
    */
   const handleConfirmComplete = useCallback(async () => {
     if (!completingMaintenance || !completionKm) return
@@ -979,8 +979,8 @@ export default function MaintenancePage() {
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Vencidas</p>
-              <p className="text-2xl font-bold text-[#ff9c9a]">{totals.overdue}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
+              <p className="text-[28px] font-bold text-[#ff9c9a]">{totals.overdue}</p>
             </div>
           </div>
 
@@ -989,8 +989,8 @@ export default function MaintenancePage() {
               <Clock className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Próximas</p>
-              <p className="text-2xl font-bold text-[#e65e24]">{totals.upcoming}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Próximas</p>
+              <p className="text-[28px] font-bold text-[#e65e24]">{totals.upcoming}</p>
             </div>
           </div>
 
@@ -999,8 +999,8 @@ export default function MaintenancePage() {
               <Wrench className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Agendadas</p>
-              <p className="text-2xl font-bold text-[#a880ff]">{totals.scheduled}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Agendadas</p>
+              <p className="text-[28px] font-bold text-[#a880ff]">{totals.scheduled}</p>
             </div>
           </div>
 
@@ -1009,8 +1009,8 @@ export default function MaintenancePage() {
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Realizadas mês</p>
-              <p className="text-2xl font-bold text-[#28b438]">{totals.completed}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Realizadas mês</p>
+              <p className="text-[28px] font-bold text-[#28b438]">{totals.completed}</p>
             </div>
           </div>
 
@@ -1019,8 +1019,8 @@ export default function MaintenancePage() {
               <DollarSign className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Custo do Mês</p>
-              <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(totals.costThisMonth)}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Custo do Mês</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(totals.costThisMonth)}</p>
             </div>
           </div>
         </div>
@@ -1160,24 +1160,24 @@ export default function MaintenancePage() {
                       {/* AREA 1: ITENS PENDENTES — Monta a tr de predição do odômetro. Se tiver em "Atrasada", "Proxima", ela cai aqui no loop da Moto */}
                       {pending.length > 0 ? (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm text-[#f5f5f5]">
-                            <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
+                          <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+                            <thead className="bg-[#323232] text-[#c7c7c7]">
                               <tr>
-                                <th className="px-4 py-3 font-medium">Item</th>
-                                <th className="px-4 py-3 font-medium">Previsão</th>
-                                <th className="px-4 py-3 font-medium">Situação</th>
-                                <th className="px-4 py-3 font-medium">Status</th>
-                                <th className="px-4 py-3 text-right font-medium">Ações</th>
+                                <th className="h-16 px-4 font-bold">Item</th>
+                                <th className="h-16 px-4 font-bold">Previsão</th>
+                                <th className="h-16 px-4 font-bold">Situação</th>
+                                <th className="h-16 px-4 font-bold">Status</th>
+                                <th className="h-16 px-4 text-right font-bold">Ações</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#474747]">
+                            <tbody>
                               {pending.map((item) => (
-                                <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors">
-                                  <td className="px-4 py-3">
+                                <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                                  <td className="px-4">
                                     <p className="font-medium text-[#f5f5f5]">{item.description}</p>
                                     <StatusBadge status={item.type} />
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-4">
                                     {item.predicted_km != null ? (
                                       <div>
                                         <p className="text-[#f5f5f5]">{fmtKm(item.predicted_km)}</p>
@@ -1187,9 +1187,9 @@ export default function MaintenancePage() {
                                       <p className="text-[#f5f5f5]">{formatDate(item.scheduled_date + 'T12:00:00')}</p>
                                     ) : <span className="text-[#9e9e9e]">—</span>}
                                   </td>
-                                  <td className="px-4 py-3"><SituacaoCell m={item} /></td>
-                                  <td className="px-4 py-3"><BadgeStatus status={item._status!} /></td>
-                                  <td className="px-4 py-3 text-right">
+                                  <td className="px-4"><SituacaoCell m={item} /></td>
+                                  <td className="px-4"><BadgeStatus status={item._status!} /></td>
+                                  <td className="px-4 text-right">
                                     {/* Botões do Action principal controlando Modais CRUD e de Conclusão */}
                                     <div className="flex items-center justify-end gap-1">
                                       <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)} title="Editar">
@@ -1215,26 +1215,26 @@ export default function MaintenancePage() {
                       {/* AREA 2: HISTÓRICO — Condição ativada apenas se o toggle primário estiver como view='completed'. Tabela escura/cinza sinaliza encerramentos e recibos */}
                       {showDirectCompleted && completed.length > 0 && pending.length === 0 && (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm">
-                            <tbody className="divide-y divide-[#474747]">
+                          <table className="w-full text-left text-[16px]">
+                            <tbody>
                               {completed.map((item) => (
-                                <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors opacity-80">
-                                  <td className="px-4 py-3 w-64">
+                                <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-80">
+                                  <td className="px-4 w-64">
                                     <p className="text-[#f5f5f5]">{item.description}</p>
                                     <StatusBadge status={item.type} />
                                   </td>
-                                  <td className="px-4 py-3 text-[#9e9e9e]">
+                                  <td className="px-4 text-[#9e9e9e]">
                                     {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
                                     {item.completed_date && <p className="text-xs">{formatDate(item.completed_date + 'T12:00:00')}</p>}
                                   </td>
-                                  <td className="px-4 py-3 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
-                                  <td className="px-4 py-3">
+                                  <td className="px-4 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
+                                  <td className="px-4">
                                     <div className="flex gap-1">
                                       <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
                                       <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-right">
+                                  <td className="px-4 text-right">
                                     <div className="flex items-center justify-end gap-1">
                                       <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)}><Edit2 className="h-4 w-4" /></Button>
                                       <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
@@ -1262,27 +1262,27 @@ export default function MaintenancePage() {
 
                           {showHist && (
                             <div className="border-t border-[#323232] overflow-x-auto">
-                              <table className="w-full text-left text-sm">
-                                <tbody className="divide-y divide-[#323232]">
+                              <table className="w-full text-left text-[16px]">
+                                <tbody>
                                   {/* Limitamos histórico colapsado com "slice" pra não afogar interface */}
                                   {completed.slice(0, 5).map((item) => (
-                                    <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors opacity-70">
-                                      <td className="px-4 py-3 w-64">
+                                    <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-70">
+                                      <td className="px-4 w-64">
                                         <p className="text-[#c7c7c7]">{item.description}</p>
                                         <StatusBadge status={item.type} />
                                       </td>
-                                      <td className="px-4 py-3 text-[#9e9e9e]">
+                                      <td className="px-4 text-[#9e9e9e]">
                                         {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
                                         {item.completed_date && <p className="text-xs">{formatDate(item.completed_date + 'T12:00:00')}</p>}
                                       </td>
-                                      <td className="px-4 py-3 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
-                                      <td className="px-4 py-3">
+                                      <td className="px-4 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
+                                      <td className="px-4">
                                         <div className="flex gap-1">
                                           <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
                                           <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
                                         </div>
                                       </td>
-                                      <td className="px-4 py-3 text-right">
+                                      <td className="px-4 text-right">
                                         <div className="flex items-center justify-end gap-1">
                                           <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)}><Edit2 className="h-4 w-4" /></Button>
                                           <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
@@ -1617,7 +1617,7 @@ export default function MaintenancePage() {
                             type="button"
                             onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_odometer_photo: !f.has_odometer_photo } : f))}
                             title="Marcar foto do odômetro"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_odometer_photo ? 'border-[#BAFF1A] bg-[#BAFF1A]/10 text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_odometer_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
                           >
                             <Camera className="h-3.5 w-3.5" /> KM
                           </button>
@@ -1625,7 +1625,7 @@ export default function MaintenancePage() {
                             type="button"
                             onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_invoice_photo: !f.has_invoice_photo } : f))}
                             title="Marcar foto da nota fiscal"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_invoice_photo ? 'border-[#BAFF1A] bg-[#BAFF1A]/10 text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_invoice_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
                           >
                             <FileText className="h-3.5 w-3.5" /> NF
                           </button>
@@ -1657,7 +1657,7 @@ export default function MaintenancePage() {
 
                   return (
                     <div className="rounded-xl border border-[#474747] bg-[#202020] px-4 py-3 space-y-2">
-                      <p className="text-xs font-medium text-[#9e9e9e] uppercase tracking-wider">Resumo Financeiro</p>
+                      <p className="text-[14px] font-normal text-[#9e9e9e]">Resumo Financeiro</p>
                       <div className="flex justify-between text-sm">
                         <span className="text-[#f5f5f5]">Despesa da empresa</span>
                         <span className="font-semibold text-[#28b438]">{formatCurrency(totalEmpresa)}</span>
