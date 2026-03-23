@@ -139,6 +139,7 @@ CREATE TABLE fines (
     description      VARCHAR(300),
     amount           DECIMAL(10,2),
     infraction_date  DATE,
+    due_date         DATE,
     status           VARCHAR(20) CHECK (status IN ('pending', 'paid')) DEFAULT 'pending',
     payment_date     DATE,
     responsible      VARCHAR(20) CHECK (responsible IN ('customer', 'company')) DEFAULT 'customer',
