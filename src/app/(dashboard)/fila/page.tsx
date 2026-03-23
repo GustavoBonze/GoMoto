@@ -281,7 +281,7 @@ function DocumentUploadSection({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
         {/* Área de upload da CNH — obrigatória para conduzir moto, mas opcional no cadastro inicial */}
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#474747] bg-[#121212] p-4 cursor-pointer hover:border-[#BAFF1A]/50 transition-colors">
+        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#474747] bg-[#121212] p-4 cursor-pointer hover:border-[#BAFF1A] transition-colors">
           <Upload className="h-5 w-5 text-[#9e9e9e]" />
           <span className="text-xs text-[#9e9e9e] text-center">CNH<br />{suffix}</span>
           {/* Mostra o nome do arquivo selecionado para confirmar ao operador que o upload foi configurado */}
@@ -291,7 +291,7 @@ function DocumentUploadSection({
         </label>
 
         {/* Área de upload do comprovante de residência — necessário para confirmar endereço do candidato */}
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#474747] bg-[#121212] p-4 cursor-pointer hover:border-[#BAFF1A]/50 transition-colors">
+        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#474747] bg-[#121212] p-4 cursor-pointer hover:border-[#BAFF1A] transition-colors">
           <Upload className="h-5 w-5 text-[#9e9e9e]" />
           <span className="text-xs text-[#9e9e9e] text-center">Comprovante de Residência<br />{suffix}</span>
           {/* Mostra o nome do arquivo selecionado para confirmar ao operador que o upload foi configurado */}
@@ -1220,7 +1220,7 @@ export default function QueuePage() {
 
       {/* Alerta de oportunidade: exibido apenas quando há motos disponíveis E candidatos esperando */}
       {availableMotosCount > 0 && queueEntries.length > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-[#BAFF1A]/30 bg-[#BAFF1A]/10 p-4 text-[#BAFF1A]">
+        <div className="flex items-center gap-3 rounded-xl border border-[#6b9900] bg-[#243300] p-4 text-[#BAFF1A]">
           <AlertTriangle className="h-5 w-5 flex-shrink-0" />
           <p className="text-sm font-medium">
             Há {availableMotosCount} moto(s) disponível(is) e {queueEntries.length} pessoa(s) na fila!
@@ -1233,37 +1233,37 @@ export default function QueuePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 
         {/* Card: total de candidatos aguardando */}
-        <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div>
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Total na Fila</p>
+            <p className="text-[28px] font-bold text-[#f5f5f5]">{queueEntries.length}</p>
+          </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
             <Users className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#9e9e9e]">Total na Fila</p>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{queueEntries.length}</p>
           </div>
         </div>
 
         {/* Card: motos disponíveis para alocação imediata */}
-        <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div>
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Motos Disponíveis</p>
+            <p className="text-[28px] font-bold text-[#f5f5f5]">{availableMotosCount}</p>
+          </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
             <Bike className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#9e9e9e]">Motos Disponíveis</p>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{availableMotosCount}</p>
           </div>
         </div>
 
         {/* Card: nome do próximo candidato — facilita identificação rápida de quem atender */}
-        <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
-            <UserPlus className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#9e9e9e]">Próximo da Fila</p>
-            <p className="truncate text-xl font-bold text-[#f5f5f5]" title={nextInLine ?? ''}>
+        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Próximo da Fila</p>
+            <p className="truncate text-[28px] font-bold text-[#f5f5f5]" title={nextInLine ?? ''}>
               {nextInLine}
             </p>
+          </div>
+          <div className="ml-3 flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
+            <UserPlus className="h-5 w-5" />
           </div>
         </div>
       </div>
@@ -1281,55 +1281,54 @@ export default function QueuePage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-[#f5f5f5]">
-              <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
+            <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+              <thead className="bg-[#323232] text-[#c7c7c7]">
                 <tr>
-                  <th className="px-4 py-3 font-medium">#</th>
-                  <th className="px-4 py-3 font-medium">Cliente</th>
-                  <th className="px-4 py-3 font-medium">Telefone</th>
-                  <th className="px-4 py-3 font-medium">CNH</th>
-                  <th className="px-4 py-3 font-medium">Desde</th>
-                  <th className="px-4 py-3 font-medium">Observações</th>
-                  <th className="px-4 py-3 text-right font-medium">Ações</th>
+                  <th className="h-16 px-4 font-bold">#</th>
+                  <th className="h-16 px-4 font-bold">Cliente</th>
+                  <th className="h-16 px-4 font-bold">Telefone</th>
+                  <th className="h-16 px-4 font-bold">CNH</th>
+                  <th className="h-16 px-4 font-bold">Desde</th>
+                  <th className="h-16 px-4 font-bold">Observações</th>
+                  <th className="h-16 px-4 text-right font-bold">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#474747]">
+              <tbody>
                 {queueEntries.map((entry, index) => (
-                  <tr key={entry.id} className="transition-colors hover:bg-[#474747]/50">
+                  <tr key={entry.id} className="transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] h-16">
 
                     {/* Posição na fila exibida como Badge para destaque visual */}
-                    <td className="whitespace-nowrap px-4 py-3">
+                    <td className="whitespace-nowrap px-4 text-[16px]">
                       <Badge variant="brand">{entry.position}º</Badge>
                     </td>
 
                     {/* Nome do candidato — em negrito pois é o identificador principal */}
-                    <td className="px-4 py-3 font-medium">
+                    <td className="px-4 font-medium text-[16px]">
                       {entry.customers?.name || 'Cliente Desconhecido'}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3">
+                    <td className="whitespace-nowrap px-4 text-[16px]">
                       {entry.customers?.phone || '-'}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3">
+                    <td className="whitespace-nowrap px-4 text-[16px]">
                       {entry.customers?.drivers_license || '-'}
                     </td>
 
                     {/* Data de entrada na fila — mostra há quanto tempo o candidato aguarda */}
-                    <td className="whitespace-nowrap px-4 py-3 text-[#9e9e9e]">
+                    <td className="whitespace-nowrap px-4 text-[16px] text-[#9e9e9e]">
                       {formatDate(entry.created_at)}
                     </td>
 
                     {/* Observações truncadas com tooltip para ver o texto completo ao hover */}
-                    <td
-                      className="max-w-xs truncate px-4 py-3 text-[#9e9e9e]"
+                    <td className="max-w-xs truncate px-4 text-[16px] text-[#9e9e9e]"
                       title={entry.notes || ''}
                     >
                       {entry.notes || '-'}
                     </td>
 
                     {/* Coluna de ações — botões de ícone padronizados pelo design system */}
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-4 text-[16px] text-right">
                       <div className="flex items-center justify-end gap-1">
 
                         {/* Seta para cima: sobe o candidato na fila — desabilitado se já é o primeiro */}

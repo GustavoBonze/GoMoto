@@ -25,7 +25,7 @@
  *   • Dependência extra: `contracts` (apenas contratos ativos, para auto-vincular cliente ↔ moto)
  *
  * Padrão de layout:
- *   Segue o mesmo padrão das telas de Manutenção e Fila de Locadores:
+ *   Segue o mesmo padrão das telas de Manutenção e Fila de Espera:
  *   Header → KPI cards → Barra de filtros → Accordion por moto
  *
  * Design system: design-system-bonze.md (InfinitePay dark theme)
@@ -212,9 +212,9 @@ function KpiCard({
       {/* Textos da métrica */}
       <div>
         {/* Label: texto terciário em caixa alta, fonte pequena */}
-        <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">{label}</p>
+        <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
         {/* Valor principal: destaque em bold */}
-        <p className={`text-2xl font-bold ${iconColor}`}>{value}</p>
+        <p className={`text-[28px] font-bold ${iconColor}`}>{value}</p>
         {/* Texto secundário opcional (ex: valor monetário) */}
         {sub && <p className={`text-xs mt-0.5 ${iconColor}/70`}>{sub}</p>}
       </div>
@@ -789,7 +789,7 @@ export default function MultasPage() {
 
         {/* Mensagem de erro global — exibida apenas quando há falha no carregamento ou save */}
         {error && (
-          <div className="p-3 rounded-lg bg-[#7c1c1c]/30 border border-[#ff9c9a]/30 text-sm text-[#ff9c9a]">
+          <div className="p-3 rounded-lg bg-[#7c1c1c] border border-[#ff9c9a] text-sm text-[#ff9c9a]">
             {error}
           </div>
         )}
@@ -998,27 +998,27 @@ export default function MultasPage() {
                       {/* Tabela de multas pendentes */}
                       {pendingItems.length > 0 ? (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm text-[#f5f5f5]">
+                          <table className="w-full text-left text-[16px] text-[#f5f5f5]">
                             {/* Cabeçalho com fundo #323232 conforme design system */}
-                            <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
+                            <thead className="bg-[#323232] text-[#c7c7c7]">
                               <tr>
-                                <th className="px-4 py-3 font-medium">Infração</th>
-                                <th className="px-4 py-3 font-medium">Data / Vencimento</th>
-                                <th className="px-4 py-3 font-medium">Valor</th>
-                                <th className="px-4 py-3 font-medium">Responsável</th>
-                                <th className="px-4 py-3 font-medium">Status</th>
-                                <th className="px-4 py-3 text-right font-medium">Ações</th>
+                                <th className="h-16 px-4 font-bold">Infração</th>
+                                <th className="h-16 px-4 font-bold">Data / Vencimento</th>
+                                <th className="h-16 px-4 font-bold">Valor</th>
+                                <th className="h-16 px-4 font-bold">Responsável</th>
+                                <th className="h-16 px-4 font-bold">Status</th>
+                                <th className="h-16 px-4 text-right font-bold">Ações</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#474747]">
+                            <tbody>
                               {pendingItems.map(item => {
                                 // Extrai estilos de badge do mapa de constantes
                                 const badge = STATUS_BADGE[item._status]
                                 return (
-                                  <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors">
+                                  <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
 
                                     {/* Infração: descrição principal + observação + cliente */}
-                                    <td className="px-4 py-3 max-w-xs">
+                                    <td className="px-4 max-w-xs">
                                       <p className="font-medium text-[#f5f5f5]">{item.description}</p>
                                       {item.observations && (
                                         <p className="text-xs text-[#9e9e9e] mt-0.5 line-clamp-1">
@@ -1033,7 +1033,7 @@ export default function MultasPage() {
                                     </td>
 
                                     {/* Datas: infração + vencimento (colorido se vencida) */}
-                                    <td className="px-4 py-3">
+                                    <td className="px-4">
                                       <p className="text-[#f5f5f5]">{formatDate(item.infraction_date)}</p>
                                       {item.due_date && (
                                         <p className={`text-xs mt-0.5 ${item._status === 'overdue' ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
@@ -1042,15 +1042,15 @@ export default function MultasPage() {
                                       )}
                                     </td>
 
-                                    {/* Valor em vermelho para destacar o impacto financeiro */}
-                                    <td className="px-4 py-3">
+                                    {/* Valor em vermelho para destacar o impacto financeiro nas pendentes */}
+                                    <td className="px-4">
                                       <span className="font-semibold text-[#ff9c9a]">
                                         {formatCurrency(Number(item.amount))}
                                       </span>
                                     </td>
 
                                     {/* Badge de responsável: roxo = cliente | neutro = empresa */}
-                                    <td className="px-4 py-3">
+                                    <td className="px-4">
                                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                         item.responsible === 'customer'
                                           ? 'bg-[#2d0363]/40 text-[#a880ff]'
@@ -1061,14 +1061,14 @@ export default function MultasPage() {
                                     </td>
 
                                     {/* Badge de status: cores do mapa STATUS_BADGE */}
-                                    <td className="px-4 py-3">
+                                    <td className="px-4">
                                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
                                         {badge.label}
                                       </span>
                                     </td>
 
                                     {/* Ações: Editar | Pagar | Excluir (mesma ordem de todas as telas) */}
-                                    <td className="px-4 py-3 text-right">
+                                    <td className="px-4 text-right">
                                       <div className="flex items-center justify-end gap-1">
                                         <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
                                           onClick={() => openEdit(item)} title="Editar">
@@ -1114,28 +1114,28 @@ export default function MultasPage() {
                           {/* Tabela compacta do histórico — visível apenas quando showHistory */}
                           {showHistory && (
                             <div className="border-t border-[#323232] overflow-x-auto">
-                              <table className="w-full text-left text-sm">
-                                {/* Histórico usa opacity-80 para diferenciar visualmente dos pendentes */}
-                                <tbody className="divide-y divide-[#323232]">
+                              <table className="w-full text-left text-[16px]">
+                                <tbody>
                                   {paidItems.map(item => (
-                                    <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors opacity-80">
+                                    /* opacity-80 no tr para diferenciar visualmente o histórico dos itens pendentes */
+                                    <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-80">
                                       {/* Descrição + cliente */}
-                                      <td className="px-4 py-2 w-1/2">
+                                      <td className="px-4 w-1/2">
                                         <p className="text-[#9e9e9e]">{item.description}</p>
                                         {item.customers?.name && (
                                           <p className="text-xs text-[#616161]">{item.customers.name}</p>
                                         )}
                                       </td>
                                       {/* Data do pagamento */}
-                                      <td className="px-4 py-2 text-xs text-[#9e9e9e]">
+                                      <td className="px-4 text-xs text-[#9e9e9e]">
                                         {item.payment_date ? formatDate(item.payment_date) : '—'}
                                       </td>
                                       {/* Valor em verde (quitado) */}
-                                      <td className="px-4 py-2 text-sm font-medium text-[#28b438]">
+                                      <td className="px-4 text-[16px] font-medium text-[#28b438]">
                                         {formatCurrency(Number(item.amount))}
                                       </td>
                                       {/* Ações do histórico: sem botão "Pagar" (já está paga) */}
-                                      <td className="px-4 py-2 text-right">
+                                      <td className="px-4 text-right">
                                         <div className="flex items-center justify-end gap-1">
                                           <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
                                             onClick={() => openEdit(item)} title="Editar">
