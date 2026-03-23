@@ -154,7 +154,7 @@ const supabase = createClient()
  * @description Card de métrica reutilizável exibido no grid de KPIs.
  *
  * Renderiza um círculo colorido com ícone à esquerda e dois textos à direita:
- *   • label  → rótulo da métrica em caixa alta (ex: "TOTAL DO MÊS")
+ *   • label  → rótulo da métrica exibido como passado via prop (ex: "Total do Mês")
  *   • value  → valor principal em destaque (ex: "R$ 1.200,00")
  *   • sub    → texto de apoio opcional na cor do ícone com 70% de opacidade
  *
@@ -191,10 +191,10 @@ function KpiCard({
         <Icon className="h-5 w-5" />
       </div>
       <div>
-        {/* Rótulo: caixa alta, fonte pequena, cor terciária */}
-        <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">{label}</p>
+        {/* Rótulo: fonte pequena, cor terciária (#9e9e9e) */}
+        <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
         {/* Valor principal: destaque em bold, cor do tema do card */}
-        <p className={`text-2xl font-bold ${iconColor}`}>{value}</p>
+        <p className={`text-[28px] font-bold ${iconColor}`}>{value}</p>
         {/* Subtexto opcional: mesma cor do card com 70% de opacidade */}
         {sub && <p className={`text-xs mt-0.5 ${iconColor}/70`}>{sub}</p>}
       </div>
@@ -464,9 +464,8 @@ export default function ExpensesPage() {
    * Pré-condição: `deleting` deve ser não-nulo (garantido pelo modal de confirmação).
    * Após a exclusão: limpa `deleting` (fecha o modal) e recarrega a lista.
    *
-   * Por que não tem setSaving(true) aqui?
-   *   O botão de excluir já recebe `loading={saving}` e o próprio modal de confirmação
-   *   impede cliques duplos enquanto a operação está em curso.
+   * O `saving` é ativado durante a operação para exibir loading no botão de confirmação
+   * e impedir cliques duplos enquanto a exclusão está em curso.
    */
   async function handleDelete() {
     if (!deleting) return
@@ -807,29 +806,29 @@ export default function ExpensesPage() {
                   {isExpanded && (
                     <div className="border-t border-[#474747]">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-[#f5f5f5]">
+                        <table className="w-full text-left text-[16px] text-[#f5f5f5]">
 
                           {/* Cabeçalho da tabela: fundo #323232 conforme design system */}
-                          <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
+                          <thead className="bg-[#323232] text-[#c7c7c7]">
                             <tr>
-                              <th className="px-4 py-3 font-medium">Data</th>
-                              <th className="px-4 py-3 font-medium">Descrição</th>
-                              <th className="px-4 py-3 font-medium">Valor</th>
-                              <th className="px-4 py-3 text-right font-medium">Ações</th>
+                              <th className="h-16 px-4 font-bold">Data</th>
+                              <th className="h-16 px-4 font-bold">Descrição</th>
+                              <th className="h-16 px-4 font-bold">Valor</th>
+                              <th className="h-16 px-4 text-right font-bold">Ações</th>
                             </tr>
                           </thead>
 
-                          <tbody className="divide-y divide-[#474747]">
+                          <tbody>
                             {items.map(item => (
-                              <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors">
+                              <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
 
                                 {/* Data: formatada para DD/MM/AAAA via formatDate */}
-                                <td className="px-4 py-3">
+                                <td className="px-4">
                                   <p className="text-[#f5f5f5]">{formatDate(item.date)}</p>
                                 </td>
 
                                 {/* Descrição + observações opcionais em fonte menor */}
-                                <td className="px-4 py-3 max-w-xs">
+                                <td className="px-4 max-w-xs">
                                   <p className="font-medium text-[#f5f5f5]">{item.description}</p>
                                   {item.observations && (
                                     <p className="text-xs text-[#9e9e9e] mt-0.5 line-clamp-1">
@@ -839,14 +838,14 @@ export default function ExpensesPage() {
                                 </td>
 
                                 {/* Valor em vermelho — destaca o impacto financeiro */}
-                                <td className="px-4 py-3">
+                                <td className="px-4">
                                   <span className="font-semibold text-[#ff9c9a]">
                                     {formatCurrency(Number(item.amount))}
                                   </span>
                                 </td>
 
                                 {/* Ações: Editar (secondary) e Excluir (danger) */}
-                                <td className="px-4 py-3 text-right">
+                                <td className="px-4 text-right">
                                   <div className="flex items-center justify-end gap-1">
                                     <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
                                       onClick={() => handleOpenModal(item)} title="Editar">
