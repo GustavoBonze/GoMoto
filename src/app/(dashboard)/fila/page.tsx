@@ -1233,9 +1233,9 @@ export default function QueuePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 
         {/* Card: total de candidatos aguardando */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#474747] bg-[#202020] p-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
-            <Users className="h-6 w-6" />
+        <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
+            <Users className="h-5 w-5" />
           </div>
           <div>
             <p className="text-sm font-medium text-[#9e9e9e]">Total na Fila</p>
@@ -1244,9 +1244,9 @@ export default function QueuePage() {
         </div>
 
         {/* Card: motos disponíveis para alocação imediata */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#474747] bg-[#202020] p-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
-            <Bike className="h-6 w-6" />
+        <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
+            <Bike className="h-5 w-5" />
           </div>
           <div>
             <p className="text-sm font-medium text-[#9e9e9e]">Motos Disponíveis</p>
@@ -1255,9 +1255,9 @@ export default function QueuePage() {
         </div>
 
         {/* Card: nome do próximo candidato — facilita identificação rápida de quem atender */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#474747] bg-[#202020] p-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
-            <UserPlus className="h-6 w-6" />
+        <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#f5f5f5]">
+            <UserPlus className="h-5 w-5" />
           </div>
           <div>
             <p className="text-sm font-medium text-[#9e9e9e]">Próximo da Fila</p>
@@ -1282,54 +1282,54 @@ export default function QueuePage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-[#f5f5f5]">
-              <thead className="bg-[#121212] text-xs uppercase text-[#9e9e9e]">
+              <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
                 <tr>
-                  <th className="px-6 py-4 font-medium">#</th>
-                  <th className="px-6 py-4 font-medium">Cliente</th>
-                  <th className="px-6 py-4 font-medium">Telefone</th>
-                  <th className="px-6 py-4 font-medium">CNH</th>
-                  <th className="px-6 py-4 font-medium">Desde</th>
-                  <th className="px-6 py-4 font-medium">Observações</th>
-                  <th className="px-6 py-4 text-right font-medium">Ações</th>
+                  <th className="px-4 py-3 font-medium">#</th>
+                  <th className="px-4 py-3 font-medium">Cliente</th>
+                  <th className="px-4 py-3 font-medium">Telefone</th>
+                  <th className="px-4 py-3 font-medium">CNH</th>
+                  <th className="px-4 py-3 font-medium">Desde</th>
+                  <th className="px-4 py-3 font-medium">Observações</th>
+                  <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#474747]">
                 {queueEntries.map((entry, index) => (
-                  <tr key={entry.id} className="transition-colors hover:bg-[#121212]/50">
+                  <tr key={entry.id} className="transition-colors hover:bg-[#474747]/50">
 
                     {/* Posição na fila exibida como Badge para destaque visual */}
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-4 py-3">
                       <Badge variant="brand">{entry.position}º</Badge>
                     </td>
 
                     {/* Nome do candidato — em negrito pois é o identificador principal */}
-                    <td className="px-6 py-4 font-medium">
+                    <td className="px-4 py-3 font-medium">
                       {entry.customers?.name || 'Cliente Desconhecido'}
                     </td>
 
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-4 py-3">
                       {entry.customers?.phone || '-'}
                     </td>
 
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-4 py-3">
                       {entry.customers?.drivers_license || '-'}
                     </td>
 
                     {/* Data de entrada na fila — mostra há quanto tempo o candidato aguarda */}
-                    <td className="whitespace-nowrap px-6 py-4 text-[#9e9e9e]">
+                    <td className="whitespace-nowrap px-4 py-3 text-[#9e9e9e]">
                       {formatDate(entry.created_at)}
                     </td>
 
                     {/* Observações truncadas com tooltip para ver o texto completo ao hover */}
                     <td
-                      className="max-w-xs truncate px-6 py-4 text-[#9e9e9e]"
+                      className="max-w-xs truncate px-4 py-3 text-[#9e9e9e]"
                       title={entry.notes || ''}
                     >
                       {entry.notes || '-'}
                     </td>
 
                     {/* Coluna de ações — botões de ícone padronizados pelo design system */}
-                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
 
                         {/* Seta para cima: sobe o candidato na fila — desabilitado se já é o primeiro */}
