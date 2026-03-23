@@ -1,68 +1,97 @@
+'use client'
+
 /**
- * @file page.tsx
- * @description Página de Gestão de Despesas do Sistema GoMoto.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * PÁGINA: DESPESAS — Sistema GoMoto
+ * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Gerencia o registro de todas as saídas financeiras da empresa.
- * Conectada ao banco de dados Supabase real, substituindo os dados mockados.
+ * Objetivo:
+ *   Controlar e exibir todas as saídas financeiras da empresa,
+ *   agrupadas por categoria em um accordion interativo.
  *
  * Funcionalidades principais:
- * - Listagem de despesas filtrada por mês com total destacado no topo.
- * - CRUD completo: criar, editar e excluir despesas via modais.
- * - Busca textual por descrição ou categoria.
- * - Cards de resumo: Total do Mês, Quantidade de Lançamentos, Ticket Médio.
+ *   • KPIs (cards de métricas) no topo: total do mês, lançamentos, ticket médio
+ *     e maior categoria de gasto
+ *   • Filtros combinados: abas pill por categoria + seletor de mês + busca textual
+ *   • Accordion por categoria — só exibe as categorias que têm lançamentos no período
+ *   • CRUD completo: Criar, Editar e Excluir despesas via modais
  *
- * Colunas da tabela 'despesas' no Supabase:
- * id, description, amount, category, date, motorcycle_id, observations, created_at
+ * Fluxo de dados:
+ *   Supabase (tabela `expenses`) → estado `expenses` → `filteredExpenses` (mês + busca)
+ *   → `groupedExpenses` (filtro de categoria + agrupamento) → accordion na tela
  *
- * Identificadores seguem o padrão Inglês e a documentação o padrão Português Brasil.
+ * Banco de dados (Supabase — projeto: hcnxbqunescfanqzmsha):
+ *   • Tabela principal: `expenses`
+ *   • Colunas: id, description, amount, category, date, observations, created_at
+ *
+ * Padrão de layout (idêntico às telas de Multas, Manutenção e Fila):
+ *   Header → KPI cards → Barra de filtros → Accordion por categoria
+ *
+ * Design system: design-system-bonze.md (InfinitePay dark theme)
+ *   bg tela: #121212 | cards: #202020 | borda: #474747 | thead: #323232
+ *   texto primário: #f5f5f5 | secundário: #c7c7c7 | terciário: #9e9e9e | marca: #BAFF1A
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-'use client';
+// ─── IMPORTAÇÕES ──────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, Trash2, TrendingDown, Receipt, Activity, Search } from 'lucide-react';
-import type { Expense } from '@/types';
-import { createClient } from '@/lib/supabase/client';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { Header } from '@/components/layout/Header';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
-import { Input, Select, Textarea } from '@/components/ui/Input';
-import { Table } from '@/components/ui/Table';
+import { useState, useEffect, useMemo } from 'react'
 
-// --- INTERFACES LOCAIS ---
+// Ícones do Lucide — cada um tem função específica na UI:
+import {
+  Plus,          // Botão "Nova Despesa" no header
+  Edit2,         // Botão de edição nas linhas da tabela
+  Trash2,        // Botão de exclusão nas linhas da tabela e no modal de confirmação
+  TrendingDown,  // Ícone do KPI card "Total do Mês" — representa saída financeira
+  Receipt,       // Ícone do KPI card "Lançamentos" e estado vazio da lista
+  Activity,      // Ícone do KPI card "Ticket Médio" — representa média por despesa
+  Tag,           // Ícone do KPI card "Maior Categoria" — representa classificação
+  Search,        // Ícone na caixa de busca
+  ChevronDown,   // Seta do accordion — rotaciona quando colapsado
+} from 'lucide-react'
+
+// Infraestrutura do projeto
+import { createClient }              from '@/lib/supabase/client'           // Cliente Supabase browser
+import { Header }                    from '@/components/layout/Header'       // Header padrão do sistema
+import { Button }                    from '@/components/ui/Button'           // Botão do design system
+import { Input, Select, Textarea }   from '@/components/ui/Input'            // Campos de formulário
+import { Modal }                     from '@/components/ui/Modal'            // Modal com backdrop
+import { formatCurrency, formatDate } from '@/lib/utils'                     // Formatadores de moeda e data
+import type { Expense }              from '@/types'                          // Tipo da tabela `expenses`
+
+// ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 /**
- * @interface ExpenseFormData
- * @description Estrutura dos campos do formulário de criação/edição de despesa.
+ * @type ExpenseFormData
+ * @description Estrutura dos campos controlados do formulário de criação/edição.
+ *
+ * Por que usar strings para amount?
+ *   O campo <input type="number"> sempre retorna string no React.
+ *   A conversão para float ocorre apenas no momento do envio (handleSave),
+ *   evitando erros de NaN durante a digitação.
  */
-interface ExpenseFormData {
-  description: string;
-  amount: string;
-  date: string;
-  category: string;
-  observations: string;
+type ExpenseFormData = {
+  description:  string   // Texto livre descrevendo a despesa
+  amount:       string   // Valor como string; convertido para float antes de salvar
+  date:         string   // Data no formato YYYY-MM-DD (padrão HTML date input)
+  category:     string   // Uma das opções de EXPENSE_CATEGORIES
+  observations: string   // Campo livre opcional (NF, comprovante, etc.)
 }
 
-// --- CONSTANTES ---
-
-/**
- * @constant defaultForm
- * @description Estado inicial do formulário para criação de nova despesa.
- */
-const defaultForm: ExpenseFormData = {
-  description: '',
-  amount: '',
-  date: new Date().toISOString().split('T')[0],
-  category: '',
-  observations: '',
-};
+// ─── CONSTANTES ───────────────────────────────────────────────────────────────
 
 /**
  * @constant EXPENSE_CATEGORIES
  * @description Lista fixa de categorias disponíveis para classificação das despesas.
+ *
+ * Por que é fixa (não vem do banco)?
+ *   Manter as categorias em código garante consistência dos dados e evita
+ *   divergências causadas por digitação livre. Mudanças de categoria exigem
+ *   atualização deliberada do código.
+ *
+ * Ordenadas por frequência de uso típico em locadoras de moto.
  */
-const EXPENSE_CATEGORIES = [
+const EXPENSE_CATEGORIES: string[] = [
   'Manutenção',
   'Combustível',
   'Aluguel',
@@ -71,343 +100,783 @@ const EXPENSE_CATEGORIES = [
   'Seguro',
   'Marketing',
   'Outros',
-];
+]
 
-// --- COMPONENTE PRINCIPAL ---
+/**
+ * @constant DEFAULT_FORM
+ * @description Estado inicial vazio do formulário de criação/edição.
+ *
+ * Por que fica fora do componente?
+ *   Criar o objeto dentro do componente recriaria a referência a cada render,
+ *   impossibilitando comparações de igualdade e causando renders desnecessários.
+ *   Fora do componente, a referência é estável e pode ser reutilizada como
+ *   valor de reset sem efeitos colaterais.
+ *
+ * O campo `date` é inicializado com a data atual para agilizar o preenchimento.
+ */
+const DEFAULT_FORM: ExpenseFormData = {
+  description:  '',
+  amount:       '',
+  date:         new Date().toISOString().split('T')[0], // formato YYYY-MM-DD
+  category:     '',
+  observations: '',
+}
+
+/**
+ * @constant CATEGORY_OPTIONS
+ * @description Opções pré-formatadas para o componente Select do formulário.
+ *
+ * Por que fica fora do componente?
+ *   O array é estático — nunca muda em runtime. Criá-lo fora do componente
+ *   evita realocar memória a cada render sem necessidade.
+ */
+const CATEGORY_OPTIONS = [
+  { value: '', label: 'Selecione a categoria' },
+  ...EXPENSE_CATEGORIES.map(cat => ({ value: cat, label: cat })),
+]
+
+// ─── CLIENTE SUPABASE ─────────────────────────────────────────────────────────
+
+/**
+ * @constant supabase
+ * @description Instância singleton do cliente Supabase para o browser.
+ *
+ * Por que fica fora do componente?
+ *   Criado uma única vez ao carregar o módulo. Se estivesse dentro do componente,
+ *   seria recriado a cada render, abrindo múltiplas conexões desnecessariamente.
+ */
+const supabase = createClient()
+
+// ─── SUB-COMPONENTES ──────────────────────────────────────────────────────────
+
+/**
+ * @component KpiCard
+ * @description Card de métrica reutilizável exibido no grid de KPIs.
+ *
+ * Renderiza um círculo colorido com ícone à esquerda e dois textos à direita:
+ *   • label  → rótulo da métrica em caixa alta (ex: "TOTAL DO MÊS")
+ *   • value  → valor principal em destaque (ex: "R$ 1.200,00")
+ *   • sub    → texto de apoio opcional na cor do ícone com 70% de opacidade
+ *
+ * Por que fica fora do componente principal?
+ *   Evita ser redefinido a cada render do pai. Como não tem estado próprio,
+ *   é um componente puro — apenas renderiza o que recebe via props.
+ *
+ * @param icon      - Componente de ícone Lucide (ex: TrendingDown)
+ * @param iconBg    - Classe Tailwind para o fundo do círculo (ex: "bg-[#7c1c1c]/40")
+ * @param iconColor - Classe Tailwind para a cor do texto/ícone (ex: "text-[#ff9c9a]")
+ * @param label     - Rótulo da métrica exibido acima do valor
+ * @param value     - Valor principal da métrica (string ou número)
+ * @param sub       - Texto secundário opcional abaixo do valor
+ */
+function KpiCard({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ElementType
+  iconBg: string
+  iconColor: string
+  label: string
+  value: string | number
+  sub?: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+      {/* Círculo colorido com ícone — iconColor aplicado no container para herança CSS */}
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        {/* Rótulo: caixa alta, fonte pequena, cor terciária */}
+        <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">{label}</p>
+        {/* Valor principal: destaque em bold, cor do tema do card */}
+        <p className={`text-2xl font-bold ${iconColor}`}>{value}</p>
+        {/* Subtexto opcional: mesma cor do card com 70% de opacidade */}
+        {sub && <p className={`text-xs mt-0.5 ${iconColor}/70`}>{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 /**
  * @component ExpensesPage
- * @description Componente principal da página de despesas.
- * Gerencia o estado, operações CRUD e renderização da interface.
+ * @description Página principal de controle de despesas do Sistema GoMoto.
+ *
+ * É um Client Component ('use client') pois depende de:
+ *   • useState  — para gerenciar todos os estados locais (dados, filtros, modais)
+ *   • useEffect — para disparar a busca de dados na montagem inicial
+ *   • useMemo   — para evitar recálculos desnecessários de listas filtradas e KPIs
+ *
+ * Hierarquia de filtragem (executada em sequência nos useMemos):
+ *   expenses → [mês + busca] → filteredExpenses → [categoria] → groupedExpenses
  */
 export default function ExpensesPage() {
-  /** @state expenses - Lista completa de despesas carregadas do Supabase. */
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  /** @state loading - Indica se os dados estão sendo carregados. */
-  const [loading, setLoading] = useState(true);
 
-  // Filtros
-  /** @state search - Texto de busca por descrição ou categoria. */
-  const [search, setSearch] = useState('');
-  /**
-   * @state monthFilter - Mês selecionado no filtro, no formato 'YYYY-MM'.
-   * Inicializado com o mês atual por padrão.
-   */
-  const [monthFilter, setMonthFilter] = useState(() => {
-    const now = new Date();
-    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  });
-
-  // Controle de modais
-  /** @state modalOpen - Controla a visibilidade do modal de criação/edição. */
-  const [modalOpen, setModalOpen] = useState(false);
-  /** @state editing - Despesa sendo editada; null quando criando nova. */
-  const [editing, setEditing] = useState<Expense | null>(null);
-  /** @state deleting - Despesa selecionada para exclusão; null quando inativo. */
-  const [deleting, setDeleting] = useState<Expense | null>(null);
-
-  // Formulário
-  /** @state form - Dados do formulário de criação/edição. */
-  const [form, setForm] = useState<ExpenseFormData>(defaultForm);
-  /** @state saving - Indica se uma operação de salvar está em andamento. */
-  const [saving, setSaving] = useState(false);
+  // ── ESTADOS: Dados vindos do banco ──────────────────────────────────────────
 
   /**
-   * @effect
-   * @description Carrega as despesas do Supabase na montagem inicial do componente.
+   * Lista completa de despesas carregadas do Supabase.
+   * Atualizada após cada operação de criar, editar ou excluir.
+   * Todos os filtros são aplicados sobre este array via useMemo (sem re-fetch).
    */
-  useEffect(() => {
-    fetchExpenses();
-  }, []);
+  const [expenses, setExpenses] = useState<Expense[]>([])
+
+  // ── ESTADOS: Controle de UI ─────────────────────────────────────────────────
+
+  /**
+   * Indica se o fetch inicial está em andamento.
+   * Enquanto true, exibe o spinner no lugar do accordion.
+   */
+  const [loading, setLoading] = useState(true)
+
+  /**
+   * Controla a visibilidade do modal de criar/editar despesa.
+   * O modo (criar vs. editar) é determinado pelo estado `editing`.
+   */
+  const [modalOpen, setModalOpen] = useState(false)
+
+  /**
+   * Despesa sendo editada no modal.
+   * null  → modal no modo "nova despesa" (INSERT)
+   * Expense → modal no modo "editar" (UPDATE), pré-popula o formulário
+   */
+  const [editing, setEditing] = useState<Expense | null>(null)
+
+  /**
+   * Despesa selecionada para exclusão.
+   * null       → modal de confirmação fechado
+   * Expense    → modal de confirmação aberto, exibe o nome da despesa
+   */
+  const [deleting, setDeleting] = useState<Expense | null>(null)
+
+  /**
+   * Indica se uma operação de escrita (INSERT, UPDATE ou DELETE) está em andamento.
+   * Usado para exibir o estado de loading nos botões e bloquear duplo clique.
+   */
+  const [saving, setSaving] = useState(false)
+
+  /**
+   * Dados do formulário de criação/edição.
+   * Todos os campos são strings — a conversão de tipos ocorre no handleSave.
+   * Resetado para DEFAULT_FORM sempre que o modal é fechado.
+   */
+  const [form, setForm] = useState<ExpenseFormData>(DEFAULT_FORM)
+
+  // ── ESTADOS: Filtros ────────────────────────────────────────────────────────
+
+  /**
+   * Texto digitado na busca.
+   * Filtra simultaneamente em `description` e `observations` (case-insensitive).
+   * String vazia = sem filtro de busca.
+   */
+  const [search, setSearch] = useState('')
+
+  /**
+   * Categoria ativa nas abas pill.
+   * String vazia → aba "Todas" ativa (sem filtro de categoria).
+   * Nome de categoria → filtra o accordion para exibir apenas aquela categoria.
+   */
+  const [categoryFilter, setCategoryFilter] = useState('')
+
+  /**
+   * Mês selecionado no filtro, no formato 'YYYY-MM'.
+   * Inicializado com o mês atual via função lazy (evita new Date() a cada render).
+   * Usado para filtrar `expenses` pelo campo `date` (startsWith).
+   */
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    const now = new Date()
+    // Formata como YYYY-MM — padStart garante zero à esquerda em meses < 10
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+
+  // ── ESTADOS: Accordion ──────────────────────────────────────────────────────
+
+  /**
+   * Set de nomes de categoria com o accordion colapsado.
+   *
+   * Lógica de presença no Set:
+   *   • ID presente → grupo fechado (colapsado)
+   *   • ID ausente  → grupo aberto (expandido) ← padrão inicial
+   *
+   * Usamos Set<string> para busca O(1) em vez de Array.includes() O(n).
+   */
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
+
+  // ─── BUSCA DE DADOS ────────────────────────────────────────────────────────
 
   /**
    * @function fetchExpenses
-   * @description Busca todas as despesas do banco de dados Supabase, ordenadas por data decrescente.
+   * @description Busca todas as despesas do Supabase, ordenadas por data decrescente.
+   *
+   * Pré-condição: Cliente Supabase inicializado e autenticado via middleware.
+   * Efeitos colaterais: Atualiza `expenses` e `loading`.
+   *
+   * Por que buscar todas as despesas de uma vez (sem paginação)?
+   *   O volume esperado é baixo (locadora de 5 motos). Buscar tudo permite
+   *   filtros instantâneos no cliente sem round-trips ao banco a cada filtro.
    */
   async function fetchExpenses() {
-    setLoading(true);
-    const supabase = createClient();
+    setLoading(true)
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
-      .order('date', { ascending: false });
+      .order('date', { ascending: false }) // mais recentes primeiro
 
     if (error) {
-      console.error('Erro ao buscar despesas:', error);
+      console.error('Erro ao buscar despesas:', error)
     } else {
-      setExpenses((data as Expense[]) ?? []);
+      setExpenses((data as Expense[]) ?? [])
     }
-    setLoading(false);
+    setLoading(false)
   }
 
-  /**
-   * @variable filteredExpenses
-   * @description Lista de despesas filtradas pelo mês e pelo texto de busca.
-   * Recalculada apenas quando expenses, monthFilter ou search mudam.
-   */
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((expense) => {
-      const matchesMonth = expense.date.startsWith(monthFilter);
-      const matchesSearch =
-        expense.description.toLowerCase().includes(search.toLowerCase()) ||
-        expense.category.toLowerCase().includes(search.toLowerCase());
-      return matchesMonth && matchesSearch;
-    });
-  }, [expenses, monthFilter, search]);
+  // Dispara o fetch uma única vez na montagem do componente
+  useEffect(() => { fetchExpenses() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** @variable monthTotal - Soma dos valores das despesas filtradas. */
-  const monthTotal = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  /** @variable monthCount - Quantidade de lançamentos no período filtrado. */
-  const monthCount = filteredExpenses.length;
-  /** @variable monthAverage - Valor médio por despesa no período filtrado. */
-  const monthAverage = monthCount > 0 ? monthTotal / monthCount : 0;
+  // ─── HANDLER DE ACCORDION ─────────────────────────────────────────────────
+
+  /**
+   * @function toggleCategory
+   * @description Alterna o estado expandido/colapsado de um grupo no accordion.
+   *
+   * Usa imutabilidade: cria um novo Set a cada chamada em vez de mutar o anterior.
+   * Isso é obrigatório no React — mutar o estado diretamente não dispara re-render.
+   *
+   * @param category - Nome da categoria a alternar (ex: "Manutenção")
+   */
+  function toggleCategory(category: string) {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev)
+      // Se já está no Set (colapsado) → remove (expande). Caso contrário → adiciona (colapsa).
+      next.has(category) ? next.delete(category) : next.add(category)
+      return next
+    })
+  }
+
+  // ─── HANDLERS DE MODAL ─────────────────────────────────────────────────────
 
   /**
    * @function handleOpenModal
-   * @description Abre o modal de criação ou edição.
-   * Se receber uma despesa, pré-popula o formulário para edição.
-   * @param {Expense} [expense] - Despesa a editar (opcional).
+   * @description Abre o modal no modo criação ou edição.
+   *
+   * Modo criação (sem argumento):
+   *   • Limpa `editing` (null sinaliza INSERT no handleSave)
+   *   • Reseta o formulário para DEFAULT_FORM
+   *
+   * Modo edição (com despesa):
+   *   • Armazena a despesa em `editing` (sinaliza UPDATE no handleSave)
+   *   • Pré-popula o formulário com os dados atuais da despesa
+   *   • `amount` é convertido para string pois o input espera string
+   *
+   * @param expense - Despesa a editar (opcional — omitir para criar nova)
    */
   function handleOpenModal(expense?: Expense) {
     if (expense) {
-      setEditing(expense);
+      // Modo edição: pré-popula o formulário com os dados existentes
+      setEditing(expense)
       setForm({
-        description: expense.description,
-        amount: expense.amount.toString(),
-        date: expense.date,
-        category: expense.category,
-        observations: expense.observations || '',
-      });
+        description:  expense.description,
+        amount:       expense.amount.toString(), // number → string para o input
+        date:         expense.date,
+        category:     expense.category,
+        observations: expense.observations ?? '',
+      })
     } else {
-      setEditing(null);
-      setForm(defaultForm);
+      // Modo criação: limpa tudo
+      setEditing(null)
+      setForm(DEFAULT_FORM)
     }
-    setModalOpen(true);
+    setModalOpen(true)
   }
 
   /**
    * @function handleCloseModal
-   * @description Fecha o modal e limpa o estado do formulário.
+   * @description Fecha o modal e garante que o formulário volta ao estado inicial.
+   *
+   * Por que resetar o formulário ao fechar (e não só ao abrir)?
+   *   Se o usuário abre para editar, digita algo, depois fecha sem salvar e abre
+   *   para criar novo, o formulário deve estar limpo — não com os dados anteriores.
    */
   function handleCloseModal() {
-    setModalOpen(false);
-    setEditing(null);
-    setForm(defaultForm);
+    setModalOpen(false)
+    setEditing(null)
+    setForm(DEFAULT_FORM)
   }
+
+  // ─── OPERAÇÕES CRUD ────────────────────────────────────────────────────────
 
   /**
    * @function handleSave
-   * @description Persiste a despesa no Supabase (inserção ou atualização).
-   * Valida campos obrigatórios antes de prosseguir.
-   * @param {React.FormEvent} e - Evento de submissão do formulário.
+   * @description Persiste a despesa no banco via INSERT ou UPDATE.
+   *
+   * Fluxo:
+   *   1. Previne o comportamento padrão do form (reload da página)
+   *   2. Valida campos obrigatórios — retorna silenciosamente se inválido
+   *      (o HTML nativo já exibe as mensagens de erro via `required`)
+   *   3. Monta o payload tipado para o Supabase (converte amount para float)
+   *   4. Se `editing` → UPDATE na linha existente; senão → INSERT nova linha
+   *   5. Fecha o modal e recarrega a lista
+   *
+   * @param e - Evento de submit do formulário (necessário para e.preventDefault())
    */
   async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.description || !form.amount || !form.date || !form.category) return;
+    e.preventDefault()
 
-    setSaving(true);
-    const supabase = createClient();
+    // Validação client-side dos campos obrigatórios antes de chamar o banco
+    if (!form.description || !form.amount || !form.date || !form.category) return
 
-    /** @constant payload - Dados formatados para envio ao Supabase. */
+    setSaving(true)
+
+    // Monta o payload: converte amount (string) para float e trata observations vazia como null
     const payload = {
-      description: form.description,
-      amount: parseFloat(form.amount),
-      date: form.date,
-      category: form.category,
-      observations: form.observations || null,
-    };
-
-    if (editing) {
-      const { error } = await supabase.from('expenses').update(payload).eq('id', editing.id);
-      if (error) console.error('Erro ao editar despesa:', error);
-    } else {
-      const { error } = await supabase.from('expenses').insert(payload);
-      if (error) console.error('Erro ao criar despesa:', error);
+      description:  form.description,
+      amount:       parseFloat(form.amount),       // "123.45" → 123.45
+      date:         form.date,
+      category:     form.category,
+      observations: form.observations || null,     // string vazia → null no banco
     }
 
-    setSaving(false);
-    handleCloseModal();
-    await fetchExpenses();
+    if (editing) {
+      // Modo edição: atualiza apenas a linha com o ID da despesa em edição
+      const { error } = await supabase.from('expenses').update(payload).eq('id', editing.id)
+      if (error) console.error('Erro ao editar despesa:', error)
+    } else {
+      // Modo criação: insere nova linha na tabela expenses
+      const { error } = await supabase.from('expenses').insert(payload)
+      if (error) console.error('Erro ao criar despesa:', error)
+    }
+
+    setSaving(false)
+    handleCloseModal()
+    await fetchExpenses() // recarrega a lista para refletir a mudança
   }
 
   /**
    * @function handleDelete
-   * @description Remove a despesa selecionada do banco de dados Supabase.
+   * @description Remove permanentemente a despesa selecionada do banco.
+   *
+   * Pré-condição: `deleting` deve ser não-nulo (garantido pelo modal de confirmação).
+   * Após a exclusão: limpa `deleting` (fecha o modal) e recarrega a lista.
+   *
+   * Por que não tem setSaving(true) aqui?
+   *   O botão de excluir já recebe `loading={saving}` e o próprio modal de confirmação
+   *   impede cliques duplos enquanto a operação está em curso.
    */
   async function handleDelete() {
-    if (!deleting) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('expenses').delete().eq('id', deleting.id);
-    if (error) console.error('Erro ao excluir despesa:', error);
-    setDeleting(null);
-    await fetchExpenses();
+    if (!deleting) return
+
+    setSaving(true)
+    const { error } = await supabase.from('expenses').delete().eq('id', deleting.id)
+    if (error) console.error('Erro ao excluir despesa:', error)
+
+    setSaving(false)
+    setDeleting(null)    // fecha o modal de confirmação
+    await fetchExpenses() // recarrega a lista para remover o item excluído
   }
 
-  /** @constant categoryOptions - Opções formatadas para o componente Select de categorias. */
-  const categoryOptions = [
-    { value: '', label: 'Selecione a categoria' },
-    ...EXPENSE_CATEGORIES.map((cat) => ({ value: cat, label: cat })),
-  ];
+  // ─── DADOS COMPUTADOS (memoizados) ─────────────────────────────────────────
 
-  /** @constant tableColumns - Definição das colunas da tabela de despesas. */
-  const tableColumns = [
-    {
-      key: 'date',
-      header: 'Data',
-      render: (row: Expense) => <span>{formatDate(row.date)}</span>,
-    },
-    {
-      key: 'description',
-      header: 'Descrição',
-      render: (row: Expense) => (
-        <div>
-          <span className="font-medium text-[#f5f5f5]">{row.description}</span>
-          {row.observations && (
-            <p className="text-xs text-[#9e9e9e] mt-0.5 truncate max-w-xs">{row.observations}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Categoria',
-      render: (row: Expense) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#323232] text-[#c7c7c7] border border-[#474747]">
-          {row.category}
-        </span>
-      ),
-    },
-    {
-      key: 'amount',
-      header: 'Valor',
-      render: (row: Expense) => (
-        <span className="text-red-400 font-semibold">{formatCurrency(row.amount)}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Ações',
-      render: (row: Expense) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => handleOpenModal(row)}
-            title="Editar despesa"
-            className="p-1.5 rounded-lg text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeleting(row)}
-            title="Excluir despesa"
-            className="p-1.5 rounded-lg text-[#c7c7c7] hover:text-red-400 hover:bg-[#323232] transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
+  /**
+   * @memo filteredExpenses
+   * @description Lista de despesas filtradas por mês e busca textual.
+   *
+   * É a base para todos os outros cálculos derivados (kpis, groupedExpenses,
+   * categoryTabs). Ao centralizar o filtro aqui, evitamos repetir a lógica
+   * de filtro em múltiplos lugares.
+   *
+   * Filtros aplicados (AND):
+   *   • monthFilter → `date` começa com 'YYYY-MM' (ex: "2026-03")
+   *   • search      → `description` ou `observations` contêm o termo (case-insensitive)
+   *
+   * Recalculado apenas quando `expenses`, `monthFilter` ou `search` mudam.
+   */
+  const filteredExpenses = useMemo(() => {
+    const q = search.toLowerCase()
+    return expenses.filter(e => {
+      const matchesMonth  = e.date.startsWith(monthFilter)
+      // Sem busca → passa tudo. Com busca → verifica description e observations
+      const matchesSearch = !search || (
+        e.description.toLowerCase().includes(q) ||
+        (e.observations ?? '').toLowerCase().includes(q)
+      )
+      return matchesMonth && matchesSearch
+    })
+  }, [expenses, monthFilter, search])
 
-  // --- RENDERIZAÇÃO ---
+  /**
+   * @memo kpis
+   * @description Métricas calculadas a partir de `filteredExpenses` em uma única passagem.
+   *
+   * Otimização: usa um único `reduce` para calcular simultaneamente:
+   *   • monthTotal         — soma de todos os valores no período
+   *   • totalsPerCategory  — mapa de { categoria: soma } para identificar a maior
+   *
+   * Após o reduce, derivamos monthCount, monthAverage, topCategoryName e
+   * topCategoryTotal sem iterar novamente sobre o array.
+   *
+   * Recalculado apenas quando `filteredExpenses` muda.
+   */
+  const kpis = useMemo(() => {
+    // Única passagem sobre o array: calcula total e agrega por categoria
+    const { total, byCategory } = filteredExpenses.reduce(
+      (acc, e) => {
+        const amt = Number(e.amount)
+        acc.total += amt
+        acc.byCategory[e.category] = (acc.byCategory[e.category] ?? 0) + amt
+        return acc
+      },
+      { total: 0, byCategory: {} as Record<string, number> }
+    )
+
+    const monthCount   = filteredExpenses.length
+    const monthAverage = monthCount > 0 ? total / monthCount : 0
+
+    // Encontra a categoria com maior gasto total no período
+    let topCategoryName  = '—'
+    let topCategoryTotal = 0
+    for (const [cat, catTotal] of Object.entries(byCategory)) {
+      if (catTotal > topCategoryTotal) {
+        topCategoryTotal = catTotal
+        topCategoryName  = cat
+      }
+    }
+
+    return { monthTotal: total, monthCount, monthAverage, topCategoryName, topCategoryTotal }
+  }, [filteredExpenses])
+
+  /**
+   * @memo groupedExpenses
+   * @description Agrupa as despesas por categoria para renderização no accordion.
+   *
+   * Pipeline de transformação:
+   *   1. Aplica `categoryFilter` (pill ativo) sobre `filteredExpenses`
+   *   2. Para cada categoria de EXPENSE_CATEGORIES, coleta os itens e soma o total
+   *      em uma única passagem com reduce (evita dois filter/reduce separados)
+   *   3. Remove categorias sem lançamentos (não aparecem no accordion)
+   *   4. Mantém a ordem original de EXPENSE_CATEGORIES (não ordena por total)
+   *
+   * Recalculado apenas quando `filteredExpenses` ou `categoryFilter` mudam.
+   */
+  const groupedExpenses = useMemo(() => {
+    // Aplica o filtro de categoria pill (se ativo)
+    const source = categoryFilter
+      ? filteredExpenses.filter(e => e.category === categoryFilter)
+      : filteredExpenses
+
+    // Agrupa em um único reduce: { [categoria]: { items, total } }
+    const grouped = source.reduce(
+      (acc, e) => {
+        if (!acc[e.category]) acc[e.category] = { items: [], total: 0 }
+        acc[e.category].items.push(e)
+        acc[e.category].total += Number(e.amount)
+        return acc
+      },
+      {} as Record<string, { items: Expense[]; total: number }>
+    )
+
+    // Retorna na ordem canônica de EXPENSE_CATEGORIES, descartando categorias vazias
+    return EXPENSE_CATEGORIES
+      .filter(cat => grouped[cat]?.items.length > 0)
+      .map(cat => ({ category: cat, ...grouped[cat] }))
+  }, [filteredExpenses, categoryFilter])
+
+  /**
+   * @memo categoryTabs
+   * @description Abas pill de filtro por categoria exibidas na barra de filtros.
+   *
+   * Inclui sempre a aba "Todas" no início, seguida das categorias que têm
+   * ao menos 1 lançamento no período filtrado (mês + busca).
+   *
+   * A contagem exibida entre parênteses reflete o número de lançamentos
+   * daquela categoria no período atual — ajuda o usuário a decidir qual filtrar.
+   *
+   * Otimização: usa um único reduce sobre `filteredExpenses` para contar por
+   * categoria, evitando múltiplas chamadas a Array.filter.
+   *
+   * Recalculado apenas quando `filteredExpenses` muda.
+   */
+  const categoryTabs = useMemo(() => {
+    // Conta lançamentos por categoria em uma única passagem
+    const counts = filteredExpenses.reduce(
+      (acc, e) => { acc[e.category] = (acc[e.category] ?? 0) + 1; return acc },
+      {} as Record<string, number>
+    )
+
+    const tabs = [{ id: '', label: 'Todas', count: filteredExpenses.length }]
+    // Adiciona apenas as categorias que têm lançamentos, na ordem canônica
+    EXPENSE_CATEGORIES.forEach(cat => {
+      if (counts[cat]) tabs.push({ id: cat, label: cat, count: counts[cat] })
+    })
+    return tabs
+  }, [filteredExpenses])
+
+  // ─── RENDER ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-[#121212] min-h-screen">
-      {/* Cabeçalho da página com botão de nova despesa */}
+    <div className="flex flex-col min-h-full bg-[#121212]">
+
+      {/* ── Header ─────────────────────────────────────────────────────────
+          Componente compartilhado com todas as telas do sistema.
+          O botão "Nova Despesa" fica alinhado à direita via prop `actions`.
+      ────────────────────────────────────────────────────────────────────── */}
       <Header
         title="Despesas"
         subtitle="Gerencie as saídas financeiras da sua frota"
         actions={
-          <Button variant="primary" size="md" onClick={() => handleOpenModal()}>
+          <Button onClick={() => handleOpenModal()}>
             <Plus className="w-4 h-4" />
             Nova Despesa
           </Button>
         }
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* ── Área de conteúdo ─────────────────────────────────────────────── */}
+      <div className="p-6 space-y-5">
 
-        {/* Cards de KPIs do mês filtrado */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* ── KPI CARDS ────────────────────────────────────────────────────
+            Grid de 4 cards de métricas. Em mobile: 2 colunas. Em sm+: 4 colunas.
+            Os valores refletem sempre o período e a busca ativos nos filtros.
+        ─────────────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
 
-          {/* Card: Total do Mês */}
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-[#c7c7c7]">Total do Mês</span>
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <TrendingDown className="w-5 h-5 text-red-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-[#BAFF1A]">{formatCurrency(monthTotal)}</p>
-            <p className="text-xs text-[#9e9e9e] mt-1">{monthCount} lançamento{monthCount !== 1 ? 's' : ''}</p>
-          </div>
+          {/* Total do Mês: soma de todas as despesas no período filtrado */}
+          <KpiCard
+            icon={TrendingDown}
+            iconBg="bg-[#7c1c1c]/40"
+            iconColor="text-[#ff9c9a]"
+            label="Total do Mês"
+            value={formatCurrency(kpis.monthTotal)}
+            sub={`${kpis.monthCount} lançamento${kpis.monthCount !== 1 ? 's' : ''}`}
+          />
 
-          {/* Card: Quantidade de Lançamentos */}
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-[#c7c7c7]">Lançamentos</span>
-              <div className="p-2 bg-[#323232] rounded-lg">
-                <Receipt className="w-5 h-5 text-[#BAFF1A]" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{monthCount}</p>
-            <p className="text-xs text-[#9e9e9e] mt-1">no período selecionado</p>
-          </div>
+          {/* Lançamentos: quantidade de despesas no período filtrado */}
+          <KpiCard
+            icon={Receipt}
+            iconBg="bg-[#474747]/40"
+            iconColor="text-[#9e9e9e]"
+            label="Lançamentos"
+            value={kpis.monthCount}
+            sub="no período selecionado"
+          />
 
-          {/* Card: Ticket Médio */}
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-[#c7c7c7]">Ticket Médio</span>
-              <div className="p-2 bg-[#323232] rounded-lg">
-                <Activity className="w-5 h-5 text-[#BAFF1A]" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(monthAverage)}</p>
-            <p className="text-xs text-[#9e9e9e] mt-1">por despesa</p>
-          </div>
+          {/* Ticket Médio: média de valor por despesa no período filtrado */}
+          <KpiCard
+            icon={Activity}
+            iconBg="bg-[#2d0363]/60"
+            iconColor="text-[#a880ff]"
+            label="Ticket Médio"
+            value={formatCurrency(kpis.monthAverage)}
+            sub="por despesa"
+          />
+
+          {/* Maior Categoria: nome e total da categoria com maior gasto */}
+          <KpiCard
+            icon={Tag}
+            iconBg="bg-[#3a180f]/60"
+            iconColor="text-[#e65e24]"
+            label="Maior Categoria"
+            value={kpis.topCategoryName}
+            sub={kpis.topCategoryTotal > 0 ? formatCurrency(kpis.topCategoryTotal) : undefined}
+          />
         </div>
 
-        {/* Barra de filtros: busca textual + filtro por mês */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="w-4 h-4 text-[#616161]" />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar por descrição ou categoria..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-3 h-12 bg-[#323232] border border-[#323232] rounded-lg text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30 transition-colors"
-            />
+        {/* ── BARRA DE FILTROS ─────────────────────────────────────────────
+            Layout responsivo: coluna em mobile, linha única em desktop.
+            Esquerda: abas pill de categoria (dinâmicas — só exibe com lançamentos)
+            Direita:  seletor de mês + campo de busca
+        ─────────────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+          {/* Abas pill de categoria — geradas dinamicamente pelo memo categoryTabs */}
+          <div className="flex gap-2 flex-wrap">
+            {categoryTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setCategoryFilter(tab.id)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  categoryFilter === tab.id
+                    // Ativo: fundo verde-limão (cor de marca) + texto escuro
+                    ? 'bg-[#BAFF1A] text-[#121212]'
+                    // Inativo: fundo escuro com borda sutil
+                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                }`}
+              >
+                {tab.label}
+                {/* Contador entre parênteses — visível apenas quando > 0 */}
+                {tab.count > 0 && <span className="ml-1.5 opacity-70">({tab.count})</span>}
+              </button>
+            ))}
           </div>
-          <div>
+
+          {/* Filtros secundários: seletor de mês e busca textual */}
+          <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Seletor de mês — filtra despesas pelo campo `date` (startsWith YYYY-MM) */}
             <input
               type="month"
               value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="w-full sm:w-48 px-3 py-3 h-12 bg-[#323232] border border-[#323232] rounded-lg text-sm text-[#f5f5f5] focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30 transition-colors"
+              onChange={e => setMonthFilter(e.target.value)}
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             />
+
+            {/* Campo de busca com ícone — filtra em description e observations */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#616161]" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Contador de resultados */}
-        <div className="flex items-center justify-between text-sm text-[#c7c7c7] mb-3 px-1">
-          <span>{monthCount} despesa{monthCount !== 1 ? 's' : ''} encontrada{monthCount !== 1 ? 's' : ''}</span>
-        </div>
+        {/* ── ACCORDION AGRUPADO POR CATEGORIA ─────────────────────────────
+            Renderização condicional em 3 estados:
+              1. loading     → spinner centralizado
+              2. lista vazia → estado vazio com ícone e mensagem
+              3. com dados   → lista de accordions (um por categoria)
 
-        {/* Tabela de despesas */}
-        <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-          <Table
-            columns={tableColumns}
-            data={filteredExpenses}
-            keyExtractor={(row) => row.id}
-            loading={loading}
-            emptyMessage="Nenhuma despesa encontrada para os filtros selecionados."
-          />
-        </div>
-      </main>
+            Estrutura de cada accordion:
+              [cabeçalho clicável: nome da categoria | contagem | total]
+              [tabela expandida: data | descrição | valor | ações]
+        ─────────────────────────────────────────────────────────────────── */}
+        {loading ? (
+          // Estado 1: carregando — spinner verde-limão centralizado
+          <div className="flex items-center justify-center py-20">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#BAFF1A] border-t-transparent" />
+          </div>
 
-      {/* Modal: Criar / Editar Despesa */}
+        ) : groupedExpenses.length === 0 ? (
+          // Estado 2: sem resultados — orienta o usuário a ajustar filtros ou cadastrar
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
+            <Receipt className="mb-4 h-12 w-12 text-[#474747]" />
+            <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma despesa encontrada.</p>
+            <p className="mt-1 text-sm text-[#9e9e9e]">Ajuste os filtros ou registre uma nova despesa.</p>
+          </div>
+
+        ) : (
+          // Estado 3: lista de grupos por categoria
+          <div className="space-y-2">
+            {groupedExpenses.map(({ category, items, total }) => {
+              // Verifica se este grupo está expandido (ID ausente no Set = expandido)
+              const isExpanded = !collapsedCategories.has(category)
+
+              return (
+                <div key={category} className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+
+                  {/* ── Cabeçalho do accordion (clicável) ───────────────────
+                      Ao clicar, toggleCategory alterna o Set de colapsados.
+                      A seta ChevronDown rotaciona via CSS quando colapsado.
+                  ────────────────────────────────────────────────────────── */}
+                  <button
+                    onClick={() => toggleCategory(category)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+                  >
+                    {/* Seta: rotaciona -90° quando colapsado (via classe Tailwind) */}
+                    <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+
+                    {/* Nome da categoria em destaque */}
+                    <span className="font-medium text-[#f5f5f5] text-sm">{category}</span>
+
+                    {/* Contagem de lançamentos + valor total alinhados à direita */}
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#474747]/40 text-[#9e9e9e]">
+                        {items.length} lançamento{items.length !== 1 ? 's' : ''}
+                      </span>
+                      {/* Total da categoria em vermelho — representa saída financeira */}
+                      <span className="text-sm font-semibold text-[#ff9c9a] ml-1">
+                        {formatCurrency(total)}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* ── Tabela de despesas (visível apenas quando expandido) ──
+                      border-t separa o cabeçalho do conteúdo.
+                      overflow-x-auto em div separado garante scroll horizontal
+                      sem cortar o border-radius do card pai.
+                  ────────────────────────────────────────────────────────── */}
+                  {isExpanded && (
+                    <div className="border-t border-[#474747]">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-[#f5f5f5]">
+
+                          {/* Cabeçalho da tabela: fundo #323232 conforme design system */}
+                          <thead className="bg-[#323232] text-xs uppercase text-[#9e9e9e]">
+                            <tr>
+                              <th className="px-4 py-3 font-medium">Data</th>
+                              <th className="px-4 py-3 font-medium">Descrição</th>
+                              <th className="px-4 py-3 font-medium">Valor</th>
+                              <th className="px-4 py-3 text-right font-medium">Ações</th>
+                            </tr>
+                          </thead>
+
+                          <tbody className="divide-y divide-[#474747]">
+                            {items.map(item => (
+                              <tr key={item.id} className="hover:bg-[#474747]/50 transition-colors">
+
+                                {/* Data: formatada para DD/MM/AAAA via formatDate */}
+                                <td className="px-4 py-3">
+                                  <p className="text-[#f5f5f5]">{formatDate(item.date)}</p>
+                                </td>
+
+                                {/* Descrição + observações opcionais em fonte menor */}
+                                <td className="px-4 py-3 max-w-xs">
+                                  <p className="font-medium text-[#f5f5f5]">{item.description}</p>
+                                  {item.observations && (
+                                    <p className="text-xs text-[#9e9e9e] mt-0.5 line-clamp-1">
+                                      {item.observations}
+                                    </p>
+                                  )}
+                                </td>
+
+                                {/* Valor em vermelho — destaca o impacto financeiro */}
+                                <td className="px-4 py-3">
+                                  <span className="font-semibold text-[#ff9c9a]">
+                                    {formatCurrency(Number(item.amount))}
+                                  </span>
+                                </td>
+
+                                {/* Ações: Editar (secondary) e Excluir (danger) */}
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
+                                      onClick={() => handleOpenModal(item)} title="Editar">
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="danger" size="sm" className="h-8 w-8 p-0"
+                                      onClick={() => setDeleting(item)} title="Excluir">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Modal: Criar / Editar Despesa ────────────────────────────────────
+          Título e comportamento mudam dinamicamente com base no estado `editing`:
+            • editing = null   → título "Nova Despesa"  | salva via INSERT
+            • editing = objeto → título "Editar Despesa" | salva via UPDATE
+      ────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={modalOpen}
         onClose={handleCloseModal}
@@ -416,25 +885,25 @@ export default function ExpensesPage() {
       >
         <form onSubmit={handleSave} className="space-y-4">
 
-          {/* Campo: Descrição */}
+          {/* Descrição: campo obrigatório — texto livre */}
           <Input
             label="Descrição"
             type="text"
             value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onChange={e => setForm({ ...form, description: e.target.value })}
             placeholder="Ex: Troca de óleo da ABC-1234"
             required
           />
 
-          {/* Linha: Valor + Data */}
+          {/* Linha com Valor e Data lado a lado em telas maiores */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Valor (R$)"
               type="number"
-              step="0.01"
-              min="0"
+              step="0.01"   // permite centavos
+              min="0"       // impede valores negativos
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={e => setForm({ ...form, amount: e.target.value })}
               placeholder="0,00"
               required
             />
@@ -442,41 +911,45 @@ export default function ExpensesPage() {
               label="Data"
               type="date"
               value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              onChange={e => setForm({ ...form, date: e.target.value })}
               required
             />
           </div>
 
-          {/* Campo: Categoria */}
+          {/* Categoria: select com opções fixas de EXPENSE_CATEGORIES */}
           <Select
             label="Categoria"
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            options={categoryOptions}
+            onChange={e => setForm({ ...form, category: e.target.value })}
+            options={CATEGORY_OPTIONS}
             required
           />
 
-          {/* Campo: Observações */}
+          {/* Observações: campo opcional — NF, comprovante, detalhes extras */}
           <Textarea
             label="Observações"
             value={form.observations}
-            onChange={(e) => setForm({ ...form, observations: e.target.value })}
+            onChange={e => setForm({ ...form, observations: e.target.value })}
             placeholder="Detalhes adicionais, número de nota fiscal, etc. (opcional)"
           />
 
-          {/* Botões de ação do formulário */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={handleCloseModal} disabled={saving}>
+          {/* Botões: Cancelar (ghost) fecha sem salvar | Salvar dispara handleSave */}
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="ghost" onClick={handleCloseModal}>
               Cancelar
             </Button>
-            <Button type="submit" variant="primary" loading={saving}>
+            <Button type="submit" loading={saving}>
               {editing ? 'Salvar Alterações' : 'Criar Despesa'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal: Confirmar Exclusão */}
+      {/* ── Modal: Confirmar Exclusão ─────────────────────────────────────────
+          Ação destrutiva e irreversível — exige confirmação explícita do usuário.
+          Abre apenas quando `deleting` é não-nulo (ao clicar no botão de lixeira).
+          O nome da despesa é exibido para o usuário confirmar o item correto.
+      ────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={!!deleting}
         onClose={() => setDeleting(null)}
@@ -484,21 +957,25 @@ export default function ExpensesPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-[#c7c7c7]">
+          {/* Texto de confirmação: exibe o nome da despesa a ser excluída */}
+          <p className="text-[#9e9e9e] text-sm">
             Tem certeza que deseja excluir a despesa{' '}
-            <strong className="text-[#f5f5f5]">&ldquo;{deleting?.description}&rdquo;</strong>?
-            Esta ação não pode ser desfeita.
+            <span className="text-[#f5f5f5] font-medium">{deleting?.description}</span>?
+            Esta ação removerá permanentemente o registro.
           </p>
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex gap-3 justify-end">
+            {/* Cancelar: fecha o modal sem nenhuma alteração */}
             <Button variant="ghost" onClick={() => setDeleting(null)}>
               Cancelar
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            {/* Excluir: chama handleDelete e exibe loading enquanto processa */}
+            <Button variant="danger" loading={saving} onClick={handleDelete}>
+              <Trash2 className="w-4 h-4" />
               Excluir
             </Button>
           </div>
         </div>
       </Modal>
     </div>
-  );
+  )
 }
