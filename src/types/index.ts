@@ -352,6 +352,10 @@ export interface Expense {
   motorcycle_id?: string;
   /** @property observations - Observações suplementares sobre o gasto. */
   observations?: string;
+  /** @property invoice_url - URL da nota fiscal no Supabase Storage. */
+  invoice_url?: string | null;
+  /** @property attachment_url - URL do arquivo adicional no Supabase Storage. */
+  attachment_url?: string | null;
   /** @property created_at - Registro de quando a despesa foi lançada. */
   created_at: string;
   /** @property motorcycle - Dados da moto vinculada para relatórios por veículo. */

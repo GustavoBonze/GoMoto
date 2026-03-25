@@ -48,6 +48,11 @@ import {
   Tag,           // Ícone do KPI card "Maior Categoria" — representa classificação
   Search,        // Ícone na caixa de busca
   ChevronDown,   // Seta do accordion — rotaciona quando colapsado
+  FileText,
+  Paperclip,
+  AlertCircle,
+  ExternalLink,
+  X
 } from 'lucide-react'
 
 // Infraestrutura do projeto
@@ -57,7 +62,7 @@ import { Button }                    from '@/components/ui/Button'           // 
 import { Input, Select, Textarea }   from '@/components/ui/Input'            // Campos de formulário
 import { Modal }                     from '@/components/ui/Modal'            // Modal com backdrop
 import { formatCurrency, formatDate } from '@/lib/utils'                     // Formatadores de moeda e data
-import type { Expense }              from '@/types'                          // Tipo da tabela `expenses`
+import type { Expense, Motorcycle }  from '@/types'                          // Tipo da tabela `expenses`
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +81,9 @@ type ExpenseFormData = {
   date:         string   // Data no formato YYYY-MM-DD (padrão HTML date input)
   category:     string   // Uma das opções de EXPENSE_CATEGORIES
   observations: string   // Campo livre opcional (NF, comprovante, etc.)
+  invoiceFile: File | null
+  attachmentFile: File | null
+  motorcycle_id: string
 }
 
 // ─── CONSTANTES ───────────────────────────────────────────────────────────────
@@ -120,6 +128,9 @@ const DEFAULT_FORM: ExpenseFormData = {
   date:         new Date().toISOString().split('T')[0], // formato YYYY-MM-DD
   category:     '',
   observations: '',
+  invoiceFile: null,
+  attachmentFile: null,
+  motorcycle_id: '',
 }
 
 /**
@@ -268,6 +279,11 @@ export default function ExpensesPage() {
    */
   const [form, setForm] = useState<ExpenseFormData>(DEFAULT_FORM)
 
+  const [existingInvoiceUrl, setExistingInvoiceUrl] = useState<string | null>(null)
+  const [existingAttachmentUrl, setExistingAttachmentUrl] = useState<string | null>(null)
+  const [noInvoiceWarning, setNoInvoiceWarning] = useState(false)
+  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([])
+
   // ── ESTADOS: Filtros ────────────────────────────────────────────────────────
 
   /**
@@ -333,6 +349,13 @@ export default function ExpensesPage() {
     } else {
       setExpenses((data as Expense[]) ?? [])
     }
+
+    const { data: motoData } = await supabase
+      .from('motorcycles')
+      .select('id, license_plate, model')
+      .order('license_plate', { ascending: true })
+    setMotorcycles((motoData as Motorcycle[]) ?? [])
+
     setLoading(false)
   }
 
@@ -380,16 +403,23 @@ export default function ExpensesPage() {
     if (expense) {
       // Modo edição: pré-popula o formulário com os dados existentes
       setEditing(expense)
+      setExistingInvoiceUrl(expense.invoice_url ?? null)
+      setExistingAttachmentUrl(expense.attachment_url ?? null)
       setForm({
         description:  expense.description,
         amount:       expense.amount.toString(), // number → string para o input
         date:         expense.date,
         category:     expense.category,
         observations: expense.observations ?? '',
+        invoiceFile: null,
+        attachmentFile: null,
+        motorcycle_id: expense.motorcycle_id ?? '',
       })
     } else {
       // Modo criação: limpa tudo
       setEditing(null)
+      setExistingInvoiceUrl(null)
+      setExistingAttachmentUrl(null)
       setForm(DEFAULT_FORM)
     }
     setModalOpen(true)
@@ -407,9 +437,21 @@ export default function ExpensesPage() {
     setModalOpen(false)
     setEditing(null)
     setForm(DEFAULT_FORM)
+    setExistingInvoiceUrl(null)
+    setExistingAttachmentUrl(null)
+    setNoInvoiceWarning(false)
   }
 
   // ─── OPERAÇÕES CRUD ────────────────────────────────────────────────────────
+
+  async function uploadFile(file: File, prefix: string): Promise<string | null> {
+    const ext = file.name.split('.').pop()
+    const path = `expenses/${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const { error } = await supabase.storage.from('expense-files').upload(path, file)
+    if (error) { console.error('Erro ao enviar arquivo:', error); return null }
+    const { data } = supabase.storage.from('expense-files').getPublicUrl(path)
+    return data.publicUrl
+  }
 
   /**
    * @function handleSave
@@ -431,6 +473,24 @@ export default function ExpensesPage() {
     // Validação client-side dos campos obrigatórios antes de chamar o banco
     if (!form.description || !form.amount || !form.date || !form.category) return
 
+    // Se não há nota fiscal e o aviso ainda não foi confirmado, mostra o alerta
+    const hasInvoice = !!form.invoiceFile || !!existingInvoiceUrl
+    if (!hasInvoice && !noInvoiceWarning) {
+      setNoInvoiceWarning(true)
+      return
+    }
+
+    let invoiceUrl: string | null = existingInvoiceUrl
+    let attachmentUrl: string | null = existingAttachmentUrl
+    if (form.invoiceFile) {
+      const url = await uploadFile(form.invoiceFile, 'invoice')
+      if (url) invoiceUrl = url
+    }
+    if (form.attachmentFile) {
+      const url = await uploadFile(form.attachmentFile, 'attachment')
+      if (url) attachmentUrl = url
+    }
+
     setSaving(true)
 
     // Monta o payload: converte amount (string) para float e trata observations vazia como null
@@ -440,6 +500,9 @@ export default function ExpensesPage() {
       date:         form.date,
       category:     form.category,
       observations: form.observations || null,     // string vazia → null no banco
+      invoice_url: invoiceUrl,
+      attachment_url: attachmentUrl,
+      motorcycle_id: form.motorcycle_id || null,
     }
 
     if (editing) {
@@ -614,6 +677,14 @@ export default function ExpensesPage() {
     })
     return tabs
   }, [filteredExpenses])
+
+  const motorcycleOptions = useMemo(() => [
+    { value: '', label: 'Empresa (despesa geral)' },
+    ...motorcycles.map(m => ({
+      value: m.id,
+      label: `${m.license_plate} — ${m.model}`,
+    })),
+  ], [motorcycles])
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
 
@@ -835,6 +906,37 @@ export default function ExpensesPage() {
                                       {item.observations}
                                     </p>
                                   )}
+                                  {item.motorcycle_id && motorcycles.find(m => m.id === item.motorcycle_id) && (
+                                    <p className="text-xs text-[#9e9e9e] mt-0.5">
+                                      {motorcycles.find(m => m.id === item.motorcycle_id)?.license_plate}
+                                      {' — '}
+                                      {motorcycles.find(m => m.id === item.motorcycle_id)?.model}
+                                    </p>
+                                  )}
+                                  {/* Sem NF badge */}
+                                  {!item.invoice_url && (
+                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#3d1f00]/60 text-[#ffb347] border border-[#ffb347]/30">
+                                      <AlertCircle className="w-3 h-3" />
+                                      Sem NF
+                                    </span>
+                                  )}
+                                  {/* File links */}
+                                  <div className="flex gap-2 mt-1 flex-wrap">
+                                    {item.invoice_url && (
+                                      <a href={item.invoice_url} target="_blank" rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#1a2e1a]/60 text-[#BAFF1A] border border-[#BAFF1A]/30 hover:bg-[#BAFF1A]/10 transition-colors">
+                                        <FileText className="w-3 h-3" />
+                                        Nota Fiscal
+                                      </a>
+                                    )}
+                                    {item.attachment_url && (
+                                      <a href={item.attachment_url} target="_blank" rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#1a1a2e]/60 text-[#a880ff] border border-[#a880ff]/30 hover:bg-[#a880ff]/10 transition-colors">
+                                        <Paperclip className="w-3 h-3" />
+                                        Anexo
+                                      </a>
+                                    )}
+                                  </div>
                                 </td>
 
                                 {/* Valor em vermelho — destaca o impacto financeiro */}
@@ -880,9 +982,9 @@ export default function ExpensesPage() {
         open={modalOpen}
         onClose={handleCloseModal}
         title={editing ? 'Editar Despesa' : 'Nova Despesa'}
-        size="md"
+        size="lg"
       >
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-3">
 
           {/* Descrição: campo obrigatório — texto livre */}
           <Input
@@ -924,6 +1026,13 @@ export default function ExpensesPage() {
             required
           />
 
+          <Select
+            label="Vínculo"
+            value={form.motorcycle_id}
+            onChange={e => setForm({ ...form, motorcycle_id: e.target.value })}
+            options={motorcycleOptions}
+          />
+
           {/* Observações: campo opcional — NF, comprovante, detalhes extras */}
           <Textarea
             label="Observações"
@@ -932,14 +1041,149 @@ export default function ExpensesPage() {
             placeholder="Detalhes adicionais, número de nota fiscal, etc. (opcional)"
           />
 
-          {/* Botões: Cancelar (ghost) fecha sem salvar | Salvar dispara handleSave */}
-          <div className="flex gap-3 justify-end pt-2">
+          {/* Seção de documentos — dois uploads lado a lado */}
+          <div className="space-y-2">
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Documentos</p>
+            <div className="grid grid-cols-2 gap-3">
+
+            {/* Nota Fiscal */}
+            <div className="space-y-1">
+              <label className="text-[14px] text-[#c7c7c7]">
+                Nota Fiscal
+                <span className="ml-2 text-[#9e9e9e] text-xs">(PDF ou imagem)</span>
+              </label>
+              <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
+                form.invoiceFile || existingInvoiceUrl
+                  ? 'border-[#6b9900]'
+                  : 'border-[#323232] hover:border-[#474747]'
+              }`}>
+                <FileText className="w-4 h-4 text-[#9e9e9e] shrink-0" />
+                <span className="flex-1 text-sm truncate text-[#9e9e9e]">
+                  {form.invoiceFile
+                    ? form.invoiceFile.name
+                    : existingInvoiceUrl
+                      ? 'Nota fiscal já anexada'
+                      : 'Nenhum arquivo selecionado'}
+                </span>
+                {(form.invoiceFile || existingInvoiceUrl) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({ ...form, invoiceFile: null })
+                      setExistingInvoiceUrl(null)
+                    }}
+                    className="text-[#9e9e9e] hover:text-[#ff9c9a] transition-colors shrink-0"
+                    title="Remover"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                {existingInvoiceUrl && !form.invoiceFile && (
+                  <a
+                    href={existingInvoiceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-[#BAFF1A] hover:text-[#a8e617] transition-colors shrink-0"
+                    title="Ver arquivo"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={e => {
+                    setNoInvoiceWarning(false)
+                    setForm({ ...form, invoiceFile: e.target.files?.[0] ?? null })
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Arquivo Adicional */}
+            <div className="space-y-1">
+              <label className="text-[14px] text-[#c7c7c7]">
+                Arquivo Adicional
+                <span className="ml-2 text-[#9e9e9e] text-xs">(opcional)</span>
+              </label>
+              <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
+                form.attachmentFile || existingAttachmentUrl
+                  ? 'border-[#474747]'
+                  : 'border-[#323232] hover:border-[#474747]'
+              }`}>
+                <Paperclip className="w-4 h-4 text-[#9e9e9e] shrink-0" />
+                <span className="flex-1 text-sm truncate text-[#9e9e9e]">
+                  {form.attachmentFile
+                    ? form.attachmentFile.name
+                    : existingAttachmentUrl
+                      ? 'Arquivo já anexado'
+                      : 'Nenhum arquivo selecionado'}
+                </span>
+                {(form.attachmentFile || existingAttachmentUrl) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({ ...form, attachmentFile: null })
+                      setExistingAttachmentUrl(null)
+                    }}
+                    className="text-[#9e9e9e] hover:text-[#ff9c9a] transition-colors shrink-0"
+                    title="Remover"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                {existingAttachmentUrl && !form.attachmentFile && (
+                  <a
+                    href={existingAttachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-[#a880ff] hover:text-[#c4a8ff] transition-colors shrink-0"
+                    title="Ver arquivo"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={e => setForm({ ...form, attachmentFile: e.target.files?.[0] ?? null })}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+            </div>{/* fim grid */}
+          </div>
+
+          {/* Alerta: despesa sem nota fiscal — aparece acima dos botões sem aumentar o modal */}
+          {noInvoiceWarning && (
+            <div className="bg-[#3a180f] border border-[#e65e24] rounded-xl p-3 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[#e65e24] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-[#e65e24]">Despesa sem Nota Fiscal</p>
+                <p className="text-xs text-[#e65e24] mt-0.5 leading-tight opacity-80">
+                  Não recomendado para controle financeiro. Deseja realmente continuar?
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Botões */}
+          <div className="flex gap-3 justify-end pt-1">
             <Button type="button" variant="ghost" onClick={handleCloseModal}>
               Cancelar
             </Button>
-            <Button type="submit" loading={saving}>
-              {editing ? 'Salvar Alterações' : 'Criar Despesa'}
-            </Button>
+            {noInvoiceWarning ? (
+              <Button type="submit" loading={saving} variant="danger">
+                Cadastrar sem NF
+              </Button>
+            ) : (
+              <Button type="submit" loading={saving}>
+                {editing ? 'Salvar Alterações' : 'Criar Despesa'}
+              </Button>
+            )}
           </div>
         </form>
       </Modal>

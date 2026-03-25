@@ -511,7 +511,7 @@ export default function CobrancasPage() {
       <div className="p-6 space-y-4">
 
         {/* Banner sobre integração com InfinitePay */}
-        <div className="rounded-xl border border-[#BAFF1A]/30 bg-[#BAFF1A]/5 px-4 py-4 space-y-3">
+        <div className="rounded-xl border border-[#6b9900] bg-[#243300] px-4 py-4 space-y-3">
           <div className="flex items-start gap-3">
             <Zap className="w-5 h-5 text-[#BAFF1A] mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
@@ -523,13 +523,13 @@ export default function CobrancasPage() {
                 Os dados abaixo são <span className="text-[#f5f5f5] font-medium">reais do seu banco de dados</span>.
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#28b438]/10 border border-[#28b438]/20 px-2.5 py-1 text-xs font-medium text-[#28b438]">
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#0e2f13] border border-[#28b438] px-2.5 py-1 text-xs font-medium text-[#28b438]">
               <CheckCircle2 className="w-3 h-3" />
               Dados em tempo real
             </span>
           </div>
           <div className="border-t border-[#BAFF1A]/15 pt-3">
-            <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-2">O que esta tela irá apresentar após a integração</p>
+            <p className="text-xs text-[#9e9e9e] text-[#9e9e9e] mb-2">O que esta tela irá apresentar após a integração</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
               {[
                 'Total recebido no período',
@@ -550,7 +550,7 @@ export default function CobrancasPage() {
 
         {/* Mensagem de erro no carregamento */}
         {fetchError && (
-          <div className="rounded-xl border border-[#ff9c9a]/30 bg-[#7c1c1c]/20 px-4 py-3 flex items-center gap-3">
+          <div className="rounded-xl border border-[#ff9c9a] bg-[#7c1c1c] px-4 py-3 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-[#ff9c9a] shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-[#ff9c9a]">Erro ao carregar cobranças</p>
@@ -568,8 +568,8 @@ export default function CobrancasPage() {
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Total Recebido</p>
-              <p className="text-2xl font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
+              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Total Recebido</p>
+              <p className="text-[28px] font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
@@ -581,8 +581,8 @@ export default function CobrancasPage() {
           {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">A Receber</p>
-              <p className="text-2xl font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
+              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">A Receber</p>
+              <p className="text-[28px] font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
@@ -594,8 +594,8 @@ export default function CobrancasPage() {
           {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Vencidas</p>
-              <p className="text-2xl font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
+              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Vencidas</p>
+              <p className="text-[28px] font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
             <div className="px-4 py-3">
@@ -615,8 +615,8 @@ export default function CobrancasPage() {
           {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Inadimplência</p>
-              <p className={`text-2xl font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
+              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Inadimplência</p>
+              <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {defaultRate.toFixed(1)}%
               </p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">
@@ -637,8 +637,8 @@ export default function CobrancasPage() {
           {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] uppercase tracking-wider">Valores Não Pagos</p>
-              <p className={`text-2xl font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#28b438]'}`}>
+              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Valores Não Pagos</p>
+              <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalUnpaid)}
               </p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
@@ -655,7 +655,7 @@ export default function CobrancasPage() {
           <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a]/40 bg-[#7c1c1c]/10' : ''}>
             <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]/20' : 'border-[#474747]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-xs uppercase tracking-wider ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
+                <p className={`text-xs text-[#9e9e9e] ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                   Prejuízos Contabilizados
                 </p>
                 {totalLoss > 0 && (
@@ -664,7 +664,7 @@ export default function CobrancasPage() {
                   </span>
                 )}
               </div>
-              <p className={`text-2xl font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
+              <p className={`text-[28px] font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalLoss)}
               </p>
               <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]/70' : 'text-[#9e9e9e]'}`}>
