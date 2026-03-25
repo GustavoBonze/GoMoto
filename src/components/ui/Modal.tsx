@@ -107,7 +107,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
       <div
         className={cn(
           'relative w-full bg-[#202020] border border-[#474747] rounded-2xl',
-          'max-h-[90vh] overflow-y-auto custom-scrollbar', // Garante que modais altas tenham rolagem interna.
+          'max-h-[96vh] overflow-y-auto custom-scrollbar', // Garante que modais altas tenham rolagem interna.
           sizes[size], // Aplica a classe de largura correspondente.
           'animate-in fade-in zoom-in-95 slide-in-from-top-4'
         )}

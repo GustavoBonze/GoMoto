@@ -211,11 +211,11 @@ export default function ReportsPage() {
                * mantendo a lógica de estilização centralizada e fácil de modificar.
                */
               const colorMap = {
-                brand: { bg: 'bg-[#BAFF1A]/10', text: 'text-[#BAFF1A]', border: 'border-[#BAFF1A]/20' },
-                success: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]', border: 'border-[#28b438]/20' },
-                warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]', border: 'border-[#e65e24]/20' },
-                danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]', border: 'border-[#ff9c9a]/20' },
-                info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]', border: 'border-[#a880ff]/20' },
+                brand: { bg: 'bg-[#243300]', text: 'text-[#BAFF1A]', border: 'border-[#6b9900]' },
+                success: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]', border: 'border-[#28b438]' },
+                warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]', border: 'border-[#e65e24]' },
+                danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]', border: 'border-[#ff9c9a]' },
+                info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]', border: 'border-[#a880ff]' },
               }
               const styles = colorMap[report.color]
 
@@ -280,7 +280,7 @@ export default function ReportsPage() {
 
       {/* NOTIFICAÇÃO (Toast): Feedback para relatórios bloqueados. */}
       {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#202020] border border-[#BAFF1A]/30 shadow-2xl animate-in fade-in slide-in-from-bottom">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#202020] border border-[#6b9900] shadow-2xl animate-in fade-in slide-in-from-bottom">
           <div className="w-2 h-2 rounded-full bg-[#BAFF1A]" />
           <p className="text-sm text-[#f5f5f5]">Este relatório ainda não está disponível.</p>
         </div>

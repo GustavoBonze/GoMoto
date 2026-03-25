@@ -1015,7 +1015,7 @@ export default function MaintenancePage() {
           </div>
 
           <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#243300] text-[#BAFF1A]">
               <DollarSign className="h-5 w-5" />
             </div>
             <div>
@@ -1492,7 +1492,7 @@ export default function MaintenancePage() {
                   const hasOverdue = completionExtras.some((e) => e._status === 'overdue')
 
                   return (
-                    <div className="rounded-xl border border-[#3a180f] bg-[#3a180f]/40 px-4 py-3 space-y-2">
+                    <div className="rounded-xl border border-[#e65e24] bg-[#3a180f] px-4 py-3 space-y-2">
                       <p className="text-xs font-semibold text-[#e65e24]">
                         {hasOverdue
                           ? 'Atenção — itens vencidos desta moto (aproveite a ida à oficina):'

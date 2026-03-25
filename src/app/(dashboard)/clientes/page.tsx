@@ -455,7 +455,7 @@ export default function ClientesPage() {
 
         {/* Exibe mensagem de erro de rede se houver */}
         {error && (
-          <div className="bg-[#7c1c1c]/20 border border-[#9a1c1c]/40 rounded-xl px-4 py-3 text-sm text-[#ff9c9a]">
+          <div className="bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl px-4 py-3 text-sm text-[#ff9c9a]">
             Erro ao carregar dados: {error}
           </div>
         )}
@@ -531,7 +531,7 @@ export default function ClientesPage() {
                       </p>
                     )}
                     {customer.observations && (
-                      <p className="text-xs text-[#9e9e9e] italic bg-[#121212]/40 px-2 py-1.5 rounded-lg mt-1">
+                      <p className="text-xs text-[#9e9e9e] italic bg-[#202020] px-2 py-1.5 rounded-lg mt-1">
                         &ldquo;{customer.observations}&rdquo;
                       </p>
                     )}
@@ -771,7 +771,7 @@ export default function ClientesPage() {
               {viewingCustomer.observations && (
                 <div className="md:col-span-2">
                   <p className="text-xs font-semibold text-[#616161] uppercase tracking-wide mb-1">Observações</p>
-                  <p className="text-sm text-[#c7c7c7] bg-[#121212]/40 border border-[#323232] rounded-lg px-3 py-2 leading-relaxed">
+                  <p className="text-sm text-[#c7c7c7] bg-[#323232] border border-[#474747] rounded-lg px-3 py-2 leading-relaxed">
                     {viewingCustomer.observations}
                   </p>
                 </div>

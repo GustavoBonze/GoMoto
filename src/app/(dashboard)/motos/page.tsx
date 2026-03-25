@@ -531,7 +531,7 @@ export default function MotorcyclesPage() {
 
         {/* BANNER DE ERRO — exibido quando a busca de dados falha (rede, Supabase, etc) */}
         {fetchError && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-[#7c1c1c]/30 border border-[#bf1d1e]/30 rounded-xl">
+          <div className="flex items-center gap-3 px-4 py-3 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl">
             <AlertCircle className="w-4 h-4 text-[#ff9c9a] flex-shrink-0" />
             <p className="text-sm text-[#ff9c9a]">{fetchError}</p>
             {/* Botão de nova tentativa para o usuário não precisar recarregar a página */}
@@ -712,21 +712,21 @@ export default function MotorcyclesPage() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); setMotorcycleDetails(moto) }}
-                      className="p-1.5 rounded-md text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-all"
+                      className="p-1.5 rounded-full text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-[#474747] transition-all"
                       title="Ver detalhes"
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); openEditMotorcycle(moto) }}
-                      className="p-1.5 rounded-md text-[#9e9e9e] hover:text-[#BAFF1A] hover:bg-[#BAFF1A]/5 transition-all"
+                      className="p-1.5 rounded-full text-[#9e9e9e] hover:text-[#BAFF1A] hover:bg-[#243300] transition-all"
                       title="Editar"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeletingMotorcycle(moto) }}
-                      className="p-1.5 rounded-md text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-all"
+                      className="p-1.5 rounded-full text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c] transition-all"
                       title="Excluir"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -914,7 +914,7 @@ export default function MotorcyclesPage() {
         {/* ── SEÇÃO: PASSO 2 - BOOTSTRAP DE MANUTENÇÃO (APENAS PARA NOVAS MOTOS) ─────────────────── */}
         {!editingId && step === 2 && (
           <div className="space-y-6 p-1">
-            <div className="bg-[#BAFF1A]/5 border border-[#BAFF1A]/10 rounded-xl p-4">
+            <div className="bg-[#243300] border border-[#6b9900] rounded-xl p-4">
               <p className="text-sm text-[#9e9e9e] leading-relaxed">
                 Para o sistema prever as próximas revisões, informe a <strong className="text-[#f5f5f5]">última vez</strong> que cada item abaixo foi trocado ou revisado.
                 <br /><span className="text-xs text-[#616161]">DICA: Se não souber, deixe em branco e o sistema marcará como "Revisão Imediata".</span>
@@ -958,7 +958,7 @@ export default function MotorcyclesPage() {
 
             {/* FEEDBACK DE CONFIGURAÇÃO */}
             {Object.keys(bootstrapItems).filter((k) => bootstrapItems[k]).length > 0 && (
-              <div className="flex items-center gap-3 px-4 py-3 bg-[#2d0363] border border-[#a880ff]/20 rounded-xl">
+              <div className="flex items-center gap-3 px-4 py-3 bg-[#2d0363] border border-[#a880ff] rounded-xl">
                 <div className="w-2 h-2 bg-[#a880ff] rounded-full animate-pulse" />
                 <p className="text-xs text-[#a880ff] font-medium">
                   {Object.keys(bootstrapItems).filter((k) => bootstrapItems[k]).length} itens de manutenção serão programados automaticamente.

@@ -498,7 +498,7 @@ export default function ContratosPage() {
 
       {/* Alerta de erro global */}
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-400">
+        <div className="mb-6 p-4 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl flex items-center gap-3 text-[#ff9c9a]">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <p className="text-sm">{error}</p>
         </div>
@@ -511,7 +511,7 @@ export default function ContratosPage() {
             <p className="text-[#9e9e9e] text-sm font-medium mb-1">Total Ativos</p>
             <h3 className="text-3xl font-bold text-[#f5f5f5]">{stats.ativos}</h3>
           </div>
-          <div className="w-12 h-12 bg-[#BAFF1A]/10 rounded-full flex items-center justify-center text-[#BAFF1A]">
+          <div className="w-12 h-12 bg-[#243300] rounded-full flex items-center justify-center text-[#BAFF1A]">
             <CheckCircle className="w-6 h-6" />
           </div>
         </Card>
@@ -521,7 +521,7 @@ export default function ContratosPage() {
             <p className="text-[#9e9e9e] text-sm font-medium mb-1">Encerrando (30 dias)</p>
             <h3 className="text-3xl font-bold text-[#f5f5f5]">{stats.encerrando30Dias}</h3>
           </div>
-          <div className="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center text-orange-400">
+          <div className="w-12 h-12 bg-[#3a180f] rounded-full flex items-center justify-center text-[#e65e24]">
             <Clock className="w-6 h-6" />
           </div>
         </Card>
@@ -531,7 +531,7 @@ export default function ContratosPage() {
             <p className="text-[#9e9e9e] text-sm font-medium mb-1">Receita Mensal</p>
             <h3 className="text-xl font-bold text-[#f5f5f5]">{formatCurrency(stats.receitaMensal)}</h3>
           </div>
-          <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-400">
+          <div className="w-12 h-12 bg-[#0e2f13] rounded-full flex items-center justify-center text-[#28b438]">
             <TrendingUp className="w-6 h-6" />
           </div>
         </Card>
@@ -541,7 +541,7 @@ export default function ContratosPage() {
             <p className="text-[#9e9e9e] text-sm font-medium mb-1">Cancelados/Quebrados</p>
             <h3 className="text-3xl font-bold text-[#f5f5f5]">{stats.canceladosQuebrados}</h3>
           </div>
-          <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-400">
+          <div className="w-12 h-12 bg-[#7c1c1c] rounded-full flex items-center justify-center text-[#ff9c9a]">
             <XCircle className="w-6 h-6" />
           </div>
         </Card>

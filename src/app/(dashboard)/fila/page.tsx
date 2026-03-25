@@ -46,7 +46,7 @@ import {
   Bike,          // Ícone do card "Motos Disponíveis" — representa o produto sendo locado
   AlertTriangle, // Ícone do alerta quando há motos disponíveis E candidatos esperando
   CheckCircle2,  // Ícone para "Fechar Contrato" — representa confirmação/aprovação
-  Upload,        // Ícone da área de upload de documentos (CNH e comprovante de residência)
+  FileText,      // Ícone da área de upload de documentos (CNH e comprovante de residência)
   Edit2,         // Ícone para "Editar Candidato" — ação neutra de edição
 } from 'lucide-react'
 
@@ -271,34 +271,56 @@ function DocumentUploadSection({
   onChange: (updates: Partial<{ cnhFile: File | null; residenceFile: File | null }>) => void
   mode?: 'add' | 'edit'
 }) {
-  // O texto do subtítulo muda conforme o contexto: novo upload ou substituição de documento existente
   const suffix = mode === 'edit' ? '(substituir documento)' : '(PDF ou imagem)'
 
   return (
-    <div className="md:col-span-2 border-t border-[#474747] pt-4 mt-2">
-      {/* Título da seção de documentos */}
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#9e9e9e] mb-3">Documentos</p>
+    <div className="md:col-span-2 border-t border-[#474747] pt-4 mt-2 space-y-3">
+      <p className="text-[14px] font-normal text-[#9e9e9e]">Documentos</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-        {/* Área de upload da CNH — obrigatória para conduzir moto, mas opcional no cadastro inicial */}
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#474747] bg-[#121212] p-4 cursor-pointer hover:border-[#BAFF1A] transition-colors">
-          <Upload className="h-5 w-5 text-[#9e9e9e]" />
-          <span className="text-xs text-[#9e9e9e] text-center">CNH<br />{suffix}</span>
-          {/* Mostra o nome do arquivo selecionado para confirmar ao operador que o upload foi configurado */}
-          {form.cnhFile && <span className="text-xs text-[#BAFF1A] truncate max-w-full px-1">{form.cnhFile.name}</span>}
-          {/* Input oculto — a label acima serve como trigger visual para o seletor de arquivo */}
-          <input type="file" className="hidden" accept=".pdf,image/*" onChange={(e) => onChange({ cnhFile: e.target.files?.[0] ?? null })} />
-        </label>
+        {/* CNH */}
+        <div className="space-y-1">
+          <label className="text-[14px] text-[#c7c7c7]">
+            CNH
+            <span className="ml-2 text-[#9e9e9e] text-xs">{suffix}</span>
+          </label>
+          <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
+            form.cnhFile ? 'border-[#6b9900]' : 'border-[#323232] hover:border-[#474747]'
+          }`}>
+            <FileText className="w-4 h-4 text-[#9e9e9e] shrink-0" />
+            <span className="flex-1 text-sm truncate text-[#9e9e9e]">
+              {form.cnhFile ? form.cnhFile.name : 'Nenhum arquivo selecionado'}
+            </span>
+            <input
+              type="file"
+              accept=".pdf,image/*"
+              onChange={(e) => onChange({ cnhFile: e.target.files?.[0] ?? null })}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+            />
+          </div>
+        </div>
 
-        {/* Área de upload do comprovante de residência — necessário para confirmar endereço do candidato */}
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#474747] bg-[#121212] p-4 cursor-pointer hover:border-[#BAFF1A] transition-colors">
-          <Upload className="h-5 w-5 text-[#9e9e9e]" />
-          <span className="text-xs text-[#9e9e9e] text-center">Comprovante de Residência<br />{suffix}</span>
-          {/* Mostra o nome do arquivo selecionado para confirmar ao operador que o upload foi configurado */}
-          {form.residenceFile && <span className="text-xs text-[#BAFF1A] truncate max-w-full px-1">{form.residenceFile.name}</span>}
-          {/* Input oculto — a label acima serve como trigger visual para o seletor de arquivo */}
-          <input type="file" className="hidden" accept=".pdf,image/*" onChange={(e) => onChange({ residenceFile: e.target.files?.[0] ?? null })} />
-        </label>
+        {/* Comprovante de Residência */}
+        <div className="space-y-1">
+          <label className="text-[14px] text-[#c7c7c7]">
+            Comprovante de Residência
+            <span className="ml-2 text-[#9e9e9e] text-xs">{suffix}</span>
+          </label>
+          <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
+            form.residenceFile ? 'border-[#6b9900]' : 'border-[#323232] hover:border-[#474747]'
+          }`}>
+            <FileText className="w-4 h-4 text-[#9e9e9e] shrink-0" />
+            <span className="flex-1 text-sm truncate text-[#9e9e9e]">
+              {form.residenceFile ? form.residenceFile.name : 'Nenhum arquivo selecionado'}
+            </span>
+            <input
+              type="file"
+              accept=".pdf,image/*"
+              onChange={(e) => onChange({ residenceFile: e.target.files?.[0] ?? null })}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+            />
+          </div>
+        </div>
 
       </div>
     </div>
