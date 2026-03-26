@@ -310,6 +310,8 @@ export interface Charge {
 export interface Income {
   /** @property id - UUID único da entrada. */
   id: string;
+  /** @property description - Descrição livre da entrada (ex: "Aluguel semana 10/03"). */
+  description?: string;
   /** @property vehicle - Identificador do veículo relacionado (geralmente a placa). */
   vehicle: string;
   /** @property date - Data em que o recurso financeiro foi recebido. */

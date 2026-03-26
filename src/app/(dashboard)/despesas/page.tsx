@@ -180,34 +180,16 @@ const supabase = createClient()
  * @param value     - Valor principal da métrica (string ou número)
  * @param sub       - Texto secundário opcional abaixo do valor
  */
-function KpiCard({
-  icon: Icon,
-  iconBg,
-  iconColor,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ElementType
-  iconBg: string
-  iconColor: string
-  label: string
-  value: string | number
-  sub?: string
-}) {
+function KpiCard({ icon: Icon, label, value, sub }: { icon: React.ElementType, label: string, value: string | number, sub?: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-      {/* Círculo colorido com ícone — iconColor aplicado no container para herança CSS */}
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
-        <Icon className="h-5 w-5" />
-      </div>
+    <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
       <div>
-        {/* Rótulo: fonte pequena, cor terciária (#9e9e9e) */}
         <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
-        {/* Valor principal: destaque em bold, cor do tema do card */}
-        <p className={`text-[28px] font-bold ${iconColor}`}>{value}</p>
-        {/* Subtexto opcional: mesma cor do card com 70% de opacidade */}
-        {sub && <p className={`text-xs mt-0.5 ${iconColor}/70`}>{sub}</p>}
+        <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
+        {sub && <p className="text-xs mt-0.5 text-[#9e9e9e]">{sub}</p>}
+      </div>
+      <div className="bg-[#323232] p-3 rounded-full">
+        <Icon className="w-6 h-6 text-[#BAFF1A]" />
       </div>
     </div>
   )
@@ -664,18 +646,14 @@ export default function ExpensesPage() {
    * Recalculado apenas quando `filteredExpenses` muda.
    */
   const categoryTabs = useMemo(() => {
-    // Conta lançamentos por categoria em uma única passagem
     const counts = filteredExpenses.reduce(
       (acc, e) => { acc[e.category] = (acc[e.category] ?? 0) + 1; return acc },
       {} as Record<string, number>
     )
-
-    const tabs = [{ id: '', label: 'Todas', count: filteredExpenses.length }]
-    // Adiciona apenas as categorias que têm lançamentos, na ordem canônica
-    EXPENSE_CATEGORIES.forEach(cat => {
-      if (counts[cat]) tabs.push({ id: cat, label: cat, count: counts[cat] })
-    })
-    return tabs
+    return [
+      { id: '', label: 'Todas', count: filteredExpenses.length },
+      ...EXPENSE_CATEGORIES.map(cat => ({ id: cat, label: cat, count: counts[cat] ?? 0 })),
+    ]
   }, [filteredExpenses])
 
   const motorcycleOptions = useMemo(() => [
@@ -718,8 +696,6 @@ export default function ExpensesPage() {
           {/* Total do Mês: soma de todas as despesas no período filtrado */}
           <KpiCard
             icon={TrendingDown}
-            iconBg="bg-[#7c1c1c]/40"
-            iconColor="text-[#ff9c9a]"
             label="Total do Mês"
             value={formatCurrency(kpis.monthTotal)}
             sub={`${kpis.monthCount} lançamento${kpis.monthCount !== 1 ? 's' : ''}`}
@@ -728,8 +704,6 @@ export default function ExpensesPage() {
           {/* Lançamentos: quantidade de despesas no período filtrado */}
           <KpiCard
             icon={Receipt}
-            iconBg="bg-[#474747]/40"
-            iconColor="text-[#9e9e9e]"
             label="Lançamentos"
             value={kpis.monthCount}
             sub="no período selecionado"
@@ -738,8 +712,6 @@ export default function ExpensesPage() {
           {/* Ticket Médio: média de valor por despesa no período filtrado */}
           <KpiCard
             icon={Activity}
-            iconBg="bg-[#2d0363]/60"
-            iconColor="text-[#a880ff]"
             label="Ticket Médio"
             value={formatCurrency(kpis.monthAverage)}
             sub="por despesa"
@@ -748,8 +720,6 @@ export default function ExpensesPage() {
           {/* Maior Categoria: nome e total da categoria com maior gasto */}
           <KpiCard
             icon={Tag}
-            iconBg="bg-[#3a180f]/60"
-            iconColor="text-[#e65e24]"
             label="Maior Categoria"
             value={kpis.topCategoryName}
             sub={kpis.topCategoryTotal > 0 ? formatCurrency(kpis.topCategoryTotal) : undefined}
@@ -859,7 +829,7 @@ export default function ExpensesPage() {
 
                     {/* Contagem de lançamentos + valor total alinhados à direita */}
                     <div className="ml-auto flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#474747]/40 text-[#9e9e9e]">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#323232] text-[#9e9e9e]">
                         {items.length} lançamento{items.length !== 1 ? 's' : ''}
                       </span>
                       {/* Total da categoria em vermelho — representa saída financeira */}
@@ -890,7 +860,10 @@ export default function ExpensesPage() {
                           </thead>
 
                           <tbody>
-                            {items.map(item => (
+                            {items.map(item => {
+                              /* Calcula a moto vinculada uma única vez por linha (evita 3x find) */
+                              const moto = motorcycles.find(m => m.id === item.motorcycle_id)
+                              return (
                               <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
 
                                 {/* Data: formatada para DD/MM/AAAA via formatDate */}
@@ -906,32 +879,31 @@ export default function ExpensesPage() {
                                       {item.observations}
                                     </p>
                                   )}
-                                  {item.motorcycle_id && motorcycles.find(m => m.id === item.motorcycle_id) && (
+                                  {/* Placa e modelo da moto vinculada, se existir */}
+                                  {moto && (
                                     <p className="text-xs text-[#9e9e9e] mt-0.5">
-                                      {motorcycles.find(m => m.id === item.motorcycle_id)?.license_plate}
-                                      {' — '}
-                                      {motorcycles.find(m => m.id === item.motorcycle_id)?.model}
+                                      {moto.license_plate}{' — '}{moto.model}
                                     </p>
                                   )}
-                                  {/* Sem NF badge */}
+                                  {/* Badge de aviso: despesa sem nota fiscal */}
                                   {!item.invoice_url && (
-                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#3d1f00]/60 text-[#ffb347] border border-[#ffb347]/30">
+                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#3a180f] text-[#e65e24] border border-[#e65e24]">
                                       <AlertCircle className="w-3 h-3" />
                                       Sem NF
                                     </span>
                                   )}
-                                  {/* File links */}
+                                  {/* Links para arquivos já enviados ao Storage */}
                                   <div className="flex gap-2 mt-1 flex-wrap">
                                     {item.invoice_url && (
                                       <a href={item.invoice_url} target="_blank" rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#1a2e1a]/60 text-[#BAFF1A] border border-[#BAFF1A]/30 hover:bg-[#BAFF1A]/10 transition-colors">
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#243300] text-[#BAFF1A] border border-[#6b9900] transition-colors">
                                         <FileText className="w-3 h-3" />
                                         Nota Fiscal
                                       </a>
                                     )}
                                     {item.attachment_url && (
                                       <a href={item.attachment_url} target="_blank" rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#1a1a2e]/60 text-[#a880ff] border border-[#a880ff]/30 hover:bg-[#a880ff]/10 transition-colors">
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#2d0363] text-[#a880ff] transition-colors">
                                         <Paperclip className="w-3 h-3" />
                                         Anexo
                                       </a>
@@ -960,7 +932,7 @@ export default function ExpensesPage() {
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                            )})}
                           </tbody>
                         </table>
                       </div>
