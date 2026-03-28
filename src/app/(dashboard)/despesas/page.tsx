@@ -327,7 +327,6 @@ export default function ExpensesPage() {
       .order('date', { ascending: false }) // mais recentes primeiro
 
     if (error) {
-      console.error('Erro ao buscar despesas:', error)
     } else {
       setExpenses((data as Expense[]) ?? [])
     }
@@ -430,7 +429,7 @@ export default function ExpensesPage() {
     const ext = file.name.split('.').pop()
     const path = `expenses/${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
     const { error } = await supabase.storage.from('expense-files').upload(path, file)
-    if (error) { console.error('Erro ao enviar arquivo:', error); return null }
+    if (error) { return null }
     const { data } = supabase.storage.from('expense-files').getPublicUrl(path)
     return data.publicUrl
   }
@@ -490,11 +489,9 @@ export default function ExpensesPage() {
     if (editing) {
       // Modo edição: atualiza apenas a linha com o ID da despesa em edição
       const { error } = await supabase.from('expenses').update(payload).eq('id', editing.id)
-      if (error) console.error('Erro ao editar despesa:', error)
     } else {
       // Modo criação: insere nova linha na tabela expenses
       const { error } = await supabase.from('expenses').insert(payload)
-      if (error) console.error('Erro ao criar despesa:', error)
     }
 
     setSaving(false)
@@ -517,7 +514,6 @@ export default function ExpensesPage() {
 
     setSaving(true)
     const { error } = await supabase.from('expenses').delete().eq('id', deleting.id)
-    if (error) console.error('Erro ao excluir despesa:', error)
 
     setSaving(false)
     setDeleting(null)    // fecha o modal de confirmação

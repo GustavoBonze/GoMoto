@@ -559,7 +559,6 @@ export default function QueuePage() {
       .order('position', { ascending: true })
 
     if (error) {
-      console.error('Erro ao buscar fila:', error)
       return
     }
 
@@ -583,7 +582,6 @@ export default function QueuePage() {
       .eq('status', 'available')
 
     if (error) {
-      console.error('Erro ao buscar quantidade de motos:', error)
       return
     }
 
@@ -608,7 +606,6 @@ export default function QueuePage() {
       .order('license_plate')
 
     if (error) {
-      console.error('Erro ao buscar motos disponíveis:', error)
       return
     }
 
@@ -631,7 +628,6 @@ export default function QueuePage() {
       // Executa ambas as queries em paralelo para minimizar o tempo de carregamento
       await Promise.all([fetchQueue(), fetchMotosCount()])
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
     } finally {
       // Garante que o loading seja desativado mesmo se uma das queries falhar
       setLoading(false)
@@ -791,7 +787,6 @@ export default function QueuePage() {
       resetAddForm()
       await fetchQueue()
     } catch (error) {
-      console.error('Erro ao adicionar à fila:', error)
       alert('Ocorreu um erro ao adicionar à fila. Verifique os dados e tente novamente.')
     } finally {
       setSaving(false)
@@ -838,7 +833,6 @@ export default function QueuePage() {
       setSelectedEntry(null)
       await fetchQueue()
     } catch (error) {
-      console.error('Erro ao remover da fila:', error)
     } finally {
       setSaving(false)
     }
@@ -916,7 +910,6 @@ export default function QueuePage() {
       setIsMoveModalOpen(false)
       await fetchQueue()
     } catch (error) {
-      console.error('Erro ao mover na fila:', error)
       alert('Erro ao mover candidato na fila.')
     } finally {
       setSaving(false)
@@ -1052,7 +1045,6 @@ export default function QueuePage() {
       setIsEditModalOpen(false)
       await fetchQueue()
     } catch (error) {
-      console.error('Erro ao salvar edição:', error)
       alert('Erro ao salvar. Verifique os dados e tente novamente.')
     } finally {
       setEditSaving(false)
@@ -1198,7 +1190,6 @@ export default function QueuePage() {
       // Recarrega tanto a fila quanto a contagem de motos (pois uma moto saiu do disponível)
       loadData()
     } catch (error) {
-      console.error('Erro ao fechar contrato:', error)
       alert('Ocorreu um erro ao fechar o contrato. Tente novamente.')
     } finally {
       setContractSaving(false)

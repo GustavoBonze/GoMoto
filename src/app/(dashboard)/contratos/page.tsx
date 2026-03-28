@@ -287,7 +287,6 @@ export default function ContratosPage() {
       .eq('id', formState.motorcycle_id)
 
     if (updateMotoError) {
-      console.error('Erro ao atualizar status da moto:', updateMotoError.message)
     }
 
     setShowCreateModal(false)
@@ -338,7 +337,6 @@ export default function ContratosPage() {
       .eq('id', contratoParaEncerrar.motorcycle_id)
 
     if (updateMotoError) {
-      console.error('Erro ao atualizar status da moto para disponível:', updateMotoError.message)
     }
 
     // Fechar modal de detalhes se o contrato encerrado estava selecionado

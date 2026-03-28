@@ -421,7 +421,6 @@ export default function MotorcyclesPage() {
         .single()
 
       if (insertError || !newMoto?.id) {
-        console.error('Erro ao inserir moto:', insertError)
         setSaving(false)
         return
       }
@@ -482,10 +481,8 @@ export default function MotorcyclesPage() {
           .insert(maintenanceRecords)
 
         if (maintenanceError) {
-          console.error('Erro ao inserir manutenções iniciais:', maintenanceError)
         }
       } catch (err) {
-        console.error('Erro inesperado ao inserir manutenções iniciais:', err)
       }
     }
 
