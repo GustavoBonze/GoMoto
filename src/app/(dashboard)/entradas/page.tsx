@@ -152,7 +152,6 @@ export default function EntradasPage() {
       setIncomes((incomesResult.data as Income[]) || []);
       setMotos((motosResult.data as Moto[]) || []);
     } catch (error) {
-      console.error('Erro ao buscar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -372,7 +371,6 @@ export default function EntradasPage() {
       handleCloseModal();
       fetchData();
     } catch (error) {
-      console.error('Erro ao salvar entrada:', error);
       alert('Erro ao salvar os dados. Verifique e tente novamente.');
     } finally {
       setSaving(false);
@@ -388,7 +386,6 @@ export default function EntradasPage() {
       handleCloseDeleteModal();
       fetchData();
     } catch (error) {
-      console.error('Erro ao excluir entrada:', error);
       alert('Erro ao excluir a entrada.');
     } finally {
       setDeleting(false);

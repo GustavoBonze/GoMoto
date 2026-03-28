@@ -143,7 +143,6 @@ export default function CobrancasPage() {
       setCharges((data as ChargeWithRelations[]) ?? [])
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      console.error('Erro ao buscar cobranças:', err)
       setFetchError(msg)
     } finally {
       setLoading(false)
@@ -164,7 +163,6 @@ export default function CobrancasPage() {
       setClientes(clientesData ?? [])
       setContratos((contratosData as unknown as ContratoOption[]) ?? [])
     } catch (err) {
-      console.error('Erro ao carregar dependências do formulário:', err)
     }
   }, [])
 
@@ -240,7 +238,6 @@ export default function CobrancasPage() {
       await fetchCharges()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar'
-      console.error('Erro ao salvar cobrança:', err)
       alert('Erro ao salvar cobrança: ' + msg)
     } finally {
       setSaving(false)
@@ -268,7 +265,6 @@ export default function CobrancasPage() {
       await fetchCharges()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao confirmar pagamento'
-      console.error('Erro ao confirmar pagamento:', err)
       alert('Erro: ' + msg)
     } finally {
       setSaving(false)
@@ -290,7 +286,6 @@ export default function CobrancasPage() {
       await fetchCharges()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao marcar como prejuízo'
-      console.error('Erro ao marcar como prejuízo:', err)
       alert('Erro: ' + msg)
     } finally {
       setSaving(false)
@@ -312,7 +307,6 @@ export default function CobrancasPage() {
       await fetchCharges()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir'
-      console.error('Erro ao excluir cobrança:', err)
       alert('Erro: ' + msg)
     } finally {
       setSaving(false)

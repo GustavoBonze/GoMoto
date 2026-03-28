@@ -190,7 +190,6 @@ export default function ClientesPage() {
       .eq('status', 'active')
 
     if (contractsError) {
-      console.error('Erro ao buscar contratos ativos:', contractsError.message)
     } else if (contractsData) {
       const map = new Map<string, { license_plate: string; model: string; monthly_amount: number }>()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

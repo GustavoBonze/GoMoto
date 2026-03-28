@@ -538,7 +538,7 @@ export default function MaintenancePage() {
       .from('maintenances')
       .select('*, motorcycles(license_plate, model, make, km_current)')
       .order('created_at', { ascending: false })
-    if (error) { console.error('Erro ao buscar manutencoes:', error); return }
+    if (error) { return }
     setMaintenances((data as MaintenanceWithMoto[]) || [])
   }, [])
 
@@ -553,7 +553,7 @@ export default function MaintenancePage() {
       .from('motorcycles')
       .select('id, license_plate, model, make, km_current')
       .order('license_plate')
-    if (error) { console.error('Erro ao buscar motos:', error); return }
+    if (error) { return }
     setMotorcycles((data as MotorcycleOption[]) || [])
   }, [])
 
@@ -745,7 +745,6 @@ export default function MaintenancePage() {
       closeFormModal()
       fetchMaintenances()
     } catch (err) {
-      console.error('Erro ao salvar manutencao:', err)
     } finally {
       setSaving(false)
     }
@@ -893,7 +892,6 @@ export default function MaintenancePage() {
       closeCompleteModal()
       await Promise.all([fetchMaintenances(), fetchMotorcycles()])
     } catch (err) {
-      console.error('Erro ao confirmar conclusao:', err)
     } finally {
       setCompleting(false)
     }

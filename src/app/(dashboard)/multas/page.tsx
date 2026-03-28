@@ -394,7 +394,6 @@ export default function MultasPage() {
       setMotorcycles(motosRes.data ?? [])
       setContracts(contractsRes.data ?? [])
     } catch (err) {
-      console.error('Erro ao buscar dados de multas:', err)
       setError('Não foi possível carregar os dados. Tente novamente.')
     } finally {
       // Sempre desativa o loading, mesmo em caso de erro
@@ -516,7 +515,6 @@ export default function MultasPage() {
       handleCloseModal()
       await fetchAllData()  // Recarrega para refletir as mudanças
     } catch (err) {
-      console.error('Erro ao salvar multa:', err)
       setError('Erro ao salvar. Verifique os dados e tente novamente.')
     } finally {
       setSaving(false)
@@ -551,7 +549,6 @@ export default function MultasPage() {
       setPaymentDateInput('')
       await fetchAllData()
     } catch (err) {
-      console.error('Erro ao registrar pagamento:', err)
     } finally {
       setSaving(false)
     }
@@ -572,7 +569,6 @@ export default function MultasPage() {
       setDeleting(null)
       await fetchAllData()
     } catch (err) {
-      console.error('Erro ao excluir multa:', err)
     } finally {
       setSaving(false)
     }
