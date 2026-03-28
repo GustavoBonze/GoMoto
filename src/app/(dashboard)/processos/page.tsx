@@ -23,7 +23,6 @@ import { Plus, Edit2, Trash2, ChevronDown, ChevronUp, BookOpen } from 'lucide-re
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Card } from '@/components/ui/Card'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import type { Process } from '@/types'

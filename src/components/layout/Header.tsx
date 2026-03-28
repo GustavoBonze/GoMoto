@@ -17,7 +17,7 @@
 'use client'
 
 // Importação de ícones da biblioteca Lucide React para representação visual consistente.
-import { Search, Bell } from 'lucide-react'
+import { Bell } from 'lucide-react'
 
 /**
  * @interface HeaderProps

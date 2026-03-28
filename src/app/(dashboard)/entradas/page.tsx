@@ -114,9 +114,6 @@ export default function EntradasPage() {
   const [formData, setFormData] = useState(FORM_INICIAL);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  /** @description Hint exibido no campo Locatário indicando se foi preenchido automaticamente. */
-  const [lesseeHint, setLesseeHint] = useState('');
-
   // --- BUSCA DE DADOS ---
 
   /**
@@ -196,12 +193,9 @@ export default function EntradasPage() {
       if (!error && data?.customers) {
         const name = (data.customers as unknown as { name: string }).name;
         setFormData(prev => ({ ...prev, lessee: name }));
-        setLesseeHint('Preenchido automaticamente pelo contrato ativo nesta data');
-      } else {
-        setLesseeHint('Nenhum contrato ativo encontrado para esta moto na data selecionada');
       }
     } catch {
-      setLesseeHint('');
+      // erro silencioso — lessee permanece com valor anterior
     }
   }, [motos, supabase]);
 
@@ -306,7 +300,6 @@ export default function EntradasPage() {
     setCurrentIncome(null);
     setFormData(FORM_INICIAL);
     setFormErrors({});
-    setLesseeHint('');
   };
 
   const handleOpenDeleteModal = (income: Income) => {
@@ -317,18 +310,6 @@ export default function EntradasPage() {
   const handleCloseDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setCurrentIncome(null);
-  };
-
-  // --- HANDLERS DE FORMULÁRIO ---
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // --- OPERAÇÕES CRUD ---
