@@ -54,22 +54,6 @@ export interface Document {
 }
 
 /**
- * @interface QueueMovement
- * @description Registra o histórico de mudanças de posição de um cliente na fila de espera.
- * Utilizado para fins de auditoria e transparência no processo de alocação de motos.
- */
-export interface QueueMovement {
-  /** @property date - Data em que a movimentação na fila ocorreu. */
-  date: string;
-  /** @property from - Posição original ocupada pelo cliente antes da mudança. */
-  from: number;
-  /** @property to - Nova posição ocupada pelo cliente após a movimentação. */
-  to: number;
-  /** @property reason - Justificativa para a alteração da posição na fila. */
-  reason: string;
-}
-
-/**
  * @type ChargeStatus
  * @description Determina o estado financeiro de uma cobrança gerada pelo sistema.
  * - pending: Aguardando o pagamento por parte do cliente.
@@ -88,23 +72,6 @@ export type ChargeStatus = 'pending' | 'paid' | 'overdue' | 'loss';
  * - broken: Encerrado por quebra de cláusulas contratuais ou inadimplência grave.
  */
 export type ContractStatus = 'active' | 'closed' | 'cancelled' | 'broken';
-
-/**
- * @type ContractType
- * @description Identificador numérico para as modalidades de contrato disponíveis.
- * 1: Plano Semanal.
- * 2: Plano Quinzenal.
- * 3: Plano Mensal.
- */
-export type ContractType = 1 | 2 | 3;
-
-/**
- * @type FineStatus
- * @description Status de processamento de uma multa de trânsito vinculada a um locatário.
- * - pending: Registrada, mas ainda não paga à autoridade de trânsito.
- * - paid: Quitação confirmada pelo sistema administrativo.
- */
-export type FineStatus = 'pending' | 'paid';
 
 /**
  * @interface Motorcycle
@@ -269,40 +236,6 @@ export interface Contract {
 }
 
 /**
- * @interface Charge
- * @description Define uma obrigação financeira (boleto, pix, etc) vinculada a um contrato.
- * Essencial para o controle de fluxo de caixa e inadimplência.
- */
-export interface Charge {
-  /** @property id - UUID único da cobrança. */
-  id: string;
-  /** @property contract_id - ID do contrato que originou esta cobrança. */
-  contract_id: string;
-  /** @property customer_id - ID do cliente responsável pelo pagamento. */
-  customer_id: string;
-  /** @property description - Texto explicativo do que está sendo cobrado. */
-  description: string;
-  /** @property amount - Valor nominal da cobrança em reais. */
-  amount: number;
-  /** @property due_date - Data limite para pagamento sem juros/multa. */
-  due_date: string;
-  /** @property status - Situação da cobrança (pending, paid, etc). */
-  status: ChargeStatus;
-  /** @property payment_date - Data em que o pagamento foi efetivamente realizado. */
-  payment_date?: string;
-  /** @property observations - Notas sobre o recebimento ou negociação. */
-  observations?: string;
-  /** @property created_at - Data de criação da cobrança. */
-  created_at: string;
-  /** @property updated_at - Data da última atualização de status. */
-  updated_at: string;
-  /** @property customer - Dados do cliente para exibição em relatórios. */
-  customer?: Customer;
-  /** @property contract - Dados do contrato vinculado. */
-  contract?: Contract;
-}
-
-/**
  * @interface Income
  * @description Registro de qualquer valor financeiro que entra no caixa da empresa.
  * Diferencia-se de 'Charge' por representar a entrada real já consolidada.
@@ -365,70 +298,6 @@ export interface Expense {
 }
 
 /**
- * @interface Fine
- * @description Gerenciamento de infrações de trânsito cometidas durante a locação.
- * Permite o controle de quem é o responsável pelo pagamento e o status da quitação.
- */
-export interface Fine {
-  /** @property id - UUID único da multa. */
-  id: string;
-  /** @property customer_id - ID do cliente que cometeu a infração. */
-  customer_id: string;
-  /** @property motorcycle_id - ID da moto no momento da infração. */
-  motorcycle_id: string;
-  /** @property description - Descrição da infração conforme notificação. */
-  description: string;
-  /** @property amount - Valor da multa a ser pago. */
-  amount: number;
-  /** @property infraction_date - Data e hora em que a infração ocorreu. */
-  infraction_date: string;
-  /** @property status - Status de pagamento da multa (pending, paid). */
-  status: FineStatus;
-  /** @property payment_date - Data do pagamento da multa. */
-  payment_date?: string;
-  /** @property responsible - Define quem deve arcar com o custo (cliente ou empresa). */
-  responsible: 'customer' | 'company';
-  /** @property observations - Notas sobre recursos ou prazos da multa. */
-  observations?: string;
-  /** @property created_at - Data de cadastro da multa no sistema. */
-  created_at: string;
-  /** @property customer - Dados do cliente infrator. */
-  customer?: Customer;
-  /** @property motorcycle - Dados da moto envolvida. */
-  motorcycle?: Motorcycle;
-}
-
-/**
- * @interface StandardMaintenanceItem
- * @description Definição de itens de manutenção preventiva ou vistorias recorrentes.
- * Configura os gatilhos de KM ou tempo para gerar alertas de manutenção.
- */
-export interface StandardMaintenanceItem {
-  /** @property id - UUID único do item padrão. */
-  id: string;
-  /** @property name - Nome do serviço (ex: Troca de Óleo). */
-  name: string;
-  /** @property km_interval - Intervalo em quilômetros para realização (null se for por data). */
-  km_interval: number | null;
-  /** @property day_interval - Intervalo em dias para realização (ex: 30 dias para vistoria). */
-  day_interval: number | null;
-  /** @property type - Categoria da manutenção (preventive, corrective, inspection). */
-  type: 'preventive' | 'corrective' | 'inspection';
-  /** @property tip - Dica técnica ou instrução para a realização do serviço. */
-  tip: string;
-}
-
-/**
- * @type MaintenanceStatus
- * @description Estado atual de uma ordem de serviço de manutenção.
- * - overdue: Passou do KM ou data prevista.
- * - upcoming: Próxima de atingir o KM ou data.
- * - scheduled: Data de realização já agendada com oficina.
- * - completed: Serviço realizado e finalizado.
- */
-export type MaintenanceStatus = 'overdue' | 'upcoming' | 'scheduled' | 'completed';
-
-/**
  * @interface Maintenance
  * @description Registro de uma intervenção técnica realizada ou planejada em um veículo.
  * Armazena custos, datas, quilometragem e comprovantes.
@@ -473,52 +342,6 @@ export interface Maintenance {
 }
 
 /**
- * @interface Checklist
- * @description Documento de conferência de estado da moto em momentos críticos.
- * Realizado obrigatoriamente na entrega e na devolução do veículo.
- */
-export interface Checklist {
-  /** @property id - UUID único do checklist. */
-  id: string;
-  /** @property motorcycle_id - ID da moto inspecionada. */
-  motorcycle_id: string;
-  /** @property contract_id - ID do contrato vinculado à entrega/devolução. */
-  contract_id?: string;
-  /** @property type - Momento do checklist (delivery: entrega, return: devolução). */
-  type: 'delivery' | 'return';
-  /** @property date - Data da inspeção. */
-  date: string;
-  /** @property current_km - Quilometragem da moto no momento da inspeção. */
-  current_km: number;
-  /** @property fuel_level - Nível de combustível (percentual de 0 a 100). */
-  fuel_level: number;
-  /** @property items - Lista de itens verificados. */
-  items: ChecklistItem[];
-  /** @property signature_url - Link para a imagem da assinatura do cliente. */
-  signature_url?: string;
-  /** @property observations - Notas sobre danos encontrados ou faltas. */
-  observations?: string;
-  /** @property created_at - Registro de criação do checklist. */
-  created_at: string;
-  /** @property motorcycle - Dados da moto inspecionada. */
-  motorcycle?: Motorcycle;
-}
-
-/**
- * @interface ChecklistItem
- * @description Representa um item individual verificado em um checklist.
- * Ex: Pneus, Luzes, Retrovisores.
- */
-export interface ChecklistItem {
-  /** @property item - Nome ou descrição do item verificado. */
-  item: string;
-  /** @property ok - Indica se o item está em conformidade. */
-  ok: boolean;
-  /** @property observation - Nota sobre o estado do item se não estiver OK. */
-  observation?: string;
-}
-
-/**
  * @interface Process
  * @description Define etapas ou perguntas de um fluxo de processo interno (ex: Triagem).
  * Utilizado para guiar o atendimento ou a configuração do sistema.
@@ -540,26 +363,3 @@ export interface Process {
   updated_at: string;
 }
 
-/**
- * @interface DashboardStats
- * @description Agregado de métricas chaves para visualização no painel principal.
- * Fornece um resumo em tempo real da saúde operacional e financeira.
- */
-export interface DashboardStats {
-  /** @property available_motorcycles - Quantidade de motos prontas para aluguel. */
-  available_motorcycles: number;
-  /** @property rented_motorcycles - Quantidade de motos gerando receita. */
-  rented_motorcycles: number;
-  /** @property maintenance_motorcycles - Quantidade de motos indisponíveis por reparo. */
-  maintenance_motorcycles: number;
-  /** @property active_contracts - Total de contratos vigentes. */
-  active_contracts: number;
-  /** @property overdue_charges - Contagem de cobranças com prazo vencido. */
-  overdue_charges: number;
-  /** @property monthly_revenue - Soma total de entradas financeiras no mês corrente. */
-  monthly_revenue: number;
-  /** @property monthly_expenses - Soma total de saídas financeiras no mês corrente. */
-  monthly_expenses: number;
-  /** @property customers_in_queue - Quantidade de pessoas aguardando na fila. */
-  customers_in_queue: number;
-}
