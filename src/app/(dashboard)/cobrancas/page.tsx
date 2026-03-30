@@ -26,7 +26,6 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { Table } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { ChargeStatus } from '@/types'
@@ -382,112 +381,6 @@ export default function CobrancasPage() {
   })
   const topLoss = Object.entries(lossByCustomer).sort((a, b) => b[1] - a[1])[0]
 
-  /**
-   * @constant columns
-   * @description Definição estrutural das colunas da tabela de cobranças.
-   */
-  const columns = [
-    {
-      key: 'cliente',
-      header: 'Cliente',
-      render: (row: ChargeWithRelations) => {
-        const phone = row.customers?.phone
-        const wpLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null
-        return (
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-[#f5f5f5]">{row.customers?.name ?? '—'}</span>
-            {wpLink && (
-              <a
-                href={wpLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Abrir WhatsApp"
-                className="text-[#9e9e9e] hover:text-[#28b438] transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-              </a>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'description',
-      header: 'Descrição',
-      render: (row: ChargeWithRelations) => <span>{row.description}</span>,
-    },
-    {
-      key: 'amount',
-      header: 'Valor',
-      render: (row: ChargeWithRelations) => (
-        <span className="font-semibold text-[#f5f5f5]">{formatCurrency(row.amount)}</span>
-      ),
-    },
-    {
-      key: 'due_date',
-      header: 'Vencimento',
-      render: (row: ChargeWithRelations) => <span>{formatDate(row.due_date)}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row: ChargeWithRelations) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: 'payment_date',
-      header: 'Dt. Pagamento',
-      render: (row: ChargeWithRelations) => (
-        <span>{row.payment_date ? formatDate(row.payment_date) : '—'}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Ações',
-      render: (row: ChargeWithRelations) => (
-        <div className="flex items-center gap-1">
-          {/* Botão de confirmar pagamento: visível apenas para pendentes ou vencidas */}
-          {(row.status === 'pending' || row.status === 'overdue') && (
-            <button
-              onClick={() => { setConfirmingPaid(row); setPaymentMethod('') }}
-              title="Marcar como pago"
-              className="p-1.5 rounded-lg text-[#28b438] hover:bg-[#0e2f13] transition-colors"
-            >
-              <CheckCircle className="w-4 h-4" />
-            </button>
-          )}
-          {/* Botão de marcar como prejuízo */}
-          {(row.status === 'pending' || row.status === 'overdue') && (
-            <button
-              onClick={() => setConfirmingLoss(row)}
-              title="Contabilizar como prejuízo"
-              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-[#ff9c9a] border border-[#ff9c9a]/20 hover:bg-[#ff9c9a]/10 transition-colors"
-            >
-              <AlertTriangle className="w-3 h-3" />
-              Prejuízo
-            </button>
-          )}
-          {/* Botão de edição */}
-          <button
-            onClick={() => openEdit(row)}
-            className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-white/5 transition-colors"
-            title="Editar"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          {/* Botão de exclusão */}
-          <button
-            onClick={() => setDeleting(row)}
-            className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#ff9c9a]/10 transition-colors"
-            title="Excluir"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ]
-
   return (
     <div className="flex flex-col min-h-full">
       {/* Cabeçalho superior com título e ação global */}
@@ -522,8 +415,8 @@ export default function CobrancasPage() {
               Dados em tempo real
             </span>
           </div>
-          <div className="border-t border-[#BAFF1A]/15 pt-3">
-            <p className="text-xs text-[#9e9e9e] text-[#9e9e9e] mb-2">O que esta tela irá apresentar após a integração</p>
+          <div className="border-t border-[#6b9900] pt-3">
+            <p className="text-xs text-[#9e9e9e] mb-2">O que esta tela irá apresentar após a integração</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
               {[
                 'Total recebido no período',
@@ -534,7 +427,7 @@ export default function CobrancasPage() {
                 'Prejuízos contabilizados',
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#BAFF1A]/60 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#BAFF1A] shrink-0" />
                   <span className="text-xs text-[#9e9e9e]">{item}</span>
                 </div>
               ))}
@@ -562,7 +455,7 @@ export default function CobrancasPage() {
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Total Recebido</p>
+              <p className="text-xs text-[#9e9e9e]">Total Recebido</p>
               <p className="text-[28px] font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
             </div>
@@ -575,7 +468,7 @@ export default function CobrancasPage() {
           {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">A Receber</p>
+              <p className="text-xs text-[#9e9e9e]">A Receber</p>
               <p className="text-[28px] font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
@@ -588,7 +481,7 @@ export default function CobrancasPage() {
           {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Vencidas</p>
+              <p className="text-xs text-[#9e9e9e]">Vencidas</p>
               <p className="text-[28px] font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
               <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
@@ -609,7 +502,7 @@ export default function CobrancasPage() {
           {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Inadimplência</p>
+              <p className="text-xs text-[#9e9e9e]">Inadimplência</p>
               <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {defaultRate.toFixed(1)}%
               </p>
@@ -631,7 +524,7 @@ export default function CobrancasPage() {
           {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e] text-[#9e9e9e]">Valores Não Pagos</p>
+              <p className="text-xs text-[#9e9e9e]">Valores Não Pagos</p>
               <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalUnpaid)}
               </p>
@@ -646,14 +539,14 @@ export default function CobrancasPage() {
           </Card>
 
           {/* Card 6: Prejuízos Contabilizados */}
-          <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a]/40 bg-[#7c1c1c]/10' : ''}>
-            <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]/20' : 'border-[#474747]'}`}>
+          <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a] bg-[#7c1c1c]' : ''}>
+            <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]' : 'border-[#474747]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-xs text-[#9e9e9e] ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
+                <p className={`text-xs ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                   Prejuízos Contabilizados
                 </p>
                 {totalLoss > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#7c1c1c]/30 border border-[#ff9c9a]/30 px-2 py-0.5 text-xs font-medium text-[#ff9c9a]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#7c1c1c] border border-[#ff9c9a] px-2 py-0.5 text-xs font-medium text-[#ff9c9a]">
                     Atenção
                   </span>
                 )}
@@ -661,13 +554,13 @@ export default function CobrancasPage() {
               <p className={`text-[28px] font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalLoss)}
               </p>
-              <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]/70' : 'text-[#9e9e9e]'}`}>
+              <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                 {charges.filter((c) => c.status === 'loss').length === 0
                   ? 'Nenhum prejuízo registrado'
                   : `${charges.filter((c) => c.status === 'loss').length} cobrança(s) irrecuperável(is)`}
               </p>
             </div>
-            <div className={`px-4 py-3 ${totalLoss > 0 ? 'bg-[#7c1c1c]/10' : ''}`}>
+            <div className="px-4 py-3">
               {topLoss ? (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -701,7 +594,7 @@ export default function CobrancasPage() {
               >
                 {tab.label}
                 {tab.value !== 'all' && (
-                  <span className="ml-1.5 opacity-70">
+                  <span className={`ml-1.5 ${activeTab === tab.value ? 'text-[#121212]' : 'text-[#616161]'}`}>
                     ({charges.filter((c) => c.status === tab.value).length})
                   </span>
                 )}
@@ -721,15 +614,93 @@ export default function CobrancasPage() {
         </div>
 
         {/* Tabela de Cobranças */}
-        <Card padding="none">
-          <Table
-            columns={columns}
-            data={filtered}
-            keyExtractor={(row) => row.id}
-            loading={loading}
-            emptyMessage="Nenhuma cobrança encontrada"
-          />
-        </Card>
+        <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center gap-3">
+                <svg className="animate-spin h-8 w-8 text-[#BAFF1A]" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p className="text-sm text-[#c7c7c7]">Carregando cobranças...</p>
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-[#c7c7c7] text-sm italic">Nenhuma cobrança encontrada</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+                <thead className="bg-[#323232] text-[#c7c7c7]">
+                  <tr>
+                    <th className="h-16 px-4 font-bold">Cliente</th>
+                    <th className="h-16 px-4 font-bold">Descrição</th>
+                    <th className="h-16 px-4 font-bold">Valor</th>
+                    <th className="h-16 px-4 font-bold">Vencimento</th>
+                    <th className="h-16 px-4 font-bold">Status</th>
+                    <th className="h-16 px-4 font-bold">Dt. Pagamento</th>
+                    <th className="h-16 px-4 text-right font-bold">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row) => {
+                    const phone = row.customers?.phone
+                    const wpLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null
+                    return (
+                      <tr key={row.id} className="transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] h-16">
+                        <td className="px-4 font-medium">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#f5f5f5]">{row.customers?.name ?? '—'}</span>
+                            {wpLink && (
+                              <a
+                                href={wpLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir WhatsApp"
+                                className="text-[#9e9e9e] hover:text-[#28b438] transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 text-[16px]">{row.description}</td>
+                        <td className="whitespace-nowrap px-4 font-semibold text-[#f5f5f5]">{formatCurrency(row.amount)}</td>
+                        <td className="whitespace-nowrap px-4 text-[16px]">{formatDate(row.due_date)}</td>
+                        <td className="px-4"><StatusBadge status={row.status} /></td>
+                        <td className="whitespace-nowrap px-4 text-[16px] text-[#9e9e9e]">
+                          {row.payment_date ? formatDate(row.payment_date) : '—'}
+                        </td>
+                        <td className="whitespace-nowrap px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(row)} title="Editar">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            {(row.status === 'pending' || row.status === 'overdue') && (
+                              <Button variant="primary" size="sm" className="h-8 w-8 p-0" onClick={() => { setConfirmingPaid(row); setPaymentMethod('') }} title="Marcar como pago">
+                                <CheckCircle2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {(row.status === 'pending' || row.status === 'overdue') && (
+                              <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => setConfirmingLoss(row)} title="Contabilizar como prejuízo">
+                                <AlertTriangle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => setDeleting(row)} title="Excluir">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal: Formulário de criação ou edição de cobrança */}
@@ -811,7 +782,7 @@ export default function CobrancasPage() {
       {/* Modal: Confirmar recebimento de pagamento */}
       <Modal open={!!confirmingPaid} onClose={() => setConfirmingPaid(null)} title="Confirmar Pagamento" size="sm">
         <div className="space-y-4">
-          <div className="p-4 bg-[#0e2f13] border border-[#28b438]/20 rounded-lg space-y-2">
+          <div className="p-4 bg-[#0e2f13] border border-[#28b438] rounded-xl space-y-2">
             <p className="text-sm text-[#f5f5f5] font-medium">Confirmar recebimento desta cobrança?</p>
             {confirmingPaid && (
               <div className="space-y-0.5">
@@ -849,7 +820,7 @@ export default function CobrancasPage() {
       {/* Modal: Contabilizar cobrança como prejuízo */}
       <Modal open={!!confirmingLoss} onClose={() => setConfirmingLoss(null)} title="Registrar como Prejuízo" size="sm">
         <div className="space-y-4">
-          <div className="p-4 bg-[#7c1c1c]/30 border border-[#ff9c9a]/20 rounded-lg space-y-2">
+          <div className="p-4 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl space-y-2">
             <p className="text-sm text-[#f5f5f5] font-medium">Tem certeza que deseja contabilizar esta cobrança como prejuízo?</p>
             {confirmingLoss && (
               <div className="space-y-0.5">
@@ -859,7 +830,7 @@ export default function CobrancasPage() {
               </div>
             )}
           </div>
-          <p className="text-xs text-[#ff9c9a]/80">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
+          <p className="text-xs text-[#ff9c9a]">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setConfirmingLoss(null)}>Cancelar</Button>
             <Button variant="danger" onClick={confirmLoss} loading={saving}>
