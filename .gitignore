@@ -36,5 +36,8 @@ yarn-error.log*
 next-env.d.ts
 
 # AI tools (contêm tokens e configurações locais)
+.claude/
 .gemini/
-.claude/settings.local.json
+
+# logs
+*.log
