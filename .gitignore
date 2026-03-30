@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -41,3 +42,10 @@ next-env.d.ts
 
 # logs
 *.log
+
+# video-promo — projeto separado, não vai pro git
+video-promo/
+
+# arquivos de auditoria temporários
+audit.mjs
+audit.ts
