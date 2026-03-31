@@ -185,7 +185,7 @@ export default function ModelosContratoPage() {
 
       setSuccess('Modelo atualizado com sucesso!')
       fetchTemplates()
-    } catch (err: any) {
+    } catch {
       setError('Falha no upload do arquivo.')
     } finally {
       setUploading(null)
@@ -208,7 +208,7 @@ export default function ModelosContratoPage() {
       if (dbErr) throw dbErr
       setSuccess('Modelo removido.')
       fetchTemplates()
-    } catch (err: any) {
+    } catch {
       setError('Erro ao remover.')
     }
   }
