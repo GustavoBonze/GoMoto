@@ -222,10 +222,10 @@ export default function ModelosContratoPage() {
                 
                 {template.file_url && (
                   <>
-                    <Button variant="secondary" className="w-11 h-11 p-0 rounded-full" onClick={() => window.open(template.file_url!, '_blank')}>
+                    <Button variant="secondary" className="w-11 h-11 p-0 rounded-full" onClick={() => window.open(template.file_url!, '_blank')} title="Baixar modelo">
                       <Download className="w-5 h-5" />
                     </Button>
-                    <Button variant="danger" className="w-11 h-11 p-0 rounded-full" onClick={() => handleRemoveTemplate(template.slug)}>
+                    <Button variant="danger" className="w-11 h-11 p-0 rounded-full" onClick={() => handleRemoveTemplate(template.slug)} title="Remover modelo">
                       <Trash2 className="w-5 h-5" />
                     </Button>
                   </>
