@@ -277,7 +277,7 @@ export default function SettingsPage() {
     const isSuccess = feedback.type === 'success'
     return (
       <div
-        className={`flex items-center gap-2 text-sm font-medium ${
+        className={`flex items-center gap-2 text-[13px] font-medium ${
           isSuccess ? 'text-[#28b438]' : 'text-[#ff9c9a]'
         }`}
       >
@@ -300,12 +300,12 @@ export default function SettingsPage() {
         {/* SEÇÃO 1: Dados da Empresa */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-lg bg-[#BAFF1A]/10 border border-[#BAFF1A]/20">
+            <div className="p-2.5 rounded-full bg-[#243300] border border-[#6b9900]">
               <Building2 className="w-5 h-5 text-[#BAFF1A]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#f5f5f5]">Dados da Empresa</h2>
-              <p className="text-sm text-[#9e9e9e]">
+              <h2 className="text-[20px] font-bold text-[#f5f5f5]">Dados da Empresa</h2>
+              <p className="text-[13px] text-[#9e9e9e]">
                 Informações que aparecerão em contratos e relatórios.
               </p>
             </div>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
               /* Estado de carregamento: exibe spinner centralizado */
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader2 className="animate-spin text-[#BAFF1A]" size={32} />
-                <p className="text-[#9e9e9e] text-sm">Carregando dados da empresa...</p>
+                <p className="text-[#9e9e9e] text-[13px]">Carregando dados da empresa...</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -383,12 +383,12 @@ export default function SettingsPage() {
         {/* SEÇÃO 2: Segurança — Alteração de Senha */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-lg bg-[#2d0363] border border-[#a880ff]/20">
+            <div className="p-2.5 rounded-full bg-[#2d0363] border border-[#a880ff]">
               <Lock className="w-5 h-5 text-[#a880ff]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#f5f5f5]">Segurança</h2>
-              <p className="text-sm text-[#9e9e9e]">Altere sua senha de acesso ao painel.</p>
+              <h2 className="text-[20px] font-bold text-[#f5f5f5]">Segurança</h2>
+              <p className="text-[13px] text-[#9e9e9e]">Altere sua senha de acesso ao painel.</p>
             </div>
           </div>
 
@@ -444,12 +444,12 @@ export default function SettingsPage() {
         {/* SEÇÃO 3: Informações da Conta */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-lg bg-[#3a180f] border border-[#e65e24]/20">
+            <div className="p-2.5 rounded-full bg-[#3a180f] border border-[#e65e24]">
               <User className="w-5 h-5 text-[#e65e24]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#f5f5f5]">Informações da Conta</h2>
-              <p className="text-sm text-[#9e9e9e]">Detalhes do usuário autenticado no sistema.</p>
+              <h2 className="text-[20px] font-bold text-[#f5f5f5]">Informações da Conta</h2>
+              <p className="text-[13px] text-[#9e9e9e]">Detalhes do usuário autenticado no sistema.</p>
             </div>
           </div>
 
@@ -463,19 +463,19 @@ export default function SettingsPage() {
               /* Exibe os dados do usuário logado */
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-[#9e9e9e] mb-1">E-mail de Acesso</p>
+                  <p className="text-[13px] text-[#9e9e9e] mb-1">E-mail de Acesso</p>
                   <p className="text-[#f5f5f5] font-medium">{userData.email}</p>
                 </div>
                 <div className="border-t border-[#474747]" />
                 <div>
-                  <p className="text-sm text-[#9e9e9e] mb-1">Membro desde</p>
+                  <p className="text-[13px] text-[#9e9e9e] mb-1">Membro desde</p>
                   <p className="text-[#f5f5f5] font-medium">{userData.createdAt}</p>
                 </div>
               </div>
             ) : (
               /* Fallback quando os dados do usuário não puderam ser carregados */
               <div className="py-4 text-center">
-                <p className="text-[#ff9c9a] text-sm">
+                <p className="text-[#ff9c9a] text-[13px]">
                   Não foi possível carregar as informações do usuário.
                 </p>
               </div>

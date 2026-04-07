@@ -70,8 +70,8 @@ interface StatCardProps {
   value: string | number
   /** Texto de apoio opcional (ex: "+5% este mês"). */
   subtitle?: string
-  /** Ícone do Lucide que representa a métrica. */
-  icon: React.ReactNode
+  /** Ícone do Lucide que representa a métrica (componente, não JSX). */
+  icon: React.ElementType
   /** Esquema de cores para o ícone, derivado das variantes semânticas. */
   color?: 'brand' | 'success' | 'warning' | 'danger' | 'info'
   /** Classes CSS adicionais. */
@@ -79,44 +79,23 @@ interface StatCardProps {
 }
 
 /**
- * @constant colorMap
- * @description Mapeamento de esquemas de cores para os ícones do `StatCard`.
- * O "porquê": Define um vocabulário visual consistente. Uma métrica de 'sucesso'
- * sempre terá um ícone verde, 'perigo' sempre vermelho, etc., tornando a UI
- * mais intuitiva e rápida de ler.
- */
-const colorMap = {
-  brand: { bg: 'bg-[#BAFF1A]/10', text: 'text-[#BAFF1A]' },
-  success: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]' },
-  warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]' },
-  danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]' },
-  info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]' },
-}
-
-/**
  * @component StatCard
  * @description Componente especializado para dashboards que exibe uma métrica (KPI) com um ícone estilizado.
- * Utiliza o componente `Card` como base para manter a consistência visual.
+ * Segue o padrão do design system Bonze: texto à esquerda, ícone à direita.
  */
-export function StatCard({ title, value, subtitle, icon, color = 'brand', className }: StatCardProps) {
-  // Seleciona o par de cores (fundo e texto) baseado na propriedade `color`.
-  const colors = colorMap[color]
-  
+export function StatCard({ title, value, subtitle, icon: Icon, color = 'brand', className }: StatCardProps) {
   return (
-    <Card className={cn('flex items-start gap-4', className)}>
-      {/* Contêiner do ícone com fundo colorido translúcido e borda sutil. */}
-      <div className={cn('p-2.5 rounded-lg flex-shrink-0 border border-white/5', colors.bg)}>
-        <div className={cn('w-5 h-5', colors.text)}>{icon}</div>
+    <div className={cn('flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4', className)}>
+      {/* Seção de textos: Label, Valor principal e Sub (opcional). */}
+      <div>
+        <p className="text-[14px] font-normal text-[#9e9e9e]">{title}</p>
+        <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
+        {subtitle && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{subtitle}</p>}
       </div>
-      
-      {/* Seção de textos: Título, Valor principal e Subtítulo (opcional). */}
-      <div className="min-w-0">
-        <p className="text-sm text-[#c7c7c7] truncate">{title}</p>
-        <p className="text-2xl font-bold text-[#f5f5f5] mt-0.5">{value}</p>
-
-        {/* Renderiza o subtítulo apenas se ele for fornecido. */}
-        {subtitle && <p className="text-xs text-[#9e9e9e] mt-0.5">{subtitle}</p>}
+      {/* Círculo com ícone — sempre bg-[#323232] e ícone text-[#BAFF1A] */}
+      <div className="bg-[#323232] p-3 rounded-full">
+        <Icon className="w-6 h-6 text-[#BAFF1A]" />
       </div>
-    </Card>
+    </div>
   )
 }

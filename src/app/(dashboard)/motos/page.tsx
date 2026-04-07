@@ -44,7 +44,6 @@ import {
 } from 'lucide-react'
 
 // Importação de componentes de layout e UI personalizados do projeto
-import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { StatusBadge } from '@/components/ui/Badge'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -507,24 +506,16 @@ export default function MotorcyclesPage() {
 
   // Renderização principal do componente
   return (
-    <div className="flex flex-col min-h-full">
-      {/* 
-        * COMPONENTE: Cabeçalho da Página
-        * Exibe o título e o contador total de veículos.
-        * Fornece a ação principal para cadastrar nova moto.
-        */}
-      <Header
-        title="Motocicletas"
-        subtitle={`${motorcycles.length} motos registradas na frota`}
-        actions={
-          <Button onClick={openNewMotorcycle} className="shadow-lg shadow-[#BAFF1A]/10">
-            <Plus className="w-4 h-4" />
-            Nova Moto
-          </Button>
-        }
-      />
+    <div className='min-h-screen bg-[#121212]'>
+      <div className='sticky top-0 z-10 bg-[#121212] border-b border-[#323232] px-6 py-4 flex items-center gap-4'>
+        <h1 className='text-[28px] font-bold text-[#f5f5f5]'>Motocicletas</h1>
+        <span className='text-[14px] font-normal text-[#9e9e9e]'>{motorcycles.length} motos na frota</span>
+        <div className='ml-auto flex gap-3'>
+          <Button onClick={openNewMotorcycle}><Plus className='w-4 h-4' />Nova Moto</Button>
+        </div>
+      </div>
 
-      <div className="p-6 space-y-4">
+      <div className='px-6 py-4 space-y-4'>
 
         {/* BANNER DE ERRO — exibido quando a busca de dados falha (rede, Supabase, etc) */}
         {fetchError && (
@@ -564,175 +555,78 @@ export default function MotorcyclesPage() {
         </div>
 
         {/* FILTROS E BUSCA — acima do grid */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2 flex-wrap">
             {filterOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                className={
                   filter === opt.value
-                    ? 'bg-[#474747] border border-[#323232] text-[#f5f5f5] scale-[1.02]'
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
-                }`}
+                    ? 'px-4 py-2 rounded-full text-sm font-medium transition-all bg-[#BAFF1A] text-[#121212]'
+                    : 'px-4 py-2 rounded-full text-sm font-medium transition-all bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                }
               >
                 {opt.label}
                 {opt.value !== 'all' && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${filter === opt.value ? 'bg-black/10' : 'bg-white/5'}`}>
-                    {motorcycles.filter((m) => m.status === opt.value).length}
-                  </span>
+                  <span className="ml-1.5 opacity-70">({motorcycles.filter((m) => m.status === opt.value).length})</span>
                 )}
               </button>
             ))}
           </div>
-          <div className="ml-auto relative min-w-[280px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9e9e9e]" />
+          <div className="ml-auto relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#616161]" />
             <input
               type="text"
               placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A]/50 focus:ring-1 focus:ring-[#BAFF1A]/20 transition-all"
+              className='w-full h-10 pl-10 pr-4 rounded-full bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus-within:border-[#474747] transition-all'
             />
           </div>
         </div>
+      </div>
 
-        {/* ──────────────────────────────────────────────────────────────────
-          * SEÇÃO: TABELA DA FROTA
-          * Grid estilo tabela com todas as informações das motos e clientes.
-          * ────────────────────────────────────────────────────────────────── */}
-        <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-
-          {/* Cabeçalho da tabela */}
-          <div className="grid grid-cols-[1fr_1.6fr_1.4fr_0.9fr_1.4fr_0.8fr_auto] gap-4 px-5 py-2 bg-[#181818] border-b border-[#474747]">
-            {['Placa', 'Motocicleta', 'Cliente', 'Valor/Semana', 'Endereço', 'Status', 'Ações'].map((col) => (
-              <p key={col} className="text-xs font-black text-[#616161] uppercase tracking-wider">{col}</p>
-            ))}
-          </div>
-
-          {/* Corpo da tabela */}
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : filteredMotorcycles.length === 0 ? (
-            /* Estado vazio */
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-12 h-12 bg-[#323232] rounded-full flex items-center justify-center text-[#616161]">
-                <Bike className="w-6 h-6" />
-              </div>
-              <p className="text-sm text-[#9e9e9e]">Nenhum veículo encontrado.</p>
-              <button
-                onClick={() => { setFilter('all'); setSearch('') }}
-                className="text-xs text-[#BAFF1A] hover:underline"
-              >
-                Limpar filtros
-              </button>
-            </div>
-          ) : (
-            filteredMotorcycles.map((moto, idx) => {
-              const contract = contractByMotoId[moto.id]
-              const customer = contract?.customer
-              const weeklyValue = contract?.monthly_amount
-                ? formatCurrency(contract.monthly_amount)
-                : null
-
-              return (
-                <div
-                  key={moto.id}
-                  onClick={() => setSelectedMotoId(moto.id === selectedMotoId ? null : moto.id)}
-                  className={`grid grid-cols-[1fr_1.6fr_1.4fr_0.9fr_1.4fr_0.8fr_auto] gap-4 items-center px-5 py-1.5 transition-colors cursor-pointer group ${
-                    idx < filteredMotorcycles.length - 1 ? 'border-b border-[#323232]' : ''
-                  } ${
-                    selectedMotoId === moto.id
-                      ? 'bg-[#BAFF1A]/5 border-l-2 border-l-[#BAFF1A]'
-                      : 'hover:bg-[#282828]'
-                  }`}
-                >
-                  {/* PLACA */}
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: statusColorMap[moto.status] ?? '#9e9e9e' }}
-                    />
-                    <span className="font-mono font-black text-xs text-[#f5f5f5] tracking-widest">
-                      {moto.license_plate}
-                    </span>
-                  </div>
-
-                  {/* MOTOCICLETA */}
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#f5f5f5] truncate group-hover:text-[#BAFF1A] transition-colors">
-                      {moto.make} {moto.model}
-                    </p>
-                  </div>
-
-                  {/* CLIENTE */}
-                  <div className="min-w-0">
-                    {customer ? (
-                      <div className="flex items-center gap-1.5">
-                        <User className="w-3 h-3 text-[#a880ff] flex-shrink-0" />
-                        <p className="text-xs font-medium text-[#f5f5f5] truncate">{customer.name}</p>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-[#474747] italic">Sem locatário</span>
-                    )}
-                  </div>
-
-                  {/* VALOR/SEMANA */}
-                  <div>
-                    {weeklyValue ? (
-                      <span className="text-xs font-bold text-[#BAFF1A]">{weeklyValue}</span>
-                    ) : (
-                      <span className="text-xs text-[#474747]">—</span>
-                    )}
-                  </div>
-
-                  {/* ENDEREÇO */}
-                  <div className="min-w-0">
-                    {customer?.address ? (
-                      <div className="flex items-start gap-1.5">
-                        <MapPin className="w-3 h-3 text-[#616161] flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-[#9e9e9e] truncate">{customer.address}</p>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-[#474747]">—</span>
-                    )}
-                  </div>
-
-                  {/* STATUS */}
-                  <div>
-                    <StatusBadge status={moto.status} />
-                  </div>
-
-                  {/* AÇÕES */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setMotorcycleDetails(moto) }}
-                      className="p-1.5 rounded-full text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-[#474747] transition-all"
-                      title="Ver detalhes"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openEditMotorcycle(moto) }}
-                      className="p-1.5 rounded-full text-[#9e9e9e] hover:text-[#BAFF1A] hover:bg-[#243300] transition-all"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeletingMotorcycle(moto) }}
-                      className="p-1.5 rounded-full text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c] transition-all"
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )
-            })
-          )}
+      <div className='px-6 pb-10'>
+        <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]"><div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px] text-[#f5f5f5]">
+            <thead className="bg-[#323232] text-[#c7c7c7]">
+              <tr>
+                <th className="h-9 px-3 font-bold">Placa</th>
+                <th className="h-9 px-3 font-bold">Motocicleta</th>
+                <th className="h-9 px-3 font-bold">Cliente</th>
+                <th className="h-9 px-3 font-bold">Valor/Semana</th>
+                <th className="h-9 px-3 font-bold">Endereço</th>
+                <th className="h-9 px-3 font-bold">Status</th>
+                <th className="h-9 px-3 text-right font-bold">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7}><div className='flex items-center justify-center py-16'><div className='w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin' /></div></td></tr>
+              ) : filteredMotorcycles.length === 0 ? (
+                <tr><td colSpan={7}><div className='flex flex-col items-center justify-center py-16 gap-3'><div className='w-12 h-12 bg-[#323232] rounded-full flex items-center justify-center'><Bike className='w-6 h-6 text-[#9e9e9e]' /></div><p className='text-[13px] text-[#9e9e9e]'>Nenhum veículo encontrado.</p><button onClick={() => { setFilter('all'); setSearch('') }} className='text-sm text-[#BAFF1A] hover:underline'>Limpar filtros</button></div></td></tr>
+              ) : (
+                filteredMotorcycles.map((moto) => {
+                  const contract = contractByMotoId[moto.id]
+                  const customer = contract?.customer
+                  const weeklyValue = contract?.monthly_amount ? formatCurrency(contract.monthly_amount) : null
+                  return (
+                    <tr key={moto.id} onClick={() => setSelectedMotoId(moto.id === selectedMotoId ? null : moto.id)} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] cursor-pointer">
+                      <td className="px-4"><div className='flex items-center gap-2'><div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: statusColorMap[moto.status] ?? '#9e9e9e' }} /><span className='font-mono font-bold text-[#f5f5f5] tracking-widest'>{moto.license_plate}</span></div></td>
+                      <td className="px-4"><p className="font-medium text-[#f5f5f5]">{moto.make} {moto.model}</p></td>
+                      <td className="px-4">{customer ? (<div className="flex items-center gap-1.5"><User className="w-4 h-4 text-[#a880ff] flex-shrink-0" /><p className="font-medium text-[#f5f5f5] truncate">{customer.name}</p></div>) : (<p className="text-[#9e9e9e]">Sem locatário</p>)}</td>
+                      <td className="px-4">{weeklyValue ? (<span className='text-[#BAFF1A] font-bold'>{weeklyValue}</span>) : (<span className='text-[#9e9e9e]'>—</span>)}</td>
+                      <td className="px-4">{customer?.address ? (<div className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-[#9e9e9e] flex-shrink-0" /><p className="text-[#9e9e9e] truncate max-w-[180px]">{customer.address}</p></div>) : (<p className="text-[#9e9e9e]">—</p>)}</td>
+                      <td className="px-4"><StatusBadge status={moto.status} /></td>
+                      <td className="px-4 text-right"><div className="flex items-center justify-end gap-1"><Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Ver detalhes" onClick={(e) => { e.stopPropagation(); setMotorcycleDetails(moto) }}><Eye className="h-4 w-4" /></Button><Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Editar" onClick={(e) => { e.stopPropagation(); openEditMotorcycle(moto) }}><Edit2 className="h-4 w-4" /></Button><Button variant="danger" size="sm" className="h-8 w-8 p-0" title="Excluir" onClick={(e) => { e.stopPropagation(); setDeletingMotorcycle(moto) }}><Trash2 className="h-4 w-4" /></Button></div></td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
         </div>
       </div>
 
@@ -827,8 +721,8 @@ export default function MotorcyclesPage() {
           </div>
 
           {/* HISTÓRICO DE AQUISIÇÃO: Detalhes de quem a GoMoto comprou o veículo */}
-          <div className="border-t border-white/5 pt-4 mt-2">
-            <h5 className="text-xs font-bold text-[#BAFF1A] uppercase tracking-widest mb-4">Informações da Compra</h5>
+          <div className="border-t border-[#474747] pt-4 mt-2">
+            <h5 className="text-[14px] font-bold text-[#BAFF1A] mb-4">Informações da Compra</h5>
             <div className="grid grid-cols-2 gap-5">
               <Input
                 label="Dono Anterior (Vendedor)"
@@ -860,7 +754,7 @@ export default function MotorcyclesPage() {
           </div>
 
           {/* STATUS OPERACIONAL E USO ATUAL */}
-          <div className="grid grid-cols-2 gap-5 border-t border-white/5 pt-4">
+          <div className="grid grid-cols-2 gap-5 border-t border-[#474747] pt-4">
             <Select
               label="Status Atual na Frota"
               options={statusOptions}
@@ -886,7 +780,7 @@ export default function MotorcyclesPage() {
           />
 
           {/* BOTÕES DE NAVEGAÇÃO DO MODAL */}
-          <div className="flex gap-4 justify-end pt-4 border-t border-white/5">
+          <div className="flex gap-4 justify-end pt-4 border-t border-[#474747]">
             <Button type="button" variant="ghost" onClick={closeModal}>
               CANCELAR
             </Button>
@@ -921,7 +815,7 @@ export default function MotorcyclesPage() {
             {/* LISTAGEM DOS ITENS DE MANUTENÇÃO PREVENTIVA */}
             <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
               {BOOTSTRAP_MAINTENANCE_ITEMS.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#474747]/30">
+                <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#474747]">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-[#f5f5f5] uppercase tracking-tight">{item.name}</p>
                     <p className="text-xs text-[#616161] font-medium">{item.hint}</p>
@@ -936,7 +830,7 @@ export default function MotorcyclesPage() {
                           placeholder="KM da Última Troca"
                           value={bootstrapItems[item.id] ?? ''}
                           onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          className="w-36 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A]/40 text-right font-mono"
+                          className="w-36 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] text-right font-mono"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#616161] font-bold">KM</span>
                       </div>
@@ -945,7 +839,7 @@ export default function MotorcyclesPage() {
                         type="date"
                         value={bootstrapItems[item.id] ?? ''}
                         onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                        className="w-44 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] focus:outline-none focus:border-[#BAFF1A]/40"
+                        className="w-44 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] focus:outline-none focus:border-[#474747]"
                       />
                     )}
                   </div>
@@ -964,11 +858,11 @@ export default function MotorcyclesPage() {
             )}
 
             {/* AÇÕES DE NAVEGAÇÃO DO WIZARD */}
-            <div className="flex gap-4 justify-between pt-4 border-t border-white/5">
+            <div className="flex gap-4 justify-between pt-4 border-t border-[#474747]">
               <Button variant="ghost" onClick={() => setStep(1)} className="px-6">
                 ← VOLTAR AOS DADOS
               </Button>
-              <Button onClick={handleSubmitFinal} className="px-10 shadow-lg shadow-[#BAFF1A]/20" loading={saving}>
+              <Button onClick={handleSubmitFinal} className="px-10" loading={saving}>
                 <Plus className="w-4 h-4" />
                 CONCLUIR CADASTRO
               </Button>
@@ -983,7 +877,7 @@ export default function MotorcyclesPage() {
         */}
       <Modal open={!!deletingMotorcycle} onClose={() => setDeletingMotorcycle(null)} title="Confirmar Exclusão Permanente" size="sm">
         <div className="space-y-6">
-          <div className="p-4 bg-[#7c1c1c]/20 border border-[#bf1d1e]/20 rounded-xl">
+          <div className="p-4 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl">
             <p className="text-[#9e9e9e] text-sm leading-relaxed text-center">
               Você está prestes a remover a moto <br />
               <strong className="text-[#f5f5f5] text-base font-bold">{deletingMotorcycle?.make} {deletingMotorcycle?.model} — Placa {deletingMotorcycle?.license_plate}</strong>
@@ -996,7 +890,7 @@ export default function MotorcyclesPage() {
             <Button variant="ghost" onClick={() => setDeletingMotorcycle(null)} className="flex-1">
               CANCELAR
             </Button>
-            <Button variant="danger" onClick={confirmDeletion} className="flex-1 shadow-lg shadow-red-500/20" loading={saving}>
+            <Button variant="danger" onClick={confirmDeletion} className="flex-1" loading={saving}>
               <Trash2 className="w-4 h-4" />
               CONFIRMAR EXCLUSÃO
             </Button>
@@ -1017,14 +911,14 @@ export default function MotorcyclesPage() {
         >
           <div className="space-y-8 p-1">
             {/* CABEÇALHO DO MODAL: Título e Status Principal */}
-            <div className="flex items-start justify-between gap-6 pb-6 border-b border-white/5">
+            <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#474747]">
               <div>
-                <h3 className="text-2xl font-black text-[#f5f5f5] tracking-tight uppercase italic">
+                <h3 className="text-[28px] font-bold text-[#f5f5f5]">
                   {motorcycleDetails.make} {motorcycleDetails.model}
                 </h3>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-sm font-bold text-[#616161] bg-white/5 px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
-                  <span className="text-sm font-bold text-[#616161] bg-white/5 px-2 py-0.5 rounded uppercase">{motorcycleDetails.color}</span>
+                  <span className="text-sm font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
+                  <span className="text-sm font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded uppercase">{motorcycleDetails.color}</span>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -1048,12 +942,12 @@ export default function MotorcyclesPage() {
 
                 {/* Repetição do selo de manutenção para ênfase */}
                 {motorcycleDetails.maintenance_up_to_date ? (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438]/30 text-[#28b438] text-xs font-black uppercase">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438] text-[#28b438] text-xs font-medium">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Manutenção em Dia
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#3a180f] border border-[#e65e24]/30 text-[#e65e24] text-xs font-black uppercase">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#3a180f] border border-[#e65e24] text-[#e65e24] text-xs font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Revisão Pendente
                   </span>
@@ -1064,7 +958,7 @@ export default function MotorcyclesPage() {
             {/* SEÇÃO: INFORMAÇÕES TÉCNICAS E LEGAIS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <section className="space-y-4">
-                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Dados de Registro</h5>
+                <h5 className="text-[14px] font-bold text-[#BAFF1A] mb-4">Dados de Registro</h5>
                 <div className="space-y-4">
                   <DetailRow label="Placa do Veículo" value={motorcycleDetails.license_plate} mono />
                   <DetailRow label="Código RENAVAM" value={motorcycleDetails.renavam} mono />
@@ -1073,7 +967,7 @@ export default function MotorcyclesPage() {
               </section>
 
               <section className="space-y-4">
-                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-4">Especificações do Motor</h5>
+                <h5 className="text-[14px] font-bold text-[#BAFF1A] mb-4">Especificações do Motor</h5>
                 <div className="space-y-4">
                   <DetailRow label="Tipo de Combustível" value={motorcycleDetails.fuel} />
                   <DetailRow label="Potência / Cilindrada" value={motorcycleDetails.engine_capacity} />
@@ -1084,8 +978,8 @@ export default function MotorcyclesPage() {
 
             {/* SEÇÃO: HISTÓRICO DE PROPRIEDADE (Renderização Condicional) */}
             {(motorcycleDetails.previous_owner || motorcycleDetails.purchase_date || motorcycleDetails.fipe_value) && (
-              <div className="bg-[#282828] rounded-2xl p-6 border border-[#474747]/30">
-                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em] mb-6">Informações de Aquisição GoMoto</h5>
+              <div className="bg-[#282828] rounded-2xl p-6 border border-[#474747]">
+                <h5 className="text-[14px] font-bold text-[#BAFF1A] mb-6">Informações de Aquisição GoMoto</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                   {motorcycleDetails.previous_owner && (
                     <DetailRow label="Vendedor / Dono Anterior" value={motorcycleDetails.previous_owner} fullWidth />
@@ -1113,8 +1007,8 @@ export default function MotorcyclesPage() {
             {/* SEÇÃO: OBSERVAÇÕES E NOTAS DE VISTORIA */}
             {motorcycleDetails.observations && (
               <div className="space-y-3">
-                <h5 className="text-xs font-black text-[#BAFF1A] uppercase tracking-[0.2em]">Notas do Veículo & Vistoria</h5>
-                <div className="bg-[#282828] rounded-xl p-5 border border-[#474747]/30">
+                <h5 className="text-[14px] font-bold text-[#BAFF1A]">Notas do Veículo & Vistoria</h5>
+                <div className="bg-[#282828] rounded-xl p-5 border border-[#474747]">
                   <p className="text-sm text-[#9e9e9e] leading-relaxed italic">
                     "{motorcycleDetails.observations}"
                   </p>
@@ -1123,7 +1017,7 @@ export default function MotorcyclesPage() {
             )}
 
             {/* AÇÕES DE RODAPÉ DO MODAL */}
-            <div className="flex justify-end gap-4 pt-6 border-t border-white/5">
+            <div className="flex justify-end gap-4 pt-6 border-t border-[#474747]">
               <Button
                 variant="ghost"
                 onClick={() => setMotorcycleDetails(null)}
@@ -1176,9 +1070,9 @@ function DetailRow({
   
   return (
     <div className={fullWidth ? 'col-span-full' : ''}>
-      <p className="text-xs font-bold text-[#616161] uppercase tracking-wider mb-1.5">{label}</p>
+      <p className="text-[14px] font-normal text-[#9e9e9e] mb-1.5">{label}</p>
       <p
-        className={`text-sm leading-tight ${mono ? 'font-mono tracking-tighter' : 'font-medium'} ${
+        className={`text-[13px] leading-tight ${mono ? 'font-mono tracking-tighter' : 'font-medium'} ${
           highlight ? 'text-[#BAFF1A]' : 'text-[#f5f5f5]'
         }`}
       >
@@ -1187,4 +1081,3 @@ function DetailRow({
     </div>
   )
 }
-

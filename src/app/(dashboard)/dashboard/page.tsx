@@ -243,34 +243,30 @@ export default async function DashboardPage() {
             title="Motos Disponíveis"
             value={data.availableMotorcycles}
             subtitle={`${data.rentedMotorcycles} alugadas`}
-            icon={<Bike className="w-5 h-5" />}
-            color="brand"
+            icon={Bike}
           />
 
-          {/* CARTÃO 2: CONTRATOS ATIVOS — volume de operações em curso (azul) */}
+          {/* CARTÃO 2: CONTRATOS ATIVOS */}
           <StatCard
             title="Contratos Ativos"
             value={data.activeContracts}
-            icon={<FileText className="w-5 h-5" />}
-            color="info"
+            icon={FileText}
           />
 
-          {/* CARTÃO 3: COBRANÇAS VENCIDAS — indicador crítico de inadimplência */}
+          {/* CARTÃO 3: COBRANÇAS VENCIDAS */}
           <StatCard
             title="Cobranças Vencidas"
             value={data.overduePaymentsCount}
             subtitle="Requer atenção"
-            icon={<AlertTriangle className="w-5 h-5" />}
-            color={data.overduePaymentsCount > 0 ? 'danger' : 'success'}
+            icon={AlertTriangle}
           />
 
-          {/* CARTÃO 4: FILA DE ESPERA — demanda reprimida por falta de estoque (âmbar) */}
+          {/* CARTÃO 4: FILA DE ESPERA */}
           <StatCard
             title="Fila de Espera"
             value={data.queuedCustomers}
             subtitle="clientes aguardando"
-            icon={<Clock className="w-5 h-5" />}
-            color="warning"
+            icon={Clock}
           />
         </div>
 
@@ -284,24 +280,21 @@ export default async function DashboardPage() {
           <StatCard
             title="Receita do Mês"
             value={formatCurrency(data.monthlyRevenue)}
-            icon={<TrendingUp className="w-5 h-5" />}
-            color="success"
+            icon={TrendingUp}
           />
 
-          {/* CARTÃO: DESPESAS DO MÊS — total de saídas do período */}
+          {/* CARTÃO: DESPESAS DO MÊS */}
           <StatCard
             title="Despesas do Mês"
             value={formatCurrency(data.monthlyExpenses)}
-            icon={<TrendingDown className="w-5 h-5" />}
-            color="danger"
+            icon={TrendingDown}
           />
 
-          {/* CARTÃO: LUCRO LÍQUIDO — saldo após dedução de custos */}
+          {/* CARTÃO: LUCRO LÍQUIDO */}
           <StatCard
             title="Lucro do Mês"
             value={formatCurrency(monthlyProfit)}
-            icon={<DollarSign className="w-5 h-5" />}
-            color={monthlyProfit >= 0 ? 'success' : 'danger'}
+            icon={DollarSign}
           />
         </div>
 
@@ -314,9 +307,9 @@ export default async function DashboardPage() {
           {/* CONTAINER: CONTRATOS ATIVOS — últimos 5 contratos vigentes */}
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             {/* CABEÇALHO DO BLOCO */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#474747] bg-[#282828]">
-              <h3 className="font-semibold text-[#f5f5f5] text-sm uppercase tracking-wider">Contratos Ativos</h3>
-              <a href="/contratos" className="text-xs text-[#BAFF1A] font-bold hover:underline transition-all">Ver todos</a>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#474747] bg-[#202020]">
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Contratos Ativos</h3>
+              <a href="/contratos" className="text-[12px] text-[#BAFF1A] font-bold hover:underline transition-all">Ver todos</a>
             </div>
 
             {/* LISTAGEM DE CONTRATOS: itera sobre os contratos recentes do Supabase */}
@@ -324,30 +317,30 @@ export default async function DashboardPage() {
               {data.recentContracts.length === 0 ? (
                 /* ESTADO VAZIO */
                 <div className="px-5 py-12 text-center">
-                  <p className="text-sm text-[#9e9e9e] font-medium">Nenhum contrato ativo no momento.</p>
+                  <p className="text-[13px] text-[#9e9e9e] font-medium">Nenhum contrato ativo no momento.</p>
                 </div>
               ) : (
                 data.recentContracts.map((contrato) => (
-                  <div key={contrato.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#2a2a2a] transition-colors">
+                  <div key={contrato.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#323232] transition-colors">
                     {/* COLUNA ESQUERDA: identificação do cliente e bem */}
                     <div className="min-w-0">
                       {/* Nome do locatário — fallback para 'Cliente' se não houver join */}
-                      <p className="text-sm font-medium text-[#f5f5f5] truncate">
+                      <p className="text-[13px] font-medium text-[#f5f5f5] truncate">
                         {contrato.customers?.name ?? 'Cliente'}
                       </p>
                       {/* Moto: Fabricante + Modelo + Placa */}
-                      <p className="text-xs text-[#9e9e9e] truncate mt-1">
+                      <p className="text-[12px] text-[#9e9e9e] truncate mt-1">
                         {`${contrato.motorcycles?.make ?? ''} ${contrato.motorcycles?.model ?? ''} — ${contrato.motorcycles?.license_plate ?? ''}`}
                       </p>
                     </div>
 
                     {/* COLUNA DIREITA: valor mensal e data de vencimento do contrato */}
                     <div className="text-right flex-shrink-0 ml-4">
-                      <p className="text-sm font-bold text-[#f5f5f5]">
+                      <p className="text-[13px] font-bold text-[#f5f5f5]">
                         {formatCurrency(contrato.monthly_amount)}
-                        <span className="text-xs text-[#616161] font-normal ml-1">/MÊS</span>
+                        <span className="text-[12px] text-[#616161] font-normal ml-1">/MÊS</span>
                       </p>
-                      <p className="text-xs text-[#9e9e9e] mt-1 font-medium italic">
+                      <p className="text-[12px] text-[#9e9e9e] mt-1 font-medium italic">
                         {contrato.end_date ? `Vence ${formatDate(contrato.end_date)}` : 'Sem vencimento'}
                       </p>
                     </div>
@@ -360,9 +353,9 @@ export default async function DashboardPage() {
           {/* CONTAINER: COBRANÇAS VENCIDAS — foco em gestão de inadimplência */}
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             {/* CABEÇALHO DO BLOCO */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#474747] bg-[#282828]">
-              <h3 className="font-semibold text-[#f5f5f5] text-sm uppercase tracking-wider">Cobranças Vencidas</h3>
-              <a href="/cobrancas" className="text-xs text-[#BAFF1A] font-bold hover:underline transition-all">Ver todas</a>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#474747] bg-[#202020]">
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Cobranças Vencidas</h3>
+              <a href="/cobrancas" className="text-[12px] text-[#BAFF1A] font-bold hover:underline transition-all">Ver todas</a>
             </div>
 
             {/* RENDERIZAÇÃO CONDICIONAL: verifica se há inadimplência */}
@@ -372,7 +365,7 @@ export default async function DashboardPage() {
                 <div className="w-12 h-12 bg-[#0e2f13] rounded-full flex items-center justify-center text-[#28b438]">
                   <TrendingUp className="w-6 h-6" />
                 </div>
-                <p className="text-sm text-[#9e9e9e] font-medium">Tudo em dia! Nenhuma cobrança vencida.</p>
+                <p className="text-[13px] text-[#9e9e9e] font-medium">Tudo em dia! Nenhuma cobrança vencida.</p>
               </div>
             ) : (
               /* LISTAGEM DE INADIMPLENTES */
@@ -388,14 +381,14 @@ export default async function DashboardPage() {
                   const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
 
                   return (
-                    <div key={payment.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#2a2a2a] transition-colors">
+                    <div key={payment.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#323232] transition-colors">
                       {/* COLUNA ESQUERDA: devedor e tempo de atraso */}
                       <div>
-                        <p className="text-sm font-medium text-[#f5f5f5]">
+                        <p className="text-[13px] font-medium text-[#f5f5f5]">
                           {payment.customers?.name ?? 'Cliente'}
                         </p>
                         {/* Texto em vermelho destacando os dias de atraso */}
-                        <p className="text-xs text-[#ff9c9a] mt-1 font-semibold flex items-center gap-1">
+                        <p className="text-[12px] text-[#ff9c9a] mt-1 font-semibold flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           Atrasado há {days} dias
                         </p>
@@ -403,7 +396,7 @@ export default async function DashboardPage() {
 
                       {/* COLUNA DIREITA: valor da dívida e badge de status */}
                       <div className="text-right flex flex-col items-end gap-1.5">
-                        <p className="text-sm font-bold text-[#ff9c9a]">{formatCurrency(payment.amount)}</p>
+                        <p className="text-[13px] font-bold text-[#ff9c9a]">{formatCurrency(payment.amount)}</p>
                         <StatusBadge status="vencido" />
                       </div>
                     </div>
@@ -417,26 +410,26 @@ export default async function DashboardPage() {
              * Fornece um resumo visual da alocação de ativos em tempo real.
              */}
             <div className="px-5 py-5 border-t border-[#474747] mt-auto bg-[#202020]">
-              <p className="text-xs font-bold text-[#616161] uppercase tracking-[0.2em] mb-4">Monitoramento de Ativos</p>
+              <p className="text-[12px] font-bold text-[#616161] mb-4">Monitoramento de Ativos</p>
               <div className="flex flex-wrap items-center gap-6">
 
                 {/* INDICADOR: Motos disponíveis (verde) */}
                 <div className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 bg-[#28b438] rounded-full shadow-[0_0_8px_rgba(40,180,56,0.4)]" />
-                  <span className="text-xs text-[#9e9e9e] font-medium">{data.availableMotorcycles} Disponíveis</span>
+                  <span className="text-[12px] text-[#9e9e9e] font-medium">{data.availableMotorcycles} Disponíveis</span>
                 </div>
 
                 {/* INDICADOR: Motos rentabilizando (roxo) */}
                 <div className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 bg-[#a880ff] rounded-full shadow-[0_0_8px_rgba(168,128,255,0.4)]" />
-                  <span className="text-xs text-[#9e9e9e] font-medium">{data.rentedMotorcycles} Alugadas</span>
+                  <span className="text-[12px] text-[#9e9e9e] font-medium">{data.rentedMotorcycles} Alugadas</span>
                 </div>
 
                 {/* INDICADOR: Motos em manutenção — exibido apenas se houver (laranja) */}
                 {data.maintenanceMotorcycles > 0 && (
                   <div className="flex items-center gap-2.5">
                     <div className="w-2.5 h-2.5 bg-[#e65e24] rounded-full shadow-[0_0_8px_rgba(230,94,36,0.4)]" />
-                    <span className="text-xs text-[#9e9e9e] font-medium">{data.maintenanceMotorcycles} Em Manutenção</span>
+                    <span className="text-[12px] text-[#9e9e9e] font-medium">{data.maintenanceMotorcycles} Em Manutenção</span>
                   </div>
                 )}
               </div>
