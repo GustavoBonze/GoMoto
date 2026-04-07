@@ -402,21 +402,21 @@ export default function CobrancasPage() {
           <div className="flex items-start gap-3">
             <Zap className="w-5 h-5 text-[#BAFF1A] mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#BAFF1A]">
+              <p className="text-[13px] font-semibold text-[#BAFF1A]">
                 Integração com InfinitePay em breve
               </p>
-              <p className="text-sm text-[#9e9e9e] mt-0.5">
+              <p className="text-[13px] text-[#9e9e9e] mt-0.5">
                 Esta tela será integrada com a plataforma InfinitePay para geração e gestão automatizada de cobranças.
                 Os dados abaixo são <span className="text-[#f5f5f5] font-medium">reais do seu banco de dados</span>.
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#0e2f13] border border-[#28b438] px-2.5 py-1 text-xs font-medium text-[#28b438]">
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#0e2f13] border border-[#28b438] px-2.5 py-1 text-[12px] font-medium text-[#28b438]">
               <CheckCircle2 className="w-3 h-3" />
               Dados em tempo real
             </span>
           </div>
           <div className="border-t border-[#6b9900] pt-3">
-            <p className="text-xs text-[#9e9e9e] mb-2">O que esta tela irá apresentar após a integração</p>
+            <p className="text-[12px] text-[#9e9e9e] mb-2">O que esta tela irá apresentar após a integração</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
               {[
                 'Total recebido no período',
@@ -428,7 +428,7 @@ export default function CobrancasPage() {
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#BAFF1A] shrink-0" />
-                  <span className="text-xs text-[#9e9e9e]">{item}</span>
+                  <span className="text-[12px] text-[#9e9e9e]">{item}</span>
                 </div>
               ))}
             </div>
@@ -440,8 +440,8 @@ export default function CobrancasPage() {
           <div className="rounded-xl border border-[#ff9c9a] bg-[#7c1c1c] px-4 py-3 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-[#ff9c9a] shrink-0" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-[#ff9c9a]">Erro ao carregar cobranças</p>
-              <p className="text-xs text-[#9e9e9e] mt-0.5">{fetchError}</p>
+              <p className="text-[13px] font-semibold text-[#ff9c9a]">Erro ao carregar cobranças</p>
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">{fetchError}</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchCharges}>
               Tentar novamente
@@ -455,46 +455,46 @@ export default function CobrancasPage() {
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e]">Total Recebido</p>
+              <p className="text-[12px] text-[#9e9e9e]">Total Recebido</p>
               <p className="text-[28px] font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
-              <p className="text-xs text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-[#9e9e9e]">Ticket médio</span>
-              <span className="text-xs font-semibold text-[#f5f5f5]">{formatCurrency(averageTicket)}</span>
+              <span className="text-[12px] text-[#9e9e9e]">Ticket médio</span>
+              <span className="text-[12px] font-semibold text-[#f5f5f5]">{formatCurrency(averageTicket)}</span>
             </div>
           </Card>
 
           {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e]">A Receber</p>
+              <p className="text-[12px] text-[#9e9e9e]">A Receber</p>
               <p className="text-[28px] font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
-              <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-[#9e9e9e]">Vencem em 30 dias</span>
-              <span className="text-xs font-semibold text-[#e65e24]">{formatCurrency(projection30Days)}</span>
+              <span className="text-[12px] text-[#9e9e9e]">Vencem em 30 dias</span>
+              <span className="text-[12px] font-semibold text-[#e65e24]">{formatCurrency(projection30Days)}</span>
             </div>
           </Card>
 
           {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e]">Vencidas</p>
+              <p className="text-[12px] text-[#9e9e9e]">Vencidas</p>
               <p className="text-[28px] font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
-              <p className="text-xs text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
             <div className="px-4 py-3">
               {oldestCharge ? (
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-[#9e9e9e] truncate max-w-[130px]" title={oldestCharge.customers?.name ?? ''}>
+                  <span className="text-[12px] text-[#9e9e9e] truncate max-w-[130px]" title={oldestCharge.customers?.name ?? ''}>
                     {(oldestCharge.customers?.name ?? '—').split(' ')[0]}
                   </span>
-                  <span className="text-xs font-semibold text-[#ff9c9a] shrink-0">{daysOverdue}d atraso</span>
+                  <span className="text-[12px] font-semibold text-[#ff9c9a] shrink-0">{daysOverdue}d atraso</span>
                 </div>
               ) : (
-                <span className="text-xs text-[#28b438]">Nenhuma em atraso</span>
+                <span className="text-[12px] text-[#28b438]">Nenhuma em atraso</span>
               )}
             </div>
           </Card>
@@ -502,20 +502,20 @@ export default function CobrancasPage() {
           {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e]">Inadimplência</p>
+              <p className="text-[12px] text-[#9e9e9e]">Inadimplência</p>
               <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {defaultRate.toFixed(1)}%
               </p>
-              <p className="text-xs text-[#9e9e9e] mt-0.5">
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">
                 {defaultersCount} cobrança(s) vencida(s) ou perdida(s) de {charges.length}
               </p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
-                <p className="text-xs text-[#9e9e9e]">Pontualidade</p>
-                <p className="text-xs text-[#616161] mt-0.5">das {paidCharges.length} pagas</p>
+                <p className="text-[12px] text-[#9e9e9e]">Pontualidade</p>
+                <p className="text-[12px] text-[#616161] mt-0.5">das {paidCharges.length} pagas</p>
               </div>
-              <span className={`text-sm font-semibold ${punctualityRate >= 80 ? 'text-[#28b438]' : punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
+              <span className={`text-[13px] font-semibold ${punctualityRate >= 80 ? 'text-[#28b438]' : punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
                 {punctualityRate.toFixed(1)}%
               </span>
             </div>
@@ -524,15 +524,15 @@ export default function CobrancasPage() {
           {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-xs text-[#9e9e9e]">Valores Não Pagos</p>
+              <p className="text-[12px] text-[#9e9e9e]">Valores Não Pagos</p>
               <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalUnpaid)}
               </p>
-              <p className="text-xs text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-[#9e9e9e]">Tempo médio de receb.</span>
-              <span className="text-xs font-semibold text-[#f5f5f5]">
+              <span className="text-[12px] text-[#9e9e9e]">Tempo médio de receb.</span>
+              <span className="text-[12px] font-semibold text-[#f5f5f5]">
                 {averageTime === 0 ? 'No prazo' : averageTime > 0 ? `${averageTime.toFixed(0)}d após venc.` : `${Math.abs(averageTime).toFixed(0)}d antecipado`}
               </span>
             </div>
@@ -542,11 +542,11 @@ export default function CobrancasPage() {
           <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a] bg-[#7c1c1c]' : ''}>
             <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]' : 'border-[#474747]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-xs ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
+                <p className={`text-[12px] ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                   Prejuízos Contabilizados
                 </p>
                 {totalLoss > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#7c1c1c] border border-[#ff9c9a] px-2 py-0.5 text-xs font-medium text-[#ff9c9a]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#7c1c1c] border border-[#ff9c9a] px-2 py-0.5 text-[12px] font-medium text-[#ff9c9a]">
                     Atenção
                   </span>
                 )}
@@ -554,7 +554,7 @@ export default function CobrancasPage() {
               <p className={`text-[28px] font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
                 {formatCurrency(totalLoss)}
               </p>
-              <p className={`text-xs mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
+              <p className={`text-[12px] mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                 {charges.filter((c) => c.status === 'loss').length === 0
                   ? 'Nenhum prejuízo registrado'
                   : `${charges.filter((c) => c.status === 'loss').length} cobrança(s) irrecuperável(is)`}
@@ -564,15 +564,15 @@ export default function CobrancasPage() {
               {topLoss ? (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-[#9e9e9e]">Maior prejuízo</p>
-                    <p className="text-xs font-medium text-[#f5f5f5] truncate max-w-[130px]" title={topLoss[0]}>
+                    <p className="text-[12px] text-[#9e9e9e]">Maior prejuízo</p>
+                    <p className="text-[12px] font-medium text-[#f5f5f5] truncate max-w-[130px]" title={topLoss[0]}>
                       {topLoss[0].split(' ')[0]}
                     </p>
                   </div>
-                  <span className="text-sm font-bold text-[#ff9c9a] shrink-0">{formatCurrency(topLoss[1])}</span>
+                  <span className="text-[13px] font-bold text-[#ff9c9a] shrink-0">{formatCurrency(topLoss[1])}</span>
                 </div>
               ) : (
-                <span className="text-xs text-[#28b438]">Nenhum prejuízo registrado</span>
+                <span className="text-[12px] text-[#28b438]">Nenhum prejuízo registrado</span>
               )}
             </div>
           </Card>
@@ -586,7 +586,7 @@ export default function CobrancasPage() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
+                className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150 ${
                   activeTab === tab.value
                     ? 'bg-[#BAFF1A] text-[#121212]'
                     : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -608,7 +608,7 @@ export default function CobrancasPage() {
               placeholder="Buscar por cliente ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
+              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
             />
           </div>
         </div>
@@ -622,25 +622,25 @@ export default function CobrancasPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                <p className="text-sm text-[#c7c7c7]">Carregando cobranças...</p>
+                <p className="text-[13px] text-[#c7c7c7]">Carregando cobranças...</p>
               </div>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex items-center justify-center py-12">
-              <p className="text-[#c7c7c7] text-sm italic">Nenhuma cobrança encontrada</p>
+              <p className="text-[#c7c7c7] text-[13px] italic">Nenhuma cobrança encontrada</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+              <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                 <thead className="bg-[#323232] text-[#c7c7c7]">
                   <tr>
-                    <th className="h-16 px-4 font-bold">Cliente</th>
-                    <th className="h-16 px-4 font-bold">Descrição</th>
-                    <th className="h-16 px-4 font-bold">Valor</th>
-                    <th className="h-16 px-4 font-bold">Vencimento</th>
-                    <th className="h-16 px-4 font-bold">Status</th>
-                    <th className="h-16 px-4 font-bold">Dt. Pagamento</th>
-                    <th className="h-16 px-4 text-right font-bold">Ações</th>
+                    <th className="h-9 px-4 font-bold">Cliente</th>
+                    <th className="h-9 px-4 font-bold">Descrição</th>
+                    <th className="h-9 px-4 font-bold">Valor</th>
+                    <th className="h-9 px-4 font-bold">Vencimento</th>
+                    <th className="h-9 px-4 font-bold">Status</th>
+                    <th className="h-9 px-4 font-bold">Dt. Pagamento</th>
+                    <th className="h-9 px-4 text-right font-bold">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -648,7 +648,7 @@ export default function CobrancasPage() {
                     const phone = row.customers?.phone
                     const wpLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null
                     return (
-                      <tr key={row.id} className="transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] h-16">
+                      <tr key={row.id} className="transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] h-9">
                         <td className="px-4 font-medium">
                           <div className="flex items-center gap-2">
                             <span className="text-[#f5f5f5]">{row.customers?.name ?? '—'}</span>
@@ -666,11 +666,11 @@ export default function CobrancasPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 text-[16px]">{row.description}</td>
+                        <td className="px-4 text-[13px]">{row.description}</td>
                         <td className="whitespace-nowrap px-4 font-semibold text-[#f5f5f5]">{formatCurrency(row.amount)}</td>
-                        <td className="whitespace-nowrap px-4 text-[16px]">{formatDate(row.due_date)}</td>
+                        <td className="whitespace-nowrap px-4 text-[13px]">{formatDate(row.due_date)}</td>
                         <td className="px-4"><StatusBadge status={row.status} /></td>
-                        <td className="whitespace-nowrap px-4 text-[16px] text-[#9e9e9e]">
+                        <td className="whitespace-nowrap px-4 text-[13px] text-[#9e9e9e]">
                           {row.payment_date ? formatDate(row.payment_date) : '—'}
                         </td>
                         <td className="whitespace-nowrap px-4 text-right">
@@ -783,12 +783,12 @@ export default function CobrancasPage() {
       <Modal open={!!confirmingPaid} onClose={() => setConfirmingPaid(null)} title="Confirmar Pagamento" size="sm">
         <div className="space-y-4">
           <div className="p-4 bg-[#0e2f13] border border-[#28b438] rounded-xl space-y-2">
-            <p className="text-sm text-[#f5f5f5] font-medium">Confirmar recebimento desta cobrança?</p>
+            <p className="text-[13px] text-[#f5f5f5] font-medium">Confirmar recebimento desta cobrança?</p>
             {confirmingPaid && (
               <div className="space-y-0.5">
-                <p className="text-xs text-[#9e9e9e]">{confirmingPaid.customers?.name ?? '—'}</p>
-                <p className="text-xs text-[#9e9e9e]">{confirmingPaid.description}</p>
-                <p className="text-sm font-semibold text-[#28b438]">{formatCurrency(confirmingPaid.amount)}</p>
+                <p className="text-[12px] text-[#9e9e9e]">{confirmingPaid.customers?.name ?? '—'}</p>
+                <p className="text-[12px] text-[#9e9e9e]">{confirmingPaid.description}</p>
+                <p className="text-[13px] font-semibold text-[#28b438]">{formatCurrency(confirmingPaid.amount)}</p>
               </div>
             )}
           </div>
@@ -806,7 +806,7 @@ export default function CobrancasPage() {
             onChange={(e) => setPaymentMethod(e.target.value)}
             required
           />
-          <p className="text-xs text-[#9e9e9e]">A data de pagamento será registrada como hoje.</p>
+          <p className="text-[12px] text-[#9e9e9e]">A data de pagamento será registrada como hoje.</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setConfirmingPaid(null)}>Cancelar</Button>
             <Button onClick={confirmPaid} loading={saving} disabled={!paymentMethod}>
@@ -821,16 +821,16 @@ export default function CobrancasPage() {
       <Modal open={!!confirmingLoss} onClose={() => setConfirmingLoss(null)} title="Registrar como Prejuízo" size="sm">
         <div className="space-y-4">
           <div className="p-4 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl space-y-2">
-            <p className="text-sm text-[#f5f5f5] font-medium">Tem certeza que deseja contabilizar esta cobrança como prejuízo?</p>
+            <p className="text-[13px] text-[#f5f5f5] font-medium">Tem certeza que deseja contabilizar esta cobrança como prejuízo?</p>
             {confirmingLoss && (
               <div className="space-y-0.5">
-                <p className="text-xs text-[#9e9e9e]">{confirmingLoss.customers?.name ?? '—'}</p>
-                <p className="text-xs text-[#9e9e9e]">{confirmingLoss.description}</p>
-                <p className="text-sm font-semibold text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
+                <p className="text-[12px] text-[#9e9e9e]">{confirmingLoss.customers?.name ?? '—'}</p>
+                <p className="text-[12px] text-[#9e9e9e]">{confirmingLoss.description}</p>
+                <p className="text-[13px] font-semibold text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
               </div>
             )}
           </div>
-          <p className="text-xs text-[#ff9c9a]">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
+          <p className="text-[12px] text-[#ff9c9a]">Esta ação indica que a dívida é irrecuperável. Não pode ser desfeita facilmente.</p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setConfirmingLoss(null)}>Cancelar</Button>
             <Button variant="danger" onClick={confirmLoss} loading={saving}>
@@ -844,7 +844,7 @@ export default function CobrancasPage() {
       {/* Modal: Exclusão definitiva de cobrança */}
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Cobrança" size="sm">
         <div className="space-y-4">
-          <p className="text-[#9e9e9e] text-sm">
+          <p className="text-[#9e9e9e] text-[13px]">
             Tem certeza que deseja excluir a cobrança{' '}
             <span className="text-[#f5f5f5] font-medium">{deleting?.description}</span>?
             Esta ação não poderá ser desfeita.

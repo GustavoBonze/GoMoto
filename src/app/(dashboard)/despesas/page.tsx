@@ -186,7 +186,7 @@ function KpiCard({ icon: Icon, label, value, sub }: { icon: React.ElementType, l
       <div>
         <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
         <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
-        {sub && <p className="text-xs mt-0.5 text-[#9e9e9e]">{sub}</p>}
+        {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
       </div>
       <div className="bg-[#323232] p-3 rounded-full">
         <Icon className="w-6 h-6 text-[#BAFF1A]" />
@@ -758,7 +758,7 @@ export default function ExpensesPage() {
               type="month"
               value={monthFilter}
               onChange={e => setMonthFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             />
 
             {/* Campo de busca com ícone — filtra em description e observations */}
@@ -769,7 +769,7 @@ export default function ExpensesPage() {
                 placeholder="Buscar..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -815,7 +815,7 @@ export default function ExpensesPage() {
                   ────────────────────────────────────────────────────────── */}
                   <button
                     onClick={() => toggleCategory(category)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2a2a] transition-colors text-left"
                   >
                     {/* Seta: rotaciona -90° quando colapsado (via classe Tailwind) */}
                     <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
@@ -899,7 +899,7 @@ export default function ExpensesPage() {
                                     )}
                                     {item.attachment_url && (
                                       <a href={item.attachment_url} target="_blank" rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#2d0363] text-[#a880ff] transition-colors">
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#2d0363] text-[#a880ff] border border-[#a880ff] transition-colors">
                                         <Paperclip className="w-3 h-3" />
                                         Anexo
                                       </a>

@@ -188,35 +188,24 @@ const supabase = createClient()
  */
 function KpiCard({
   icon: Icon,
-  iconBg,
-  iconColor,
   label,
   value,
   sub,
 }: {
   icon: React.ElementType
-  iconBg: string
-  iconColor: string
   label: string
   value: string | number
   sub?: string
 }) {
   return (
-    // Container do card: fundo #202020, borda #474747, bordas arredondadas
-    <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-      {/* Círculo colorido com ícone — tamanho fixo 40x40px conforme design system */}
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
-        <Icon className="h-5 w-5" />
-      </div>
-
-      {/* Textos da métrica */}
+    <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
       <div>
-        {/* Label: texto terciário em caixa alta, fonte pequena */}
         <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
-        {/* Valor principal: destaque em bold */}
-        <p className={`text-[28px] font-bold ${iconColor}`}>{value}</p>
-        {/* Texto secundário opcional (ex: valor monetário) */}
-        {sub && <p className={`text-xs mt-0.5 ${iconColor}/70`}>{sub}</p>}
+        <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
+        {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
+      </div>
+      <div className="bg-[#323232] p-3 rounded-full">
+        <Icon className="w-6 h-6 text-[#BAFF1A]" />
       </div>
     </div>
   )
