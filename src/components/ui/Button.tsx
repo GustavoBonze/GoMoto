@@ -30,7 +30,7 @@ import { forwardRef } from 'react'
  * - 'danger': Ações destrutivas ou que exigem atenção (excluir, cancelar).
  * - 'outline': Ação alternativa, com ênfase moderada (apenas bordas).
  */
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'white' | 'white-lg' | 'neutral-sm' | 'actions-sm'
 
 /**
  * @type ButtonSize
@@ -39,7 +39,7 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline'
  * - 'md': Médio, o tamanho padrão para a maioria das interações.
  * - 'lg': Grande, para chamadas de ação (CTAs) de alta importância, como no login.
  */
-type ButtonSize = 'sm' | 'md' | 'lg'
+type ButtonSize = 'sm' | 'md' | 'lg' | 'icon-sm'
 
 /**
  * @interface ButtonProps
@@ -65,11 +65,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * primários da aplicação consistentemente.
  */
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-[#BAFF1A] text-[#121212] font-semibold hover:bg-[#a8e617] active:bg-[#96cc15]',
-  secondary: 'bg-[#323232] text-[#f5f5f5] hover:bg-[#474747]',
+  primary: 'bg-[#BAFF1A] text-[#000000] font-medium hover:bg-[#a8e617]',
+  secondary: 'bg-[#323232] text-[#ffffff] hover:bg-[#474747]',
   ghost: 'bg-transparent text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]',
   danger: 'bg-[#bf1d1e] text-[#f5f5f5] hover:bg-[#a01819]',
   outline: 'bg-transparent border border-[#474747] text-[#f5f5f5] hover:border-[#BAFF1A] hover:text-[#BAFF1A]',
+  white: 'bg-[#ffffff] text-[#121212] hover:bg-[#f0f0f0]',
+  'white-lg': 'bg-[#ffffff] text-[#121212] hover:bg-[#f0f0f0]',
+  'neutral-sm': 'bg-[#eeeeee] text-[#000000]',
+  'actions-sm': 'bg-[#323232] text-[#ffffff] hover:bg-[#474747]',
 }
 
 /**
@@ -82,6 +86,7 @@ const sizes: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-sm rounded-full',
   md: 'px-4 py-2 text-sm rounded-full',
   lg: 'px-6 py-3 text-base rounded-full',
+  'icon-sm': 'h-8 w-8 p-0 rounded-full',
 }
 
 /**
@@ -103,7 +108,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           // 1. Classes base: aplicadas a TODAS as variantes de botão.
           'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150',
           'hover:scale-[1.025] active:scale-95',
-          'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100',
+          'disabled:bg-[#323232] disabled:text-[#9e9e9e] disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100',
           // 2. Classes de variante: aplica o estilo da variante selecionada.
           variants[variant],
           // 3. Classes de tamanho: aplica as dimensões do tamanho selecionado.

@@ -402,7 +402,7 @@ export default function CobrancasPage() {
           <div className="flex items-start gap-3">
             <Zap className="w-5 h-5 text-[#BAFF1A] mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-[#BAFF1A]">
+              <p className="text-[13px] font-medium text-[#BAFF1A]">
                 Integração com InfinitePay em breve
               </p>
               <p className="text-[13px] text-[#9e9e9e] mt-0.5">
@@ -410,7 +410,7 @@ export default function CobrancasPage() {
                 Os dados abaixo são <span className="text-[#f5f5f5] font-medium">reais do seu banco de dados</span>.
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#0e2f13] border border-[#28b438] px-2.5 py-1 text-[12px] font-medium text-[#28b438]">
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#0e2f13] border border-[#229731] px-2.5 py-1 text-[12px] font-medium text-[#229731]">
               <CheckCircle2 className="w-3 h-3" />
               Dados em tempo real
             </span>
@@ -440,7 +440,7 @@ export default function CobrancasPage() {
           <div className="rounded-xl border border-[#ff9c9a] bg-[#7c1c1c] px-4 py-3 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-[#ff9c9a] shrink-0" />
             <div className="flex-1">
-              <p className="text-[13px] font-semibold text-[#ff9c9a]">Erro ao carregar cobranças</p>
+              <p className="text-[13px] font-medium text-[#ff9c9a]">Erro ao carregar cobranças</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{fetchError}</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchCharges}>
@@ -461,7 +461,8 @@ export default function CobrancasPage() {
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-[12px] text-[#9e9e9e]">Ticket médio</span>
-              <span className="text-[12px] font-semibold text-[#f5f5f5]">{formatCurrency(averageTicket)}</span>
+              {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
+              <span className="text-[12px] font-bold text-[#f5f5f5]">{formatCurrency(averageTicket)}</span>
             </div>
           </Card>
 
@@ -474,7 +475,8 @@ export default function CobrancasPage() {
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-[12px] text-[#9e9e9e]">Vencem em 30 dias</span>
-              <span className="text-[12px] font-semibold text-[#e65e24]">{formatCurrency(projection30Days)}</span>
+              {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
+              <span className="text-[12px] font-bold text-[#e65e24]">{formatCurrency(projection30Days)}</span>
             </div>
           </Card>
 
@@ -491,10 +493,10 @@ export default function CobrancasPage() {
                   <span className="text-[12px] text-[#9e9e9e] truncate max-w-[130px]" title={oldestCharge.customers?.name ?? ''}>
                     {(oldestCharge.customers?.name ?? '—').split(' ')[0]}
                   </span>
-                  <span className="text-[12px] font-semibold text-[#ff9c9a] shrink-0">{daysOverdue}d atraso</span>
+                  <span className="text-[12px] font-medium text-[#ff9c9a] shrink-0">{daysOverdue}d atraso</span>
                 </div>
               ) : (
-                <span className="text-[12px] text-[#28b438]">Nenhuma em atraso</span>
+                <span className="text-[12px] text-[#229731]">Nenhuma em atraso</span>
               )}
             </div>
           </Card>
@@ -503,7 +505,7 @@ export default function CobrancasPage() {
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
               <p className="text-[12px] text-[#9e9e9e]">Inadimplência</p>
-              <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
+              <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
                 {defaultRate.toFixed(1)}%
               </p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">
@@ -515,7 +517,7 @@ export default function CobrancasPage() {
                 <p className="text-[12px] text-[#9e9e9e]">Pontualidade</p>
                 <p className="text-[12px] text-[#616161] mt-0.5">das {paidCharges.length} pagas</p>
               </div>
-              <span className={`text-[13px] font-semibold ${punctualityRate >= 80 ? 'text-[#28b438]' : punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
+              <span className={`text-[13px] font-medium ${punctualityRate >= 80 ? 'text-[#229731]' : punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
                 {punctualityRate.toFixed(1)}%
               </span>
             </div>
@@ -525,14 +527,14 @@ export default function CobrancasPage() {
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
               <p className="text-[12px] text-[#9e9e9e]">Valores Não Pagos</p>
-              <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#28b438]'}`}>
+              <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#229731]'}`}>
                 {formatCurrency(totalUnpaid)}
               </p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-[12px] text-[#9e9e9e]">Tempo médio de receb.</span>
-              <span className="text-[12px] font-semibold text-[#f5f5f5]">
+              <span className="text-[12px] font-medium text-[#f5f5f5]">
                 {averageTime === 0 ? 'No prazo' : averageTime > 0 ? `${averageTime.toFixed(0)}d após venc.` : `${Math.abs(averageTime).toFixed(0)}d antecipado`}
               </span>
             </div>
@@ -551,7 +553,7 @@ export default function CobrancasPage() {
                   </span>
                 )}
               </div>
-              <p className={`text-[28px] font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#28b438]'}`}>
+              <p className={`text-[28px] font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
                 {formatCurrency(totalLoss)}
               </p>
               <p className={`text-[12px] mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
@@ -572,7 +574,7 @@ export default function CobrancasPage() {
                   <span className="text-[13px] font-bold text-[#ff9c9a] shrink-0">{formatCurrency(topLoss[1])}</span>
                 </div>
               ) : (
-                <span className="text-[12px] text-[#28b438]">Nenhum prejuízo registrado</span>
+                <span className="text-[12px] text-[#229731]">Nenhum prejuízo registrado</span>
               )}
             </div>
           </Card>
@@ -581,20 +583,20 @@ export default function CobrancasPage() {
 
         {/* Barra de Filtros e Busca */}
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap border-b border-[#323232]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150 ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all duration-150 border-b-2 ${
                   activeTab === tab.value
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
                 {tab.value !== 'all' && (
-                  <span className={`ml-1.5 ${activeTab === tab.value ? 'text-[#121212]' : 'text-[#616161]'}`}>
+                  <span className="ml-1.5 text-[#616161]">
                     ({charges.filter((c) => c.status === tab.value).length})
                   </span>
                 )}
@@ -658,7 +660,7 @@ export default function CobrancasPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title="Abrir WhatsApp"
-                                className="text-[#9e9e9e] hover:text-[#28b438] transition-colors"
+                                className="text-[#9e9e9e] hover:text-[#229731] transition-colors"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MessageCircle className="w-3.5 h-3.5" />
@@ -667,7 +669,8 @@ export default function CobrancasPage() {
                           </div>
                         </td>
                         <td className="px-4 text-[13px]">{row.description}</td>
-                        <td className="whitespace-nowrap px-4 font-semibold text-[#f5f5f5]">{formatCurrency(row.amount)}</td>
+                        {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
+                        <td className="whitespace-nowrap px-4 font-bold text-[#f5f5f5]">{formatCurrency(row.amount)}</td>
                         <td className="whitespace-nowrap px-4 text-[13px]">{formatDate(row.due_date)}</td>
                         <td className="px-4"><StatusBadge status={row.status} /></td>
                         <td className="whitespace-nowrap px-4 text-[13px] text-[#9e9e9e]">
@@ -788,7 +791,8 @@ export default function CobrancasPage() {
               <div className="space-y-0.5">
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingPaid.customers?.name ?? '—'}</p>
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingPaid.description}</p>
-                <p className="text-[13px] font-semibold text-[#28b438]">{formatCurrency(confirmingPaid.amount)}</p>
+                {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
+                <p className="text-[13px] font-bold text-[#229731]">{formatCurrency(confirmingPaid.amount)}</p>
               </div>
             )}
           </div>
@@ -826,7 +830,8 @@ export default function CobrancasPage() {
               <div className="space-y-0.5">
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingLoss.customers?.name ?? '—'}</p>
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingLoss.description}</p>
-                <p className="text-[13px] font-semibold text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
+                {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
+                <p className="text-[13px] font-bold text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
               </div>
             )}
           </div>

@@ -80,7 +80,7 @@ export function Sidebar() {
           Exibe o ícone de moto em um fundo verde-limão (cor de destaque do sistema) 
           junto com o nome da aplicação e o nicho de mercado.
       */}
-      <div className="px-5 py-5 border-b border-[#474747]">
+      <div className="h-20 px-5 flex items-center border-b border-[#474747]">
         <div className="flex items-center gap-2.5">
           {/* Container do ícone com bordas arredondadas e cor vibrante. */}
           <div className="w-8 h-8 bg-[#BAFF1A] rounded-lg flex items-center justify-center flex-shrink-0">

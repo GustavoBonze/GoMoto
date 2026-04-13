@@ -507,7 +507,7 @@ export default function MotorcyclesPage() {
   // Renderização principal do componente
   return (
     <div className='min-h-screen bg-[#121212]'>
-      <div className='sticky top-0 z-10 bg-[#121212] border-b border-[#323232] px-6 py-4 flex items-center gap-4'>
+      <div className='sticky top-0 z-10 bg-[#121212] border-b border-[#323232] px-6 h-20 flex items-center gap-4'>
         <h1 className='text-[28px] font-bold text-[#f5f5f5]'>Motocicletas</h1>
         <span className='text-[14px] font-normal text-[#9e9e9e]'>{motorcycles.length} motos na frota</span>
         <div className='ml-auto flex gap-3'>
@@ -523,7 +523,7 @@ export default function MotorcyclesPage() {
             <AlertCircle className="w-4 h-4 text-[#ff9c9a] flex-shrink-0" />
             <p className="text-sm text-[#ff9c9a]">{fetchError}</p>
             {/* Botão de nova tentativa para o usuário não precisar recarregar a página */}
-            <button onClick={fetchMotorcycles} className="ml-auto text-xs text-[#BAFF1A] hover:underline font-semibold">
+            <button onClick={fetchMotorcycles} className="ml-auto text-[12px] text-[#BAFF1A] hover:underline font-medium">
               Tentar novamente
             </button>
           </div>
@@ -556,15 +556,15 @@ export default function MotorcyclesPage() {
 
         {/* FILTROS E BUSCA — acima do grid */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap border-b border-[#323232]">
             {filterOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
                 className={
                   filter === opt.value
-                    ? 'px-4 py-2 rounded-full text-sm font-medium transition-all bg-[#BAFF1A] text-[#121212]'
-                    : 'px-4 py-2 rounded-full text-sm font-medium transition-all bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                    ? 'px-3 py-2 text-[13px] font-medium transition-all border-b-2 border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'px-3 py-2 text-[13px] font-medium transition-all border-b-2 border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }
               >
                 {opt.label}
@@ -817,7 +817,7 @@ export default function MotorcyclesPage() {
               {BOOTSTRAP_MAINTENANCE_ITEMS.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#474747]">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#f5f5f5] uppercase tracking-tight">{item.name}</p>
+                    <p className="text-[13px] font-bold text-[#f5f5f5]">{item.name}</p>
                     <p className="text-xs text-[#616161] font-medium">{item.hint}</p>
                   </div>
                   
@@ -942,7 +942,7 @@ export default function MotorcyclesPage() {
 
                 {/* Repetição do selo de manutenção para ênfase */}
                 {motorcycleDetails.maintenance_up_to_date ? (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438] text-[#28b438] text-xs font-medium">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438] text-[#229731] text-xs font-medium">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Manutenção em Dia
                   </span>

@@ -394,7 +394,7 @@ export default function MotorcycleMap({
           <button
             key={style.id}
             onClick={() => setActiveTile(style.id)}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-all ${
               // Destaca o tile ativo com a cor primária do sistema (verde-limão)
               activeTile === style.id
                 ? 'bg-[#BAFF1A] text-black'

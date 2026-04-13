@@ -115,7 +115,7 @@ export function Table<T>({
               <th
                 key={column.key}
                 className={cn(
-                  'px-4 py-3 text-left text-xs font-medium text-[#9e9e9e] uppercase tracking-wider',
+                  'px-4 text-left font-medium text-[#9e9e9e]',
                   column.className
                 )}
               >
@@ -141,7 +141,7 @@ export function Table<T>({
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={cn('px-4 py-3 text-sm text-[#c7c7c7]', column.className)}
+                  className={cn('px-4 text-[#c7c7c7]', column.className)}
                 >
                   {/**
                    * Lógica de renderização da célula:

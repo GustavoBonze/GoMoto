@@ -49,15 +49,15 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
   return (
     // <header> define a seção de cabeçalho com posicionamento 'sticky' (fixo) no topo do eixo Z (z-20).
     // Estilização utiliza Tailwind CSS para bordas, cores de fundo e alinhamento flexível.
-    <header className="flex items-center justify-between px-6 py-4 border-b border-[#474747] bg-[#121212] sticky top-0 z-20">
-      
-      {/* 
+    <header className="h-20 flex items-center justify-between px-6 border-b border-[#474747] bg-[#121212] sticky top-0 z-20">
+
+      {/*
           Container do Título:
           Agrupa o título principal e o subtítulo (se fornecido).
           O título usa fonte negrito e cor branca para máximo contraste.
       */}
       <div>
-        <h1 className="text-xl font-bold text-[#f5f5f5]">{title}</h1>
+        <h1 className="text-[28px] font-bold text-[#f5f5f5]">{title}</h1>
         {/* Renderização condicional do subtítulo: só aparece se a prop 'subtitle' for enviada. */}
         {subtitle && <p className="text-sm text-[#c7c7c7] mt-0.5">{subtitle}</p>}
       </div>

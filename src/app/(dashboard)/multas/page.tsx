@@ -113,7 +113,7 @@ const STATUS_BADGE: Record<FineStatus, { bg: string; text: string; label: string
   overdue:  { bg: 'bg-[#7c1c1c]',      text: 'text-[#ff9c9a]', label: 'Vencida'  },
   due_soon: { bg: 'bg-[#3a180f]',      text: 'text-[#e65e24]', label: 'A vencer' },
   pending:  { bg: 'bg-[#2d0363]',      text: 'text-[#a880ff]', label: 'Pendente' },
-  paid:     { bg: 'bg-[#0e2f13]',      text: 'text-[#28b438]', label: 'Paga'     },
+  paid:     { bg: 'bg-[#0e2f13]',      text: 'text-[#229731]', label: 'Paga'     },
 }
 
 /**
@@ -204,8 +204,8 @@ function KpiCard({
         <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
         {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
       </div>
-      <div className="bg-[#323232] p-3 rounded-full">
-        <Icon className="w-6 h-6 text-[#BAFF1A]" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
+        <Icon className="h-5 w-5" />
       </div>
     </div>
   )
@@ -826,7 +826,7 @@ export default function MultasPage() {
           <KpiCard
             icon={CheckCircle2}
             iconBg="bg-[#0e2f13]"
-            iconColor="text-[#28b438]"
+            iconColor="text-[#229731]"
             label="Pagas (mês)"
             value={kpis.paidMonthCount}
             sub={formatCurrency(kpis.paidMonthValue)}
@@ -840,22 +840,19 @@ export default function MultasPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas de status — chip pill conforme design system */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap border-b border-[#323232]">
             {statusTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.id
-                    // Ativo: fundo verde-limão (cor de marca) + texto escuro
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    // Inativo: fundo escuro com borda sutil
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
-                {/* Contador entre parênteses — visível apenas quando > 0 */}
-                {tab.count > 0 && <span className="ml-1.5 opacity-70">({tab.count})</span>}
+                {tab.count > 0 && <span className="ml-1.5 text-[#616161]">({tab.count})</span>}
               </button>
             ))}
           </div>
@@ -866,7 +863,7 @@ export default function MultasPage() {
             <select
               value={motorcycleFilter}
               onChange={e => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motorcycles.map(m => (
@@ -884,7 +881,7 @@ export default function MultasPage() {
                 placeholder="Buscar..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -969,7 +966,7 @@ export default function MultasPage() {
                         </span>
                       )}
                       {pendingTotal > 0 && (
-                        <span className="text-sm font-semibold text-[#ff9c9a] ml-1">
+                        <span className="text-[13px] font-bold text-[#ff9c9a] ml-1">
                           {formatCurrency(pendingTotal)}
                         </span>
                       )}
@@ -1029,7 +1026,7 @@ export default function MultasPage() {
 
                                     {/* Valor em vermelho para destacar o impacto financeiro nas pendentes */}
                                     <td className="px-4">
-                                      <span className="font-semibold text-[#ff9c9a]">
+                                      <span className="font-bold text-[#ff9c9a]">
                                         {formatCurrency(Number(item.amount))}
                                       </span>
                                     </td>
@@ -1116,7 +1113,7 @@ export default function MultasPage() {
                                         {item.payment_date ? formatDate(item.payment_date) : '—'}
                                       </td>
                                       {/* Valor em verde (quitado) */}
-                                      <td className="px-4 text-[16px] font-medium text-[#28b438]">
+                                      <td className="px-4 text-[16px] font-bold text-[#229731]">
                                         {formatCurrency(Number(item.amount))}
                                       </td>
                                       {/* Ações do histórico: sem botão "Pagar" (já está paga) */}
@@ -1301,7 +1298,7 @@ export default function MultasPage() {
               Cliente: <span className="text-[#f5f5f5] font-medium">{payingFine?.customers?.name ?? '—'}</span>
             </p>
             <p className="text-sm text-[#9e9e9e]">
-              Valor: <span className="text-[#ff9c9a] font-semibold">
+              Valor: <span className="text-[#ff9c9a] font-bold">
                 {payingFine ? formatCurrency(Number(payingFine.amount)) : ''}
               </span>
             </p>
