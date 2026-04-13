@@ -162,19 +162,19 @@ export default function ReportsPage() {
             <StatCard
               title="Receita"
               value={formatCurrency(monthlyStats.revenue)}
-              icon={<TrendingUp className="w-5 h-5" />}
+              icon={TrendingUp}
               color="success"
             />
             <StatCard
               title="Despesas"
               value={formatCurrency(monthlyStats.expenses)}
-              icon={<TrendingDown className="w-5 h-5" />}
+              icon={TrendingDown}
               color="danger"
             />
             <StatCard
               title="Saldo"
               value={formatCurrency(monthlyStats.balance)}
-              icon={<DollarSign className="w-5 h-5" />}
+              icon={DollarSign}
               color="brand"
             />
             <Card>
