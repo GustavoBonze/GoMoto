@@ -1213,7 +1213,7 @@ export default function QueuePage() {
   const nextInLine = queueEntries.length > 0 ? queueEntries[0].customers?.name : 'Nenhum'
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-[#121212] p-6 sm:p-8">
+    <div className="flex min-h-screen flex-col bg-[#121212]">
 
       {/* Cabeçalho com título, subtítulo dinâmico e botão de ação principal */}
       <Header
@@ -1230,6 +1230,8 @@ export default function QueuePage() {
           </Button>
         }
       />
+
+      <div className="flex flex-col gap-6 p-6">
 
       {/* Alerta de oportunidade: exibido apenas quando há motos disponíveis E candidatos esperando */}
       {availableMotosCount > 0 && queueEntries.length > 0 && (
@@ -1262,7 +1264,7 @@ export default function QueuePage() {
             <p className="text-[14px] font-normal text-[#9e9e9e]">Motos Disponíveis</p>
             <p className="text-[28px] font-bold text-[#f5f5f5]">{availableMotosCount}</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#BAFF1A]/10 text-[#BAFF1A]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#243300] text-[#BAFF1A]">
             <Bike className="h-5 w-5" />
           </div>
         </div>
@@ -1497,7 +1499,7 @@ export default function QueuePage() {
 
               {/* Seção de caução: permite registrar se a caução foi paga no ato do contrato */}
               <div className="md:col-span-2 mt-4 pt-4 border-t border-[#474747]">
-                <h4 className="text-sm font-semibold text-[#f5f5f5] mb-3">Caução</h4>
+                <h4 className="text-sm font-medium text-[#f5f5f5] mb-3">Caução</h4>
 
                 {/* Toggle de caução: botão ativo = primary (lime), inativo = outline */}
                 <div className="flex gap-2 mb-4">
@@ -1656,7 +1658,7 @@ export default function QueuePage() {
 
             {/* Separador visual para seção de habilitação */}
             <div className="md:col-span-2 border-t border-[#474747] pt-4 mt-2">
-              <h4 className="text-xs uppercase tracking-wide text-[#9e9e9e]">Habilitação</h4>
+              <h4 className="text-xs text-[#9e9e9e]">Habilitação</h4>
             </div>
 
             {/* Número e categoria da CNH — essenciais para validar permissão de conduzir moto */}
@@ -1763,7 +1765,7 @@ export default function QueuePage() {
 
             {/* Separador visual de seção de habilitação */}
             <div className="md:col-span-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#9e9e9e] mb-3 border-t border-[#474747] pt-4 mt-2">Habilitação</p>
+              <p className="text-xs font-medium text-[#9e9e9e] mb-3 border-t border-[#474747] pt-4 mt-2">Habilitação</p>
             </div>
 
             {/* Dados da CNH — editáveis caso o candidato tenha renovado ou corrigido dados */}
@@ -1883,6 +1885,7 @@ export default function QueuePage() {
         </div>
       </Modal>
 
+      </div>
     </div>
   )
 }

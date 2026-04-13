@@ -215,11 +215,11 @@ export default function ModelosContratoPage() {
 
   return (
     <div className="h-screen bg-[#121212] flex flex-col overflow-hidden select-none">
-      <header className="h-16 border-b border-[#323232] flex items-center justify-between px-6 shrink-0 bg-[#121212]">
+      <header className="h-20 border-b border-[#474747] flex items-center justify-between px-6 shrink-0 bg-[#121212]">
         <h1 className="text-[28px] font-bold text-[#f5f5f5]">Modelos de Contrato</h1>
         <div className="flex items-center gap-3">
           {(error || success) && (
-            <div className={(error ? 'bg-[#7c1c1c] text-[#ff9c9a]' : 'bg-[#0e2f13] text-[#28b438]') + " px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300"}>
+            <div className={(error ? 'bg-[#7c1c1c] text-[#ff9c9a]' : 'bg-[#0e2f13] text-[#229731]') + " px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300"}>
               {error ? <AlertCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
               {error || success}
             </div>
@@ -234,8 +234,8 @@ export default function ModelosContratoPage() {
           {templates.map((template) => (
             <div key={template.slug} className="bg-[#202020] rounded-2xl p-5 border border-[#474747] flex items-center justify-between h-[120px] transition-all hover:border-[#616161]">
               <div className="flex items-center gap-4 min-w-0 flex-1">
-                <div className="bg-[#323232] p-4 rounded-full shrink-0">
-                  <FileEdit className="w-8 h-8 text-[#BAFF1A]" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+                  <FileEdit className="h-5 w-5 text-[#BAFF1A]" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-[20px] font-bold text-[#f5f5f5] truncate">{template.name}</h3>
@@ -244,9 +244,9 @@ export default function ModelosContratoPage() {
               </div>
 
               <div className="px-8 border-x border-[#323232] mx-8 flex flex-col items-center shrink-0 w-64">
-                <p className="text-[12px] text-[#9e9e9e] uppercase font-bold tracking-widest mb-1">Arquivo Atual</p>
+                <p className="text-[12px] text-[#9e9e9e] font-bold mb-1">Arquivo Atual</p>
                 {template.file_url ? (
-                  <div className="flex items-center gap-2 text-[#28b438] font-mono text-[13px] font-medium">
+                  <div className="flex items-center gap-2 text-[#229731] font-mono text-[13px] font-medium">
                     <CheckCircle className="w-4 h-4" />
                     <span className="truncate">modelo_{template.slug}.docx</span>
                   </div>
@@ -256,7 +256,7 @@ export default function ModelosContratoPage() {
               </div>
 
               <div className="flex gap-2 shrink-0">
-                <Button variant="primary" size="md" className="px-6 h-11 rounded-full font-semibold" onClick={() => handleTriggerUpload(template.slug)} loading={uploading === template.slug}>
+                <Button variant="primary" size="md" className="px-6 h-11 rounded-full font-medium" onClick={() => handleTriggerUpload(template.slug)} loading={uploading === template.slug}>
                   <Upload className="w-4 h-4 mr-2" />
                   {template.file_url ? 'Substituir' : 'Fazer Upload'}
                 </Button>

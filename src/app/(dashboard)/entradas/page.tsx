@@ -378,7 +378,7 @@ export default function EntradasPage() {
   return (
     <div className="flex flex-col min-h-full bg-[#121212]">
       {/* Sticky toolbar */}
-      <div className="sticky top-0 z-10 bg-[#121212] border-b border-[#323232] px-6 py-4 flex items-center gap-4">
+      <div className="sticky top-0 z-10 bg-[#121212] border-b border-[#323232] px-6 h-20 flex items-center gap-4">
         <h1 className="text-[28px] font-bold text-[#f5f5f5]">Entradas</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="primary" onClick={() => handleOpenModal()}>
@@ -400,8 +400,8 @@ export default function EntradasPage() {
               <p className="text-[14px] font-normal text-[#9e9e9e]">Total do Mês</p>
               <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(totalAmount)}</p>
             </div>
-            <div className="bg-[#323232] p-3 rounded-full">
-              <TrendingUp className="w-6 h-6 text-[#BAFF1A]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <TrendingUp className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
@@ -411,8 +411,8 @@ export default function EntradasPage() {
               <p className="text-[14px] font-normal text-[#9e9e9e]">Lançamentos no Mês</p>
               <p className="text-[28px] font-bold text-[#f5f5f5]">{launchCount}</p>
             </div>
-            <div className="bg-[#323232] p-3 rounded-full">
-              <Calendar className="w-6 h-6 text-[#BAFF1A]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <Calendar className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
@@ -422,8 +422,8 @@ export default function EntradasPage() {
               <p className="text-[14px] font-normal text-[#9e9e9e]">Ticket Médio</p>
               <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(averageTicket)}</p>
             </div>
-            <div className="bg-[#323232] p-3 rounded-full">
-              <DollarSign className="w-6 h-6 text-[#BAFF1A]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <DollarSign className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
         </div>
@@ -432,20 +432,20 @@ export default function EntradasPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Pills de referência */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap border-b border-[#323232]">
             {referenceTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setReferenceFilter(tab.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   referenceFilter === tab.id
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <span className="ml-1.5 opacity-70">({tab.count})</span>
+                  <span className="ml-1.5 text-[#616161]">({tab.count})</span>
                 )}
               </button>
             ))}
@@ -456,7 +456,7 @@ export default function EntradasPage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motos.map((m) => (
@@ -470,7 +470,7 @@ export default function EntradasPage() {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             />
 
             <div className="relative">
@@ -480,7 +480,7 @@ export default function EntradasPage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -515,7 +515,7 @@ export default function EntradasPage() {
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#474747]/40 text-[#9e9e9e]">
                         {items.length} lançamento{items.length !== 1 ? 's' : ''}
                       </span>
-                      <span className="text-sm font-semibold text-[#BAFF1A] ml-1">
+                      <span className="text-[13px] font-bold text-[#BAFF1A] ml-1">
                         {formatCurrency(total)}
                       </span>
                     </div>
@@ -562,7 +562,7 @@ export default function EntradasPage() {
                                   <p className="text-[#f5f5f5]">{income.payment_method}</p>
                                 </td>
                                 <td className="px-4">
-                                  <span className="font-semibold text-[#BAFF1A]">
+                                  <span className="font-bold text-[#BAFF1A]">
                                     {formatCurrency(Number(income.amount))}
                                   </span>
                                 </td>
@@ -698,11 +698,11 @@ export default function EntradasPage() {
         <div className="space-y-4">
           <p className="text-[16px] text-[#c7c7c7] leading-relaxed">
             Tem certeza que deseja excluir a entrada de{' '}
-            <span className="font-semibold text-[#BAFF1A]">
+            <span className="font-medium text-[#BAFF1A]">
               {currentIncome ? formatCurrency(Number(currentIncome.amount)) : ''}
             </span>{' '}
             do locatário{' '}
-            <span className="font-semibold text-[#f5f5f5]">{currentIncome?.lessee}</span>?
+            <span className="font-medium text-[#f5f5f5]">{currentIncome?.lessee}</span>?
             Esta ação não pode ser desfeita.
           </p>
           <div className="flex gap-3 justify-end pt-1">

@@ -201,7 +201,7 @@ const STATUS_COLORS = {
   overdue:   { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]' },
   upcoming:  { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]' },
   scheduled: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]' },
-  completed: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]' },
+  completed: { bg: 'bg-[#0e2f13]', text: 'text-[#229731]' },
 }
 
 // ─── HELPERS DE CÁLCULO ─────────────────────────────────────────────────────
@@ -972,53 +972,53 @@ export default function MaintenancePage() {
             Mostram de forma gritante e quantitativa a soma situacional global.
             Usam das extrações do memo totals. */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7c1c1c]/40 text-[#ff9c9a]">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
+          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
               <p className="text-[28px] font-bold text-[#ff9c9a]">{totals.overdue}</p>
             </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <AlertTriangle className="h-5 w-5 text-[#BAFF1A]" />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3a180f]/60 text-[#e65e24]">
-              <Clock className="h-5 w-5" />
-            </div>
+          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Próximas</p>
               <p className="text-[28px] font-bold text-[#e65e24]">{totals.upcoming}</p>
             </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <Clock className="h-5 w-5 text-[#BAFF1A]" />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2d0363]/60 text-[#a880ff]">
-              <Wrench className="h-5 w-5" />
-            </div>
+          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Agendadas</p>
               <p className="text-[28px] font-bold text-[#a880ff]">{totals.scheduled}</p>
             </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <Wrench className="h-5 w-5 text-[#BAFF1A]" />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0e2f13] text-[#28b438]">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
+          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Realizadas mês</p>
-              <p className="text-[28px] font-bold text-[#28b438]">{totals.completed}</p>
+              <p className="text-[28px] font-bold text-[#229731]">{totals.completed}</p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <CheckCircle2 className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#243300] text-[#BAFF1A]">
-              <DollarSign className="h-5 w-5" />
-            </div>
+          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Custo do Mês</p>
               <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(totals.costThisMonth)}</p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <DollarSign className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
         </div>
@@ -1028,20 +1028,20 @@ export default function MaintenancePage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas e pílulas de status principais do sistema controladas no state de statusFilter */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap border-b border-[#323232]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <span className="ml-1.5 opacity-70">({tab.count})</span>
+                  <span className="ml-1.5 text-[#616161]">({tab.count})</span>
                 )}
               </button>
             ))}
@@ -1052,7 +1052,7 @@ export default function MaintenancePage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motorcycles.map((m) => (
@@ -1065,7 +1065,7 @@ export default function MaintenancePage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="all">Todos os tipos</option>
               <option value="preventive">Preventiva</option>
@@ -1080,7 +1080,7 @@ export default function MaintenancePage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -1228,8 +1228,8 @@ export default function MaintenancePage() {
                                   <td className="px-4 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                   <td className="px-4">
                                     <div className="flex gap-1">
-                                      <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
-                                      <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
+                                      <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
+                                      <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
                                     </div>
                                   </td>
                                   <td className="px-4 text-right">
@@ -1276,8 +1276,8 @@ export default function MaintenancePage() {
                                       <td className="px-4 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                       <td className="px-4">
                                         <div className="flex gap-1">
-                                          <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
-                                          <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#28b438]' : 'text-[#474747]'}`} />
+                                          <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
+                                          <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
                                         </div>
                                       </td>
                                       <td className="px-4 text-right">
@@ -1368,7 +1368,7 @@ export default function MaintenancePage() {
 
             {/* Quadro superior exibe metadados de leitura rápida sobre a ação sendo despachada */}
             <div className="rounded-xl border border-[#474747] bg-[#121212] px-4 py-3 space-y-1">
-              <p className="text-sm font-semibold text-[#f5f5f5]">{completingMaintenance.description}</p>
+              <p className="text-sm font-medium text-[#f5f5f5]">{completingMaintenance.description}</p>
               <p className="text-xs text-[#9e9e9e]">
                 {completingMaintenance.motorcycles
                   ? `${completingMaintenance.motorcycles.license_plate} — ${completingMaintenance.motorcycles.make} ${completingMaintenance.motorcycles.model}`
@@ -1464,21 +1464,21 @@ export default function MaintenancePage() {
 
                   return (
                     <div className="rounded-xl border border-[#154f1d] bg-[#0e2f13] px-4 py-3 space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-[#28b438]">
+                      <p className="text-xs font-medium text-[#229731]">
                         Próximas manutenções agendadas
                       </p>
                       {nextItems.map((item, idx) => (
                         <div key={item.description} className="flex items-center justify-between gap-4">
                           <span className={`text-sm ${idx === 0 ? 'font-medium text-[#f5f5f5]' : 'text-[#9e9e9e]'}`}>
-                            {idx === 0 && <span className="mr-1 text-[#28b438]">↑</span>}
+                            {idx === 0 && <span className="mr-1 text-[#229731]">↑</span>}
                             {item.description}
                           </span>
-                          <span className={`text-xs whitespace-nowrap ${idx === 0 ? 'font-medium text-[#28b438]' : 'text-[#616161]'}`}>
+                          <span className={`text-xs whitespace-nowrap ${idx === 0 ? 'font-medium text-[#229731]' : 'text-[#616161]'}`}>
                             {item.label}
                           </span>
                         </div>
                       ))}
-                      <p className="text-xs text-[#28b438] border-t border-[#154f1d] pt-2">
+                      <p className="text-xs text-[#229731] border-t border-[#154f1d] pt-2">
                         Próxima ida à oficina: {nextItems[0].description}
                       </p>
                     </div>
@@ -1491,7 +1491,7 @@ export default function MaintenancePage() {
 
                   return (
                     <div className="rounded-xl border border-[#e65e24] bg-[#3a180f] px-4 py-3 space-y-2">
-                      <p className="text-xs font-semibold text-[#e65e24]">
+                      <p className="text-xs font-medium text-[#e65e24]">
                         {hasOverdue
                           ? 'Atenção — itens vencidos desta moto (aproveite a ida à oficina):'
                           : 'Quase na hora — itens próximos do prazo desta moto:'}
@@ -1571,7 +1571,7 @@ export default function MaintenancePage() {
                 <div className="space-y-3">
                   {completionFinancials.map((fin, idx) => (
                     <div key={fin.id} className="rounded-xl border border-[#474747] bg-[#121212] p-4 space-y-3">
-                      <p className="text-sm font-semibold text-[#f5f5f5]">{fin.description}</p>
+                      <p className="text-sm font-medium text-[#f5f5f5]">{fin.description}</p>
 
                       {/* Toggle de Responsabilidade e Custos (Split, Company, Customer) */}
                       <div className="flex flex-wrap gap-2">
@@ -1583,7 +1583,7 @@ export default function MaintenancePage() {
                             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                               fin.responsibility === resp
                                 ? resp === 'split' ? 'bg-[#2d0363] text-[#a880ff]'
-                                  : resp === 'company' ? 'bg-[#0e2f13] text-[#28b438]'
+                                  : resp === 'company' ? 'bg-[#0e2f13] text-[#229731]'
                                   : 'bg-[#7c1c1c] text-[#ff9c9a]'
                                 : 'bg-[#323232] text-[#9e9e9e] hover:bg-[#474747]'
                             }`}
@@ -1658,12 +1658,12 @@ export default function MaintenancePage() {
                       <p className="text-[14px] font-normal text-[#9e9e9e]">Resumo Financeiro</p>
                       <div className="flex justify-between text-sm">
                         <span className="text-[#f5f5f5]">Despesa da empresa</span>
-                        <span className="font-semibold text-[#28b438]">{formatCurrency(totalEmpresa)}</span>
+                        <span className="font-bold text-[#229731]">{formatCurrency(totalEmpresa)}</span>
                       </div>
                       {totalCliente > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-[#f5f5f5]">Pago pelo cliente</span>
-                          <span className="font-semibold text-[#ff9c9a]">{formatCurrency(totalCliente)}</span>
+                          <span className="font-bold text-[#ff9c9a]">{formatCurrency(totalCliente)}</span>
                         </div>
                       )}
                       {/* Checkbox de responsabilidade exigindo o ciente que isso afeta o boleto mensal de aluguel ou compra de quem detém a moto. */}

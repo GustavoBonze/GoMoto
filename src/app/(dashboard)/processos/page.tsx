@@ -915,7 +915,7 @@ export default function ProcessesPage() {
           {/* Divisor visual */}
           <div className="w-px h-5 bg-[#474747]" />
           <BookOpen className="w-4 h-4 text-[#9e9e9e]" />
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap border-b border-[#323232]">
             {/* Botões de filtro rápido, incluindo "Todas". */}
             {[{ value: '', label: 'Todas' }, ...categories.map((c) => ({ value: c, label: c }))].map(
               (opt) => (
@@ -924,8 +924,8 @@ export default function ProcessesPage() {
                   onClick={() => setCategoryFilter(opt.value)}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
                     categoryFilter === opt.value
-                      ? 'bg-[#BAFF1A] text-[#121212] font-semibold'
-                      : 'bg-[#202020] border border-[#474747] text-[#c7c7c7] hover:border-[#616161] hover:text-[#f5f5f5]'
+                      ? 'border-b-2 border-[#BAFF1A] text-[#f5f5f5] font-medium'
+                      : 'border-b-2 border-transparent text-[#9e9e9e] hover:text-[#f5f5f5] font-medium'
                   }`}
                 >
                   {opt.label}

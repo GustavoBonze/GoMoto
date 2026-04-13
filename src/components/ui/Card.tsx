@@ -92,9 +92,8 @@ export function StatCard({ title, value, subtitle, icon: Icon, color = 'brand', 
         <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
         {subtitle && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{subtitle}</p>}
       </div>
-      {/* Círculo com ícone — sempre bg-[#323232] e ícone text-[#BAFF1A] */}
-      <div className="bg-[#323232] p-3 rounded-full">
-        <Icon className="w-6 h-6 text-[#BAFF1A]" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
+        <Icon className="h-5 w-5" />
       </div>
     </div>
   )
