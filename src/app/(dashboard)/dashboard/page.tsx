@@ -236,7 +236,7 @@ export default async function DashboardPage() {
          * GRID: Cartões de Estatísticas Operacionais
          * Configuração: 2 colunas em telas pequenas, 4 colunas em Desktop.
          */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
 
           {/* CARTÃO 1: MOTOS DISPONÍVEIS — potencial de novos negócios (verde limão) */}
           <StatCard
@@ -274,7 +274,7 @@ export default async function DashboardPage() {
          * GRID: Resumo Financeiro Consolidado
          * Configuração: 3 colunas em Desktop para Receita, Despesa e Lucro.
          */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
           {/* CARTÃO: RECEITA DO MÊS — faturamento bruto total do período */}
           <StatCard
@@ -313,15 +313,15 @@ export default async function DashboardPage() {
             </div>
 
             {/* LISTAGEM DE CONTRATOS: itera sobre os contratos recentes do Supabase */}
-            <div className="divide-y divide-[#323232]">
+            <div className="">
               {data.recentContracts.length === 0 ? (
                 /* ESTADO VAZIO */
                 <div className="px-5 py-12 text-center">
                   <p className="text-[13px] text-[#9e9e9e] font-medium">Nenhum contrato ativo no momento.</p>
                 </div>
               ) : (
-                data.recentContracts.map((contrato) => (
-                  <div key={contrato.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#323232] transition-colors">
+                data.recentContracts.map((contrato, index) => (
+                  <div key={contrato.id} className={`px-5 py-4 flex items-center justify-between hover:bg-[#323232] transition-colors${index < data.recentContracts.length - 1 ? ' border-b border-[#323232]' : ''}`}>
                     {/* COLUNA ESQUERDA: identificação do cliente e bem */}
                     <div className="min-w-0">
                       {/* Nome do locatário — fallback para 'Cliente' se não houver join */}
@@ -362,15 +362,15 @@ export default async function DashboardPage() {
             {data.overduePaymentsList.length === 0 ? (
               /* ESTADO VAZIO: tudo em dia */
               <div className="px-5 py-12 text-center flex flex-col items-center gap-2">
-                <div className="w-12 h-12 bg-[#0e2f13] rounded-full flex items-center justify-center text-[#28b438]">
+                <div className="w-12 h-12 bg-[#0e2f13] rounded-full flex items-center justify-center text-[#229731]">
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <p className="text-[13px] text-[#9e9e9e] font-medium">Tudo em dia! Nenhuma cobrança vencida.</p>
               </div>
             ) : (
               /* LISTAGEM DE INADIMPLENTES */
-              <div className="divide-y divide-[#323232]">
-                {data.overduePaymentsList.map((payment) => {
+              <div className="">
+                {data.overduePaymentsList.map((payment, index) => {
                   /**
                    * Cálculo de dias de atraso:
                    * Adiciona T12:00:00 para evitar problemas de fuso horário na conversão de data.
@@ -381,14 +381,14 @@ export default async function DashboardPage() {
                   const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
 
                   return (
-                    <div key={payment.id} className="px-5 py-4 flex items-center justify-between hover:bg-[#323232] transition-colors">
+                    <div key={payment.id} className={`px-5 py-4 flex items-center justify-between hover:bg-[#323232] transition-colors${index < data.overduePaymentsList.length - 1 ? ' border-b border-[#323232]' : ''}`}>
                       {/* COLUNA ESQUERDA: devedor e tempo de atraso */}
                       <div>
                         <p className="text-[13px] font-medium text-[#f5f5f5]">
                           {payment.customers?.name ?? 'Cliente'}
                         </p>
                         {/* Texto em vermelho destacando os dias de atraso */}
-                        <p className="text-[12px] text-[#ff9c9a] mt-1 font-semibold flex items-center gap-1">
+                        <p className="text-[12px] text-[#ff9c9a] mt-1 font-medium flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           Atrasado há {days} dias
                         </p>

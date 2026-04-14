@@ -48,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="flex flex-col gap-1.5">
         {/* Renderiza o rótulo (label) se a prop for fornecida. */}
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-[#c7c7c7]">
+          <label htmlFor={inputId} className="text-[14px] text-[#c7c7c7]">
             {label}
           </label>
         )}
@@ -60,13 +60,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           className={cn(
             // Estilos base: dimensões, cores, fontes e bordas.
             'w-full px-3 py-3 rounded-lg text-sm text-[#f5f5f5] h-12',
-            'bg-[#323232] border border-[#323232]',
+            'bg-[#323232] border-2 border-[#323232]',
             'placeholder:text-[#616161]',
             // Estilos de estado: foco, desabilitado, etc.
-            'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
+            'focus:outline-none focus:border-[#474747]',
             'transition-colors duration-150',
             // Estilo condicional: aplicado apenas se houver um erro.
-            error && 'border-[#ff9c9a] focus:border-[#ff9c9a] focus:ring-[#ff9c9a]/30',
+            error && 'border-[#bf1d1e]',
             // Permite a passagem de classes customizadas de fora.
             className
           )}
@@ -118,8 +118,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           id={selectId}
           className={cn(
             'w-full px-3 py-3 rounded-lg text-sm text-[#f5f5f5] h-12 appearance-none', // `appearance-none` remove o estilo padrão do navegador.
-            'bg-[#323232] border border-[#323232]',
-            'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
+            'bg-[#323232] border-2 border-[#323232]',
+            'focus:outline-none focus:border-[#474747]',
             'transition-colors duration-150',
             error && 'border-[#ff9c9a]',
             className
@@ -172,9 +172,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           className={cn(
             'w-full px-3 py-3 rounded-lg text-sm text-[#f5f5f5] min-h-[100px]', // Altura mínima padrão.
-            'bg-[#323232] border border-[#323232]',
+            'bg-[#323232] border-2 border-[#323232]',
             'placeholder:text-[#616161]',
-            'focus:outline-none focus:border-[#BAFF1A] focus:ring-1 focus:ring-[#BAFF1A]/30',
+            'focus:outline-none focus:border-[#474747]',
             'transition-colors duration-150 resize-none', // `resize-none` impede que o usuário redimensione o campo.
             error && 'border-[#ff9c9a]',
             className

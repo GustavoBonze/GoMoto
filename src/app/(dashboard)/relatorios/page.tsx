@@ -27,6 +27,8 @@ import {
   DollarSign,
   FileText,
   Lock,
+  AlertTriangle,
+  AlertCircle,
 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -153,7 +155,7 @@ export default function ReportsPage() {
       <div className="p-6 space-y-6">
         {/* SEÇÃO: Resumo do Mês Atual */}
         <div>
-          <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-3">
+          <p className="text-xs text-[#9e9e9e] mb-3">
             Resumo — {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
           </p>
           
@@ -177,28 +179,30 @@ export default function ReportsPage() {
               icon={DollarSign}
               color="brand"
             />
-            <Card>
-              <p className="text-xs text-[#9e9e9e] truncate">Contratos Ativos</p>
-              <p className="text-2xl font-bold text-[#f5f5f5] mt-0.5">{monthlyStats.activeContracts}</p>
-            </Card>
-            <Card>
-              <p className="text-xs text-[#9e9e9e] truncate">Cobranças Pendentes</p>
-              <p className="text-2xl font-bold text-[#e65e24] mt-0.5">
-                {monthlyStats.pendingCharges}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-xs text-[#9e9e9e] truncate">Multas</p>
-              <p className="text-2xl font-bold text-[#ff9c9a] mt-0.5">
-                {formatCurrency(monthlyStats.totalFines)}
-              </p>
-            </Card>
+            <StatCard
+              title="Contratos Ativos"
+              value={monthlyStats.activeContracts}
+              icon={FileText}
+              color="brand"
+            />
+            <StatCard
+              title="Cobranças Pendentes"
+              value={monthlyStats.pendingCharges}
+              icon={AlertTriangle}
+              color="warning"
+            />
+            <StatCard
+              title="Multas"
+              value={formatCurrency(monthlyStats.totalFines)}
+              icon={AlertCircle}
+              color="danger"
+            />
           </div>
         </div>
 
         {/* SEÇÃO: Lista de Cards de Relatórios disponíveis para geração. */}
         <div>
-          <p className="text-xs text-[#9e9e9e] uppercase tracking-wider mb-3">
+          <p className="text-xs text-[#9e9e9e] mb-3">
             Relatórios disponíveis
           </p>
           
@@ -212,7 +216,7 @@ export default function ReportsPage() {
                */
               const colorMap = {
                 brand: { bg: 'bg-[#243300]', text: 'text-[#BAFF1A]', border: 'border-[#6b9900]' },
-                success: { bg: 'bg-[#0e2f13]', text: 'text-[#28b438]', border: 'border-[#28b438]' },
+                success: { bg: 'bg-[#0e2f13]', text: 'text-[#229731]', border: 'border-[#28b438]' },
                 warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]', border: 'border-[#e65e24]' },
                 danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]', border: 'border-[#ff9c9a]' },
                 info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]', border: 'border-[#a880ff]' },
@@ -232,7 +236,7 @@ export default function ReportsPage() {
                   <div className="flex-1 min-w-0">
                     {/* Título e Badge de disponibilidade */}
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-[#f5f5f5] text-sm">{report.title}</h3>
+                      <h3 className="font-medium text-[#f5f5f5] text-[13px]">{report.title}</h3>
                       {!report.available && (
                         <Badge variant="muted" className="text-xs">
                           Em breve

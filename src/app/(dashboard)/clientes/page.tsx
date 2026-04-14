@@ -449,8 +449,8 @@ export default function ClientesPage() {
               <p className="text-[14px] font-normal text-[#9e9e9e]">Clientes Ativos</p>
               <p className="text-[28px] font-bold text-[#BAFF1A]">{kpis.active}</p>
             </div>
-            <div className="bg-[#323232] p-3 rounded-full">
-              <Users className="w-6 h-6 text-[#BAFF1A]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <Users className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
@@ -459,8 +459,8 @@ export default function ClientesPage() {
               <p className="text-[14px] font-normal text-[#9e9e9e]">Ex-Clientes</p>
               <p className="text-[28px] font-bold text-[#ff9c9a]">{kpis.former}</p>
             </div>
-            <div className="bg-[#323232] p-3 rounded-full">
-              <UserMinus className="w-6 h-6 text-[#ff9c9a]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
+              <UserMinus className="h-5 w-5 text-[#ff9c9a]" />
             </div>
           </div>
 
@@ -476,16 +476,16 @@ export default function ClientesPage() {
         {/* ── BARRA DE FILTROS ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-          {/* Pílulas de status — esquerda */}
-          <div className="flex gap-2 flex-wrap">
+          {/* Abas de status — esquerda */}
+          <div className="flex gap-0 flex-wrap border-b border-[#323232]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
@@ -501,7 +501,7 @@ export default function ClientesPage() {
             <select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todos os estados</option>
               {STATE_OPTIONS.map((opt) => (
@@ -518,7 +518,7 @@ export default function ClientesPage() {
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -746,7 +746,7 @@ export default function ClientesPage() {
               )}
               {viewingCustomer.observations && (
                 <div className="md:col-span-2">
-                  <p className="text-xs font-semibold text-[#616161] uppercase tracking-wide mb-1">Observações</p>
+                  <p className="text-[12px] font-medium text-[#616161] mb-1">Observações</p>
                   <p className="text-[#c7c7c7] bg-[#323232] border border-[#474747] rounded-lg px-3 py-2 leading-relaxed">
                     {viewingCustomer.observations}
                   </p>
@@ -757,7 +757,7 @@ export default function ClientesPage() {
             {/* Documentos anexados (CNH e comprovante) — exibe somente se existirem */}
             {(viewingCustomer.drivers_license_photo_url || viewingCustomer.document_photo_url) && (
               <div className="pt-4 border-t border-[#323232]">
-                <h4 className="font-semibold text-[#f5f5f5] mb-4">Documentos Anexados</h4>
+                <h4 className="font-medium text-[#f5f5f5] mb-4">Documentos Anexados</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {viewingCustomer.drivers_license_photo_url && (
                     <DocumentThumb
@@ -808,7 +808,7 @@ function DetailsField({
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-[#616161] uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-[12px] font-medium text-[#616161] mb-0.5">{label}</p>
       <p className={`text-[#f5f5f5] ${mono ? 'font-mono' : ''}`}>
         {value || <span className="text-[#474747] italic">—</span>}
       </p>
@@ -824,7 +824,7 @@ function DetailsField({
 function DocumentThumb({ url, label, alt }: { url: string; label: string; alt: string }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-[#616161] uppercase tracking-wide">{label}</p>
+      <p className="text-[12px] font-medium text-[#616161]">{label}</p>
       <a href={url} target="_blank" rel="noopener noreferrer"
         className="block relative group rounded-lg overflow-hidden border border-[#474747]">
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -188,8 +188,8 @@ function KpiCard({ icon: Icon, label, value, sub }: { icon: React.ElementType, l
         <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
         {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
       </div>
-      <div className="bg-[#323232] p-3 rounded-full">
-        <Icon className="w-6 h-6 text-[#BAFF1A]" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
+        <Icon className="h-5 w-5" />
       </div>
     </div>
   )
@@ -730,22 +730,19 @@ export default function ExpensesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas pill de categoria — geradas dinamicamente pelo memo categoryTabs */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap border-b border-[#323232]">
             {categoryTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setCategoryFilter(tab.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   categoryFilter === tab.id
-                    // Ativo: fundo verde-limão (cor de marca) + texto escuro
-                    ? 'bg-[#BAFF1A] text-[#121212]'
-                    // Inativo: fundo escuro com borda sutil
-                    : 'bg-[#202020] border border-[#474747] text-[#9e9e9e] hover:text-[#f5f5f5] hover:border-[#616161]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
-                {/* Contador entre parênteses — visível apenas quando > 0 */}
-                {tab.count > 0 && <span className="ml-1.5 opacity-70">({tab.count})</span>}
+                {tab.count > 0 && <span className="ml-1.5 text-[#616161]">({tab.count})</span>}
               </button>
             ))}
           </div>
@@ -829,7 +826,7 @@ export default function ExpensesPage() {
                         {items.length} lançamento{items.length !== 1 ? 's' : ''}
                       </span>
                       {/* Total da categoria em vermelho — representa saída financeira */}
-                      <span className="text-sm font-semibold text-[#ff9c9a] ml-1">
+                      <span className="text-[13px] font-bold text-[#ff9c9a] ml-1">
                         {formatCurrency(total)}
                       </span>
                     </div>
@@ -909,7 +906,7 @@ export default function ExpensesPage() {
 
                                 {/* Valor em vermelho — destaca o impacto financeiro */}
                                 <td className="px-4">
-                                  <span className="font-semibold text-[#ff9c9a]">
+                                  <span className="font-bold text-[#ff9c9a]">
                                     {formatCurrency(Number(item.amount))}
                                   </span>
                                 </td>

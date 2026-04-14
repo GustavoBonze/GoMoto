@@ -278,7 +278,7 @@ export default function SettingsPage() {
     return (
       <div
         className={`flex items-center gap-2 text-[13px] font-medium ${
-          isSuccess ? 'text-[#28b438]' : 'text-[#ff9c9a]'
+          isSuccess ? 'text-[#229731]' : 'text-[#ff9c9a]'
         }`}
       >
         {isSuccess ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
