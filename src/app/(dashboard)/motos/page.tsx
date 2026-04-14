@@ -68,7 +68,7 @@ const DynamicMotorcycleMap = dynamic(() => import('@/components/MotorcycleMap'),
     <div className="w-full h-full flex items-center justify-center bg-[#181818]">
       <div className="flex flex-col items-center gap-3">
         <div className="w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-[#9e9e9e]">Carregando mapa...</p>
+            <p className="text-[12px] text-[#9e9e9e]">Carregando mapa...</p>
       </div>
     </div>
   ),
@@ -521,7 +521,7 @@ export default function MotorcyclesPage() {
         {fetchError && (
           <div className="flex items-center gap-3 px-4 py-3 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl">
             <AlertCircle className="w-4 h-4 text-[#ff9c9a] flex-shrink-0" />
-            <p className="text-sm text-[#ff9c9a]">{fetchError}</p>
+            <p className="text-[13px] text-[#ff9c9a]">{fetchError}</p>
             {/* Botão de nova tentativa para o usuário não precisar recarregar a página */}
             <button onClick={fetchMotorcycles} className="ml-auto text-[12px] text-[#BAFF1A] hover:underline font-medium">
               Tentar novamente
@@ -539,7 +539,7 @@ export default function MotorcyclesPage() {
             <div className="w-full h-full flex items-center justify-center bg-[#181818]">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs text-[#9e9e9e]">Carregando mapa da frota...</p>
+                <p className="text-[12px] text-[#9e9e9e]">Carregando mapa da frota...</p>
               </div>
             </div>
           ) : (
@@ -556,20 +556,20 @@ export default function MotorcyclesPage() {
 
         {/* FILTROS E BUSCA — acima do grid */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap border-b border-[#323232]">
+          <div className="flex flex-wrap border-b border-[#616161]">
             {filterOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
                 className={
                   filter === opt.value
-                    ? 'px-3 py-2 text-[13px] font-medium transition-all border-b-2 border-[#BAFF1A] text-[#f5f5f5]'
-                    : 'px-3 py-2 text-[13px] font-medium transition-all border-b-2 border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
+                    ? 'px-3 py-2 text-[16px] font-medium transition-all border-b-2 border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'px-3 py-2 text-[16px] font-medium transition-all border-b-2 border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }
               >
                 {opt.label}
                 {opt.value !== 'all' && (
-                  <span className="ml-1.5 opacity-70">({motorcycles.filter((m) => m.status === opt.value).length})</span>
+                  <span className="ml-1.5">({motorcycles.filter((m) => m.status === opt.value).length})</span>
                 )}
               </button>
             ))}
@@ -605,7 +605,7 @@ export default function MotorcyclesPage() {
               {loading ? (
                 <tr><td colSpan={7}><div className='flex items-center justify-center py-16'><div className='w-6 h-6 border-2 border-[#BAFF1A] border-t-transparent rounded-full animate-spin' /></div></td></tr>
               ) : filteredMotorcycles.length === 0 ? (
-                <tr><td colSpan={7}><div className='flex flex-col items-center justify-center py-16 gap-3'><div className='w-12 h-12 bg-[#323232] rounded-full flex items-center justify-center'><Bike className='w-6 h-6 text-[#9e9e9e]' /></div><p className='text-[13px] text-[#9e9e9e]'>Nenhum veículo encontrado.</p><button onClick={() => { setFilter('all'); setSearch('') }} className='text-sm text-[#BAFF1A] hover:underline'>Limpar filtros</button></div></td></tr>
+                <tr><td colSpan={7}><div className='flex flex-col items-center justify-center py-16 gap-3 text-[#9e9e9e]'><div className='w-12 h-12 bg-[#323232] rounded-full flex items-center justify-center'><Bike className='w-6 h-6 text-[#9e9e9e]' /></div><p className='text-[13px] text-[#9e9e9e]'>Nenhum veículo encontrado.</p><button onClick={() => { setFilter('all'); setSearch('') }} className='text-[13px] text-[#BAFF1A] hover:underline'>Limpar filtros</button></div></td></tr>
               ) : (
                 filteredMotorcycles.map((moto) => {
                   const contract = contractByMotoId[moto.id]
@@ -613,7 +613,7 @@ export default function MotorcyclesPage() {
                   const weeklyValue = contract?.monthly_amount ? formatCurrency(contract.monthly_amount) : null
                   return (
                     <tr key={moto.id} onClick={() => setSelectedMotoId(moto.id === selectedMotoId ? null : moto.id)} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] cursor-pointer">
-                      <td className="px-4"><div className='flex items-center gap-2'><div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: statusColorMap[moto.status] ?? '#9e9e9e' }} /><span className='font-mono font-bold text-[#f5f5f5] tracking-widest'>{moto.license_plate}</span></div></td>
+                      <td className="px-4"><div className='flex items-center gap-2'><div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: statusColorMap[moto.status] ?? '#9e9e9e' }} /><span className='font-mono font-bold text-[#f5f5f5]'>{moto.license_plate}</span></div></td>
                       <td className="px-4"><p className="font-medium text-[#f5f5f5]">{moto.make} {moto.model}</p></td>
                       <td className="px-4">{customer ? (<div className="flex items-center gap-1.5"><User className="w-4 h-4 text-[#a880ff] flex-shrink-0" /><p className="font-medium text-[#f5f5f5] truncate">{customer.name}</p></div>) : (<p className="text-[#9e9e9e]">Sem locatário</p>)}</td>
                       <td className="px-4">{weeklyValue ? (<span className='text-[#BAFF1A] font-bold'>{weeklyValue}</span>) : (<span className='text-[#9e9e9e]'>—</span>)}</td>
@@ -806,9 +806,9 @@ export default function MotorcyclesPage() {
         {!editingId && step === 2 && (
           <div className="space-y-6 p-1">
             <div className="bg-[#243300] border border-[#6b9900] rounded-xl p-4">
-              <p className="text-sm text-[#9e9e9e] leading-relaxed">
+              <p className="text-[13px] text-[#9e9e9e] leading-relaxed">
                 Para o sistema prever as próximas revisões, informe a <strong className="text-[#f5f5f5]">última vez</strong> que cada item abaixo foi trocado ou revisado.
-                <br /><span className="text-xs text-[#616161]">DICA: Se não souber, deixe em branco e o sistema marcará como "Revisão Imediata".</span>
+                <br /><span className="text-[12px] text-[#616161]">DICA: Se não souber, deixe em branco e o sistema marcará como "Revisão Imediata".</span>
               </p>
             </div>
 
@@ -818,7 +818,7 @@ export default function MotorcyclesPage() {
                 <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#474747]">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-[#f5f5f5]">{item.name}</p>
-                    <p className="text-xs text-[#616161] font-medium">{item.hint}</p>
+                    <p className="text-[12px] text-[#616161] font-medium">{item.hint}</p>
                   </div>
                   
                   {/* INPUT DINÂMICO: KM ou DATA dependendo do tipo da métrica */}
@@ -830,16 +830,16 @@ export default function MotorcyclesPage() {
                           placeholder="KM da Última Troca"
                           value={bootstrapItems[item.id] ?? ''}
                           onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          className="w-36 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] text-right font-mono"
+                          className="w-36 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] text-right font-mono"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#616161] font-bold">KM</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-[#616161] font-bold">KM</span>
                       </div>
                     ) : (
                       <input
                         type="date"
                         value={bootstrapItems[item.id] ?? ''}
                         onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                        className="w-44 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-sm text-[#f5f5f5] focus:outline-none focus:border-[#474747]"
+                        className="w-44 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] focus:outline-none focus:border-[#474747]"
                       />
                     )}
                   </div>
@@ -851,7 +851,7 @@ export default function MotorcyclesPage() {
             {Object.keys(bootstrapItems).filter((k) => bootstrapItems[k]).length > 0 && (
               <div className="flex items-center gap-3 px-4 py-3 bg-[#2d0363] border border-[#a880ff] rounded-xl">
                 <div className="w-2 h-2 bg-[#a880ff] rounded-full animate-pulse" />
-                <p className="text-xs text-[#a880ff] font-medium">
+                <p className="text-[12px] text-[#a880ff] font-medium">
                   {Object.keys(bootstrapItems).filter((k) => bootstrapItems[k]).length} itens de manutenção serão programados automaticamente.
                 </p>
               </div>
@@ -878,7 +878,7 @@ export default function MotorcyclesPage() {
       <Modal open={!!deletingMotorcycle} onClose={() => setDeletingMotorcycle(null)} title="Confirmar Exclusão Permanente" size="sm">
         <div className="space-y-6">
           <div className="p-4 bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl">
-            <p className="text-[#9e9e9e] text-sm leading-relaxed text-center">
+            <p className="text-[#9e9e9e] text-[13px] leading-relaxed text-center">
               Você está prestes a remover a moto <br />
               <strong className="text-[#f5f5f5] text-base font-bold">{deletingMotorcycle?.make} {deletingMotorcycle?.model} — Placa {deletingMotorcycle?.license_plate}</strong>
               <br /><br />
@@ -917,8 +917,8 @@ export default function MotorcyclesPage() {
                   {motorcycleDetails.make} {motorcycleDetails.model}
                 </h3>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-sm font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
-                  <span className="text-sm font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded uppercase">{motorcycleDetails.color}</span>
+                  <span className="text-[13px] font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
+                  <span className="text-[13px] font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">{motorcycleDetails.color}</span>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -931,23 +931,23 @@ export default function MotorcyclesPage() {
                   const weeklyValue = contract.monthly_amount ? formatCurrency(contract.monthly_amount) : 'N/A'
                   return (
                     <div className="flex flex-col items-end gap-1 mt-2">
-                      <div className="flex items-center gap-1.5 text-sm text-[#f5f5f5]">
+                      <div className="flex items-center gap-1.5 text-[13px] text-[#f5f5f5]">
                         <User className="w-4 h-4 text-[#a880ff]" />
                         <span className="font-medium">{customerName}</span>
                       </div>
-                      <span className="text-xs font-bold text-[#BAFF1A]">{weeklyValue} / semana</span>
+                      <span className="text-[12px] font-bold text-[#BAFF1A]">{weeklyValue} / semana</span>
                     </div>
                   )
                 })()}
 
                 {/* Repetição do selo de manutenção para ênfase */}
                 {motorcycleDetails.maintenance_up_to_date ? (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438] text-[#229731] text-xs font-medium">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0e2f13] border border-[#28b438] text-[#229731] text-[12px] font-medium">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Manutenção em Dia
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#3a180f] border border-[#e65e24] text-[#e65e24] text-xs font-medium">
+                  <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#3a180f] border border-[#e65e24] text-[#e65e24] text-[12px] font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Revisão Pendente
                   </span>
@@ -1009,7 +1009,7 @@ export default function MotorcyclesPage() {
               <div className="space-y-3">
                 <h5 className="text-[14px] font-bold text-[#BAFF1A]">Notas do Veículo & Vistoria</h5>
                 <div className="bg-[#282828] rounded-xl p-5 border border-[#474747]">
-                  <p className="text-sm text-[#9e9e9e] leading-relaxed italic">
+                  <p className="text-[13px] text-[#9e9e9e] leading-relaxed italic">
                     "{motorcycleDetails.observations}"
                   </p>
                 </div>

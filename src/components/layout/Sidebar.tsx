@@ -111,14 +111,14 @@ export function Sidebar() {
               href={href}
               // A classe condicional aplica estilos de destaque (background verde suave) para o item ativo.
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                'flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-[#d9ff80] text-[#323232]'
+                  ? 'bg-[#243300] text-[#BAFF1A]'
                   : 'text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]'
               )}
             >
               {/* Renderização do ícone dinâmico com cor baseada no estado ativo. */}
-              <Icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-[#323232]' : '')} />
+              <Icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-[#BAFF1A]' : '')} />
               {label}
             </Link>
           )
@@ -134,7 +134,7 @@ export function Sidebar() {
         <form action="/auth/logout" method="post">
           <button
             type="submit"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#c7c7c7] hover:text-[#ff9c9a] hover:bg-[#7c1c1c]/20 transition-all duration-150 w-full"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-medium text-[#c7c7c7] hover:text-[#ff9c9a] hover:bg-[#7c1c1c] transition-all duration-150 w-full"
           >
             {/* Ícone de LogOut com transição visual para vermelho no hover. */}
             <LogOut className="w-4 h-4 flex-shrink-0" />

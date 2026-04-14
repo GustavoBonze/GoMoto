@@ -444,23 +444,23 @@ export default function ClientesPage() {
         {/* ── KPI CARDS ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4">
 
-          <div className="bg-[#202020] rounded-2xl p-6 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-2xl border border-[#474747] px-6 py-4 flex items-center justify-between">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Clientes Ativos</p>
-              <p className="text-[28px] font-bold text-[#BAFF1A]">{kpis.active}</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5]">{kpis.active}</p>
             </div>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
-              <Users className="h-5 w-5 text-[#BAFF1A]" />
+            <div className="flex shrink-0 items-center justify-center rounded-full bg-[#323232] p-3">
+              <Users className="h-6 w-6 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="bg-[#202020] rounded-2xl p-6 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-2xl border border-[#474747] px-6 py-4 flex items-center justify-between">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Ex-Clientes</p>
-              <p className="text-[28px] font-bold text-[#ff9c9a]">{kpis.former}</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5]">{kpis.former}</p>
             </div>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
-              <UserMinus className="h-5 w-5 text-[#ff9c9a]" />
+            <div className="flex shrink-0 items-center justify-center rounded-full bg-[#323232] p-3">
+              <UserMinus className="h-6 w-6 text-[#BAFF1A]" />
             </div>
           </div>
 
@@ -468,7 +468,7 @@ export default function ClientesPage() {
 
         {/* Banner de erro de rede */}
         {error && (
-          <div className="bg-[#7c1c1c] border border-[#ff9c9a] rounded-xl px-4 py-3 text-[#ff9c9a]">
+          <div className="bg-[#7c1c1c] border border-[#ff9c9a] rounded-2xl px-4 py-3 text-[#ff9c9a]">
             Erro ao carregar dados: {error}
           </div>
         )}
@@ -477,12 +477,12 @@ export default function ClientesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas de status — esquerda */}
-          <div className="flex gap-0 flex-wrap border-b border-[#323232]">
+          <div className="flex gap-0 flex-wrap border-b border-[#616161]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -490,7 +490,7 @@ export default function ClientesPage() {
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <span className="ml-1.5 opacity-70">({tab.count})</span>
+                  <span className="ml-1.5">({tab.count})</span>
                 )}
               </button>
             ))}
@@ -501,7 +501,7 @@ export default function ClientesPage() {
             <select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todos os estados</option>
               {STATE_OPTIONS.map((opt) => (
@@ -518,7 +518,7 @@ export default function ClientesPage() {
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -533,20 +533,20 @@ export default function ClientesPage() {
           <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
             <Users className="mb-4 h-12 w-12 text-[#474747]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhum cliente encontrado.</p>
-            <p className="mt-1 text-sm text-[#9e9e9e]">Ajuste os filtros ou verifique a fila de espera.</p>
+            <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou verifique a fila de espera.</p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+              <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                 <thead className="bg-[#323232] text-[#c7c7c7]">
                   <tr>
-                    <th className="h-16 px-4 font-bold">Nome</th>
-                    <th className="h-16 px-4 font-bold">CPF</th>
-                    <th className="h-16 px-4 font-bold">Telefone</th>
-                    <th className="h-16 px-4 font-bold">Moto Atual</th>
-                    <th className="h-16 px-4 font-bold">Status</th>
-                    <th className="h-16 px-4 text-right font-bold">Ações</th>
+                    <th className="h-9 px-4 font-bold">Nome</th>
+                    <th className="h-9 px-4 font-bold">CPF</th>
+                    <th className="h-9 px-4 font-bold">Telefone</th>
+                    <th className="h-9 px-4 font-bold">Moto Atual</th>
+                    <th className="h-9 px-4 font-bold">Status</th>
+                    <th className="h-9 px-4 text-right font-bold">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -555,7 +555,7 @@ export default function ClientesPage() {
                     return (
                       <tr
                         key={customer.id}
-                        className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] cursor-pointer"
+                        className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] cursor-pointer"
                         onClick={() => setViewingCustomer(customer)}
                       >
                         <td className="px-4">
@@ -700,7 +700,7 @@ export default function ClientesPage() {
 
             {/* Cabeçalho: nome + badge de status */}
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-xl font-bold text-[#f5f5f5] leading-tight">{viewingCustomer.name}</h3>
+              <h3 className="text-[28px] font-bold text-[#f5f5f5] leading-tight">{viewingCustomer.name}</h3>
               {viewingCustomer.active !== false
                 ? <Badge variant="success">Ativo</Badge>
                 : <Badge variant="danger">Ex-Cliente</Badge>}
@@ -747,7 +747,7 @@ export default function ClientesPage() {
               {viewingCustomer.observations && (
                 <div className="md:col-span-2">
                   <p className="text-[12px] font-medium text-[#616161] mb-1">Observações</p>
-                  <p className="text-[#c7c7c7] bg-[#323232] border border-[#474747] rounded-lg px-3 py-2 leading-relaxed">
+                  <p className="text-[#c7c7c7] bg-[#323232] border border-[#474747] rounded-2xl px-3 py-2 leading-relaxed">
                     {viewingCustomer.observations}
                   </p>
                 </div>
@@ -826,7 +826,7 @@ function DocumentThumb({ url, label, alt }: { url: string; label: string; alt: s
     <div className="space-y-2">
       <p className="text-[12px] font-medium text-[#616161]">{label}</p>
       <a href={url} target="_blank" rel="noopener noreferrer"
-        className="block relative group rounded-lg overflow-hidden border border-[#474747]">
+        className="block relative group rounded-2xl overflow-hidden border border-[#474747]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={alt} className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

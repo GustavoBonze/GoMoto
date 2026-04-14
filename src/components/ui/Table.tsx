@@ -64,6 +64,7 @@ interface TableProps<T> {
  * com suporte a estados de carregamento, vazio e interatividade.
  * 
  * @template T - O tipo de dado de cada linha da tabela.
+ * @deprecated FORBIDDEN by the design system. Use raw HTML `<table>` instead of this reusable component.
  */
 export function Table<T>({
   columns,
@@ -107,15 +108,15 @@ export function Table<T>({
   return (
     // Contêiner que permite rolagem horizontal em telas pequenas para evitar quebra de layout.
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse text-[13px]">
         {/* Cabeçalho da Tabela */}
-        <thead>
-          <tr className="border-b border-[#474747]">
+        <thead className="text-[#c7c7c7]">
+          <tr className="h-9 border-b border-[#474747]">
             {columns.map((column) => (
               <th
                 key={column.key}
                 className={cn(
-                  'px-4 text-left font-medium text-[#9e9e9e]',
+                  'h-9 px-4 text-left font-bold text-[#c7c7c7]',
                   column.className
                 )}
               >
@@ -126,13 +127,13 @@ export function Table<T>({
         </thead>
         
         {/* Corpo da Tabela */}
-        <tbody className="divide-y divide-[#474747]">
+        <tbody>
           {data.map((rowData) => (
             <tr
               key={keyExtractor(rowData)}
               onClick={() => onRowClick?.(rowData)}
               className={cn(
-                'transition-colors duration-100 even:bg-[#323232]',
+                'h-9 transition-colors duration-100 even:bg-[#323232]',
                 // Estilo interativo (cursor e hover) aplicado apenas se a linha for clicável.
                 onRowClick && 'cursor-pointer hover:bg-[#474747]'
               )}
@@ -141,7 +142,7 @@ export function Table<T>({
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={cn('px-4 text-[#c7c7c7]', column.className)}
+                  className={cn('px-4 text-[#f5f5f5]', column.className)}
                 >
                   {/**
                    * Lógica de renderização da célula:

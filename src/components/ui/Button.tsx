@@ -83,9 +83,9 @@ const variants: Record<ButtonVariant, string> = {
  * hierarquia visual clara e consistente entre os diferentes tamanhos de botão.
  */
 const sizes: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm rounded-full',
-  md: 'px-4 py-2 text-sm rounded-full',
-  lg: 'px-6 py-3 text-base rounded-full',
+  sm: 'h-8 px-4 text-[14px] rounded-full',
+  md: 'h-10 px-6 text-[16px] rounded-full',
+  lg: 'h-12 px-6 text-[16px] rounded-full',
   'icon-sm': 'h-8 w-8 p-0 rounded-full',
 }
 
@@ -106,7 +106,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         // A função `cn` mescla as classes de forma inteligente, evitando conflitos.
         className={cn(
           // 1. Classes base: aplicadas a TODAS as variantes de botão.
-          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150',
+          'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-150',
           'hover:scale-[1.025] active:scale-95',
           'disabled:bg-[#323232] disabled:text-[#9e9e9e] disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100',
           // 2. Classes de variante: aplica o estilo da variante selecionada.

@@ -79,7 +79,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
             Componente interativo com estados de hover para feedback visual.
             Atualmente estático, preparado para integração com sistema de alertas.
         */}
-        <button className="p-2 rounded-lg text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors">
+        <button className="p-2 rounded-full text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors">
           <Bell className="w-5 h-5" />
         </button>
       </div>

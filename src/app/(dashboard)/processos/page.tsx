@@ -941,7 +941,7 @@ export default function ProcessesPage() {
             {/* Cabeçalho de cada Categoria */}
             <div className="flex items-center gap-2 py-1">
               <Badge variant={categoryBadgeVariant[category] ?? 'muted'}>{category}</Badge>
-              <span className="text-xs text-[#9e9e9e]">{items.length} processo(s)</span>
+              <span className="text-[12px] text-[#9e9e9e]">{items.length} processo(s)</span>
             </div>
 
             {/* Itens da Categoria em formato de Acordeão */}
@@ -949,18 +949,18 @@ export default function ProcessesPage() {
               {items.map((process) => (
                 <div
                   key={process.id}
-                  className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden transition-colors hover:border-[#616161]"
+                  className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden transition-colors hover:border-[#474747]"
                 >
                   {/* Botão de Expansão que contém a pergunta. */}
                   <button
-                    className="w-full flex items-center justify-between gap-4 p-4 text-left"
+                    className="w-full min-h-[56px] flex items-center justify-between gap-4 p-4 text-left"
                     onClick={() =>
                       setExpandedId((prev) => (prev === process.id ? null : process.id))
                     }
                   >
                     <div className="flex items-start gap-2 min-w-0">
                       {process.category === 'Procedimentos Internos' && (
-                        <span className="mt-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-[#2d0363] text-[#a880ff]">
+                        <span className="mt-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#2d0363] text-[#a880ff]">
                           Interno
                         </span>
                       )}
@@ -1007,7 +1007,7 @@ export default function ProcessesPage() {
                 {search ? `Nenhum resultado para "${search}"` : 'Nenhum processo encontrado'}
               </p>
               {search && (
-                <button onClick={() => setSearch('')} className="mt-2 text-xs text-[#BAFF1A] hover:underline">
+                <button onClick={() => setSearch('')} className="mt-2 text-[12px] text-[#BAFF1A] hover:underline">
                   Limpar busca
                 </button>
               )}

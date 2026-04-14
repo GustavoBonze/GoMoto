@@ -155,7 +155,7 @@ export default function ReportsPage() {
       <div className="p-6 space-y-6">
         {/* SEÇÃO: Resumo do Mês Atual */}
         <div>
-          <p className="text-xs text-[#9e9e9e] mb-3">
+          <p className="text-[12px] text-[#9e9e9e] mb-3">
             Resumo — {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
           </p>
           
@@ -202,7 +202,7 @@ export default function ReportsPage() {
 
         {/* SEÇÃO: Lista de Cards de Relatórios disponíveis para geração. */}
         <div>
-          <p className="text-xs text-[#9e9e9e] mb-3">
+          <p className="text-[12px] text-[#9e9e9e] mb-3">
             Relatórios disponíveis
           </p>
           
@@ -229,22 +229,22 @@ export default function ReportsPage() {
                   className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-start gap-4 hover:border-[#616161] transition-colors"
                 >
                   {/* Container do Ícone com cores dinâmicas */}
-                  <div className={`p-3 rounded-xl flex-shrink-0 ${styles.bg} border ${styles.border}`}>
+                  <div className={`p-3 rounded-full flex-shrink-0 ${styles.bg} border ${styles.border}`}>
                     <div className={styles.text}>{report.icon}</div>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Título e Badge de disponibilidade */}
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-[#f5f5f5] text-[13px]">{report.title}</h3>
+                      <h3 className="text-[20px] font-bold text-[#f5f5f5]">{report.title}</h3>
                       {!report.available && (
-                        <Badge variant="muted" className="text-xs">
+                        <Badge variant="muted" className="text-[12px]">
                           Em breve
                         </Badge>
                       )}
                     </div>
                     
-                    <p className="text-xs text-[#9e9e9e] mb-4 leading-relaxed">{report.description}</p>
+                    <p className="text-[12px] text-[#9e9e9e] mb-4 leading-relaxed">{report.description}</p>
                     
                     {/* Botão de ação (desabilitado se o relatório não estiver disponível) */}
                     <Button
@@ -252,7 +252,7 @@ export default function ReportsPage() {
                       variant={report.available ? 'primary' : 'outline'}
                       onClick={handleGenerateReport}
                       disabled={!report.available}
-                      className={!report.available ? 'opacity-50 cursor-not-allowed' : ''}
+                      className={!report.available ? 'bg-[#323232] text-[#9e9e9e] cursor-not-allowed' : ''}
                     >
                       {!report.available && <Lock className="w-3.5 h-3.5" />}
                       {report.available ? (
@@ -275,7 +275,7 @@ export default function ReportsPage() {
         <Card className="text-center py-8">
           <BarChart2 className="w-12 h-12 text-[#616161] mx-auto mb-3" />
           <p className="text-[#f5f5f5] font-medium mb-1">Relatórios em desenvolvimento</p>
-          <p className="text-sm text-[#9e9e9e] max-w-md mx-auto">
+          <p className="text-[13px] text-[#9e9e9e] max-w-md mx-auto">
             Os relatórios completos com exportação em PDF e Excel estão sendo desenvolvidos e estarão
             disponíveis em breve.
           </p>
@@ -286,7 +286,7 @@ export default function ReportsPage() {
       {showToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#202020] border border-[#6b9900] shadow-2xl animate-in fade-in slide-in-from-bottom">
           <div className="w-2 h-2 rounded-full bg-[#BAFF1A]" />
-          <p className="text-sm text-[#f5f5f5]">Este relatório ainda não está disponível.</p>
+          <p className="text-[13px] text-[#f5f5f5]">Este relatório ainda não está disponível.</p>
         </div>
       )}
     </div>

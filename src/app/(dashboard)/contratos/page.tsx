@@ -219,7 +219,7 @@ export default function ModelosContratoPage() {
         <h1 className="text-[28px] font-bold text-[#f5f5f5]">Modelos de Contrato</h1>
         <div className="flex items-center gap-3">
           {(error || success) && (
-            <div className={(error ? 'bg-[#7c1c1c] text-[#ff9c9a]' : 'bg-[#0e2f13] text-[#229731]') + " px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300"}>
+            <div className={(error ? 'bg-[#7c1c1c] text-[#ff9c9a]' : 'bg-[#0e2f13] text-[#229731]') + " px-4 py-1.5 rounded-full text-[13px] font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300"}>
               {error ? <AlertCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
               {error || success}
             </div>
@@ -244,29 +244,29 @@ export default function ModelosContratoPage() {
               </div>
 
               <div className="px-8 border-x border-[#323232] mx-8 flex flex-col items-center shrink-0 w-64">
-                <p className="text-[12px] text-[#9e9e9e] font-bold mb-1">Arquivo Atual</p>
+                <p className="text-[12px] text-[#9e9e9e] font-normal mb-1">Arquivo Atual</p>
                 {template.file_url ? (
                   <div className="flex items-center gap-2 text-[#229731] font-mono text-[13px] font-medium">
                     <CheckCircle className="w-4 h-4" />
                     <span className="truncate">modelo_{template.slug}.docx</span>
                   </div>
                 ) : (
-                  <span className="text-[#616161] italic text-sm">Aguardando arquivo</span>
+                  <span className="text-[#616161] italic text-[13px]">Aguardando arquivo</span>
                 )}
               </div>
 
               <div className="flex gap-2 shrink-0">
-                <Button variant="primary" size="md" className="px-6 h-11 rounded-full font-medium" onClick={() => handleTriggerUpload(template.slug)} loading={uploading === template.slug}>
+                <Button variant="primary" size="md" className="px-6 h-10 rounded-full font-medium" onClick={() => handleTriggerUpload(template.slug)} loading={uploading === template.slug}>
                   <Upload className="w-4 h-4 mr-2" />
                   {template.file_url ? 'Substituir' : 'Fazer Upload'}
                 </Button>
 
                 {template.file_url && (
                   <div className="flex gap-2">
-                    <Button variant="secondary" className="w-11 h-11 p-0 rounded-full" onClick={() => window.open(template.file_url!, '_blank')} title="Baixar modelo">
+                    <Button variant="secondary" className="w-10 h-10 p-0 rounded-full" onClick={() => window.open(template.file_url!, '_blank')} title="Baixar modelo">
                       <Download className="w-5 h-5" />
                     </Button>
-                    <Button variant="danger" className="w-11 h-11 p-0 rounded-full" onClick={() => handleRemoveTemplate(template.slug)} title="Remover modelo">
+                    <Button variant="danger" className="w-10 h-10 p-0 rounded-full" onClick={() => handleRemoveTemplate(template.slug)} title="Remover modelo">
                       <Trash2 className="w-5 h-5" />
                     </Button>
                   </div>

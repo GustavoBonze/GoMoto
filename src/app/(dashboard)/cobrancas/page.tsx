@@ -455,8 +455,8 @@ export default function CobrancasPage() {
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-[12px] text-[#9e9e9e]">Total Recebido</p>
-              <p className="text-[28px] font-bold text-[#BAFF1A] mt-1">{formatCurrency(totalPaid)}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Total Recebido</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5] mt-1">{formatCurrency(totalPaid)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
@@ -469,7 +469,7 @@ export default function CobrancasPage() {
           {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-[12px] text-[#9e9e9e]">A Receber</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">A Receber</p>
               <p className="text-[28px] font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
@@ -483,7 +483,7 @@ export default function CobrancasPage() {
           {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-[12px] text-[#9e9e9e]">Vencidas</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
               <p className="text-[28px] font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
@@ -504,7 +504,7 @@ export default function CobrancasPage() {
           {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-[12px] text-[#9e9e9e]">Inadimplência</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Inadimplência</p>
               <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
                 {defaultRate.toFixed(1)}%
               </p>
@@ -526,7 +526,7 @@ export default function CobrancasPage() {
           {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
             <div className="p-4 border-b border-[#474747]">
-              <p className="text-[12px] text-[#9e9e9e]">Valores Não Pagos</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Valores Não Pagos</p>
               <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#229731]'}`}>
                 {formatCurrency(totalUnpaid)}
               </p>
@@ -544,7 +544,7 @@ export default function CobrancasPage() {
           <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a] bg-[#7c1c1c]' : ''}>
             <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]' : 'border-[#474747]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-[12px] ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
+                <p className={`text-[14px] font-normal ${totalLoss > 0 ? 'text-[#9e9e9e]' : 'text-[#9e9e9e]'}`}>
                   Prejuízos Contabilizados
                 </p>
                 {totalLoss > 0 && (
@@ -583,15 +583,15 @@ export default function CobrancasPage() {
 
         {/* Barra de Filtros e Busca */}
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex flex-wrap border-b border-[#323232]">
+          <div className="flex flex-wrap border-b border-[#616161]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all duration-150 border-b-2 ${
+                className={`px-3 py-2 text-[16px] transition-all duration-150 border-b-2 ${
                   activeTab === tab.value
-                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
-                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5] font-medium'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5] font-normal'
                 }`}
               >
                 {tab.label}
@@ -610,7 +610,7 @@ export default function CobrancasPage() {
               placeholder="Buscar por cliente ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-lg bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
+              className="pl-9 pr-4 py-1.5 rounded-full bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
             />
           </div>
         </div>

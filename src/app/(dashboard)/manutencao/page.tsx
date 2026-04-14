@@ -330,7 +330,7 @@ function BadgeStatus({ status }: { status: MaintenanceStatus }) {
   }
   const b = map[status]
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${b.cls}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium ${b.cls}`}>
       {b.label}
     </span>
   )
@@ -346,16 +346,16 @@ function BadgeStatus({ status }: { status: MaintenanceStatus }) {
 function SituacaoCell({ m }: { m: MaintenanceWithMoto }) {
   if (m.completed) {
     // Se a manutenção está completa, exibe o nome da oficina onde o serviço foi feito
-    return <span className="text-xs text-[#9e9e9e]">{m.workshop ?? '—'}</span>
+    return <span className="text-[13px] text-[#9e9e9e]">{m.workshop ?? '—'}</span>
   }
   const km = diffKm(m)
   const dias = diffDias(m)
 
   // Prioriza exibir diferença quilométrica quando houver
   if (km !== null) {
-    if (km <= 0) return <span className="text-sm font-medium text-[#ff9c9a]">Vencida há {fmtKm(Math.abs(km))}</span>
+    if (km <= 0) return <span className="text-[13px] font-medium text-[#ff9c9a]">Vencida há {fmtKm(Math.abs(km))}</span>
     return (
-      <span className={`text-sm font-medium ${km <= 100 ? 'text-[#e65e24]' : 'text-[#9e9e9e]'}`}>
+      <span className={`text-[13px] font-medium ${km <= 100 ? 'text-[#e65e24]' : 'text-[#9e9e9e]'}`}>
         Faltam {fmtKm(km)}
       </span>
     )
@@ -363,10 +363,10 @@ function SituacaoCell({ m }: { m: MaintenanceWithMoto }) {
 
   // Senão, analisa datas (temporal)
   if (dias !== null) {
-    if (dias < 0) return <span className="text-sm font-medium text-[#ff9c9a]">Vencida há {Math.abs(dias)} dias</span>
-    if (dias === 0) return <span className="text-sm font-medium text-[#e65e24]">Vence hoje</span>
+    if (dias < 0) return <span className="text-[13px] font-medium text-[#ff9c9a]">Vencida há {Math.abs(dias)} dias</span>
+    if (dias === 0) return <span className="text-[13px] font-medium text-[#e65e24]">Vence hoje</span>
     return (
-      <span className={`text-sm font-medium ${dias <= 18 ? 'text-[#e65e24]' : 'text-[#9e9e9e]'}`}>
+      <span className={`text-[13px] font-medium ${dias <= 18 ? 'text-[#e65e24]' : 'text-[#9e9e9e]'}`}>
         Em {dias} dias
       </span>
     )
@@ -971,7 +971,7 @@ export default function MaintenancePage() {
         {/* ── KPI CARDS ────────────────────────────────────────────────────────
             Mostram de forma gritante e quantitativa a soma situacional global.
             Usam das extrações do memo totals. */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
             <div>
               <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
@@ -1028,12 +1028,12 @@ export default function MaintenancePage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas e pílulas de status principais do sistema controladas no state de statusFilter */}
-          <div className="flex flex-wrap border-b border-[#323232]">
+          <div className="flex flex-wrap border-b border-[#616161]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -1052,7 +1052,7 @@ export default function MaintenancePage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motorcycles.map((m) => (
@@ -1065,7 +1065,7 @@ export default function MaintenancePage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="all">Todos os tipos</option>
               <option value="preventive">Preventiva</option>
@@ -1080,7 +1080,7 @@ export default function MaintenancePage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -1096,7 +1096,7 @@ export default function MaintenancePage() {
           <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
             <Wrench className="mb-4 h-12 w-12 text-[#474747]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma manutenção encontrada.</p>
-            <p className="mt-1 text-sm text-[#9e9e9e]">Ajuste os filtros ou cadastre uma nova manutenção.</p>
+            <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou cadastre uma nova manutenção.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -1121,30 +1121,30 @@ export default function MaintenancePage() {
                   {/* Cabeçalho Ativador (Chevron): Traz placa, modelo atualizado e contadores (bagdes) curtos de itens atrasados embutidos */}
                   <button
                     onClick={() => toggleMoto(motorcycle_id)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#323232] transition-colors text-left"
                   >
                     <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                       light === 'red' ? 'bg-[#ff3e3c]' : light === 'amber' ? 'bg-[#e65e24]' : 'bg-[#28b438]'
                     }`} />
-                    <span className="font-mono font-bold text-[#f5f5f5] text-sm">{moto?.license_plate}</span>
-                    <span className="text-sm text-[#9e9e9e]">{moto?.make} {moto?.model}</span>
+                    <span className="font-mono font-bold text-[#f5f5f5] text-[13px]">{moto?.license_plate}</span>
+                    <span className="text-[13px] text-[#9e9e9e]">{moto?.make} {moto?.model}</span>
                     {moto?.km_current != null && (
-                      <span className="text-xs text-[#616161]">· {fmtKm(moto.km_current)}</span>
+                      <span className="text-[13px] text-[#616161]">· {fmtKm(moto.km_current)}</span>
                     )}
                     <div className="ml-auto flex items-center gap-1.5">
                       {nOverdue > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7c1c1c] text-[#ff9c9a]">
+                        <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#7c1c1c] text-[#ff9c9a]">
                           {nOverdue} vencida{nOverdue > 1 ? 's' : ''}
                         </span>
                       )}
                       {nUpcoming > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#3a180f] text-[#e65e24]">
+                        <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#3a180f] text-[#e65e24]">
                           {nUpcoming} próxima{nUpcoming > 1 ? 's' : ''}
                         </span>
                       )}
                       {nScheduled > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#2d0363] text-[#a880ff]">
+                        <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#2d0363] text-[#a880ff]">
                           {nScheduled} agendada{nScheduled > 1 ? 's' : ''}
                         </span>
                       )}
@@ -1158,19 +1158,19 @@ export default function MaintenancePage() {
                       {/* AREA 1: ITENS PENDENTES — Monta a tr de predição do odômetro. Se tiver em "Atrasada", "Proxima", ela cai aqui no loop da Moto */}
                       {pending.length > 0 ? (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+                          <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                             <thead className="bg-[#323232] text-[#c7c7c7]">
                               <tr>
-                                <th className="h-16 px-4 font-bold">Item</th>
-                                <th className="h-16 px-4 font-bold">Previsão</th>
-                                <th className="h-16 px-4 font-bold">Situação</th>
-                                <th className="h-16 px-4 font-bold">Status</th>
-                                <th className="h-16 px-4 text-right font-bold">Ações</th>
+                                <th className="h-9 px-4 font-bold">Item</th>
+                                <th className="h-9 px-4 font-bold">Previsão</th>
+                                <th className="h-9 px-4 font-bold">Situação</th>
+                                <th className="h-9 px-4 font-bold">Status</th>
+                                <th className="h-9 px-4 text-right font-bold">Ações</th>
                               </tr>
                             </thead>
                             <tbody>
                               {pending.map((item) => (
-                                <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                                <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
                                   <td className="px-4">
                                     <p className="font-medium text-[#f5f5f5]">{item.description}</p>
                                     <StatusBadge status={item.type} />
@@ -1179,7 +1179,7 @@ export default function MaintenancePage() {
                                     {item.predicted_km != null ? (
                                       <div>
                                         <p className="text-[#f5f5f5]">{fmtKm(item.predicted_km)}</p>
-                                        <p className="text-xs text-[#616161]">Atual: {fmtKm(moto?.km_current ?? 0)}</p>
+                                        <p className="text-[13px] text-[#616161]">Atual: {fmtKm(moto?.km_current ?? 0)}</p>
                                       </div>
                                     ) : item.scheduled_date ? (
                                       <p className="text-[#f5f5f5]">{formatDate(item.scheduled_date + 'T12:00:00')}</p>
@@ -1207,25 +1207,25 @@ export default function MaintenancePage() {
                           </table>
                         </div>
                       ) : !showDirectCompleted ? (
-                        <p className="text-center text-[#616161] py-5 text-sm">Todas as manutenções em dia.</p>
+                        <p className="text-center text-[#616161] py-5 text-[13px]">Todas as manutenções em dia.</p>
                       ) : null}
 
                       {/* AREA 2: HISTÓRICO — Condição ativada apenas se o toggle primário estiver como view='completed'. Tabela escura/cinza sinaliza encerramentos e recibos */}
                       {showDirectCompleted && completed.length > 0 && pending.length === 0 && (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-[16px]">
+                          <table className="w-full text-left text-[13px]">
                             <tbody>
                               {completed.map((item) => (
-                                <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-80">
+                                <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-80">
                                   <td className="px-4 w-64">
                                     <p className="text-[#f5f5f5]">{item.description}</p>
                                     <StatusBadge status={item.type} />
                                   </td>
                                   <td className="px-4 text-[#9e9e9e]">
                                     {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
-                                    {item.completed_date && <p className="text-xs">{formatDate(item.completed_date + 'T12:00:00')}</p>}
+                                    {item.completed_date && <p className="text-[13px]">{formatDate(item.completed_date + 'T12:00:00')}</p>}
                                   </td>
-                                  <td className="px-4 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
+                                  <td className="px-4 text-[13px] text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                   <td className="px-4">
                                     <div className="flex gap-1">
                                       <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
@@ -1250,7 +1250,7 @@ export default function MaintenancePage() {
                         <div className={pending.length > 0 ? 'border-t border-[#474747]' : ''}>
                           <button
                             onClick={() => toggleHistory(motorcycle_id)}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-xs text-[#616161] hover:text-[#9e9e9e] transition-colors"
+                            className="w-full flex items-center gap-2 px-4 py-2 text-[13px] text-[#616161] hover:text-[#9e9e9e] transition-colors"
                           >
                             <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${showHist ? '' : '-rotate-90'}`} />
                             {showHist
@@ -1260,20 +1260,20 @@ export default function MaintenancePage() {
 
                           {showHist && (
                             <div className="border-t border-[#323232] overflow-x-auto">
-                              <table className="w-full text-left text-[16px]">
+                              <table className="w-full text-left text-[13px]">
                                 <tbody>
                                   {/* Limitamos histórico colapsado com "slice" pra não afogar interface */}
                                   {completed.slice(0, 5).map((item) => (
-                                    <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-70">
+                                    <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-70">
                                       <td className="px-4 w-64">
                                         <p className="text-[#c7c7c7]">{item.description}</p>
                                         <StatusBadge status={item.type} />
                                       </td>
                                       <td className="px-4 text-[#9e9e9e]">
                                         {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
-                                        {item.completed_date && <p className="text-xs">{formatDate(item.completed_date + 'T12:00:00')}</p>}
+                                        {item.completed_date && <p className="text-[13px]">{formatDate(item.completed_date + 'T12:00:00')}</p>}
                                       </td>
-                                      <td className="px-4 text-xs text-[#9e9e9e]">{item.workshop ?? '—'}</td>
+                                      <td className="px-4 text-[13px] text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                       <td className="px-4">
                                         <div className="flex gap-1">
                                           <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
@@ -1318,8 +1318,8 @@ export default function MaintenancePage() {
               options={motorcycleSelectOptions}
             />
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-[#c7c7c7]">Tipo</label>
-              <div className="flex h-12 items-center rounded-lg border border-[#323232] bg-[#323232] px-3 text-sm text-[#9e9e9e] cursor-not-allowed">
+              <label className="mb-1.5 block text-[13px] font-medium text-[#c7c7c7]">Tipo</label>
+              <div className="flex h-12 items-center rounded-lg border border-[#323232] bg-[#323232] px-3 text-[13px] text-[#9e9e9e] cursor-not-allowed">
                 {editingMaintenance ? TYPE_LABEL_MAP[formData.type] || formData.type : 'Corretiva'}
               </div>
             </div>
@@ -1340,7 +1340,7 @@ export default function MaintenancePage() {
             )}
           </div>
           <Textarea label="Observações" value={formData.observations} onChange={(e) => setFormData({ ...formData, observations: e.target.value })} rows={2} />
-          <label className="flex w-max cursor-pointer items-center gap-2 text-sm text-[#f5f5f5]">
+          <label className="flex w-max cursor-pointer items-center gap-2 text-[13px] text-[#f5f5f5]">
             <input
               type="checkbox"
               checked={formData.completed}
@@ -1368,17 +1368,17 @@ export default function MaintenancePage() {
 
             {/* Quadro superior exibe metadados de leitura rápida sobre a ação sendo despachada */}
             <div className="rounded-xl border border-[#474747] bg-[#121212] px-4 py-3 space-y-1">
-              <p className="text-sm font-medium text-[#f5f5f5]">{completingMaintenance.description}</p>
-              <p className="text-xs text-[#9e9e9e]">
+              <p className="text-[13px] font-medium text-[#f5f5f5]">{completingMaintenance.description}</p>
+              <p className="text-[13px] text-[#9e9e9e]">
                 {completingMaintenance.motorcycles
                   ? `${completingMaintenance.motorcycles.license_plate} — ${completingMaintenance.motorcycles.make} ${completingMaintenance.motorcycles.model}`
                   : '—'}
               </p>
               {completingMaintenance.predicted_km != null && (
-                <p className="text-xs text-[#e65e24]">KM previsto: {fmtKm(completingMaintenance.predicted_km)}</p>
+                <p className="text-[13px] text-[#e65e24]">KM previsto: {fmtKm(completingMaintenance.predicted_km)}</p>
               )}
               {completingMaintenance.scheduled_date && (
-                <p className="text-xs text-[#e65e24]">Data prevista: {formatDate(completingMaintenance.scheduled_date + 'T12:00:00')}</p>
+                <p className="text-[13px] text-[#e65e24]">Data prevista: {formatDate(completingMaintenance.scheduled_date + 'T12:00:00')}</p>
               )}
             </div>
 
@@ -1400,7 +1400,7 @@ export default function MaintenancePage() {
                     return (
                       <div className="flex items-center gap-2 rounded-xl border border-[#474747] bg-[#202020] px-4 py-2 text-[#9e9e9e]">
                         <Info className="h-4 w-4 shrink-0" />
-                        <span className="text-sm">Preencha o KM acima para ver a estimativa da próxima manutenção.</span>
+                        <span className="text-[13px]">Preencha o KM acima para ver a estimativa da próxima manutenção.</span>
                       </div>
                     )
                   }
@@ -1464,21 +1464,21 @@ export default function MaintenancePage() {
 
                   return (
                     <div className="rounded-xl border border-[#154f1d] bg-[#0e2f13] px-4 py-3 space-y-2">
-                      <p className="text-xs font-medium text-[#229731]">
+                      <p className="text-[13px] font-medium text-[#229731]">
                         Próximas manutenções agendadas
                       </p>
                       {nextItems.map((item, idx) => (
                         <div key={item.description} className="flex items-center justify-between gap-4">
-                          <span className={`text-sm ${idx === 0 ? 'font-medium text-[#f5f5f5]' : 'text-[#9e9e9e]'}`}>
+                          <span className={`text-[13px] ${idx === 0 ? 'font-medium text-[#f5f5f5]' : 'text-[#9e9e9e]'}`}>
                             {idx === 0 && <span className="mr-1 text-[#229731]">↑</span>}
                             {item.description}
                           </span>
-                          <span className={`text-xs whitespace-nowrap ${idx === 0 ? 'font-medium text-[#229731]' : 'text-[#616161]'}`}>
+                          <span className={`text-[13px] whitespace-nowrap ${idx === 0 ? 'font-medium text-[#229731]' : 'text-[#616161]'}`}>
                             {item.label}
                           </span>
                         </div>
                       ))}
-                      <p className="text-xs text-[#229731] border-t border-[#154f1d] pt-2">
+                      <p className="text-[13px] text-[#229731] border-t border-[#154f1d] pt-2">
                         Próxima ida à oficina: {nextItems[0].description}
                       </p>
                     </div>
@@ -1491,7 +1491,7 @@ export default function MaintenancePage() {
 
                   return (
                     <div className="rounded-xl border border-[#e65e24] bg-[#3a180f] px-4 py-3 space-y-2">
-                      <p className="text-xs font-medium text-[#e65e24]">
+                      <p className="text-[13px] font-medium text-[#e65e24]">
                         {hasOverdue
                           ? 'Atenção — itens vencidos desta moto (aproveite a ida à oficina):'
                           : 'Quase na hora — itens próximos do prazo desta moto:'}
@@ -1512,16 +1512,16 @@ export default function MaintenancePage() {
                               }}
                               className="h-4 w-4 rounded border-[#474747] bg-[#121212] accent-[#e65e24]"
                             />
-                            <span className="text-sm text-[#f5f5f5]">{extra.description}</span>
+                            <span className="text-[13px] text-[#f5f5f5]">{extra.description}</span>
                             {extra.predicted_km != null && (
-                              <span className={`text-xs ${isOverdue ? 'text-[#ff9c9a]' : 'text-[#e65e24]'}`}>
+                              <span className={`text-[13px] ${isOverdue ? 'text-[#ff9c9a]' : 'text-[#e65e24]'}`}>
                                 {isOverdue
                                   ? 'VENCIDA'
                                   : kmLeft !== null ? `faltam ${fmtKm(kmLeft)}` : ''}
                               </span>
                             )}
                             {extra.predicted_km == null && extra.scheduled_date && (
-                              <span className={`text-xs ${isOverdue ? 'text-[#ff9c9a]' : 'text-[#e65e24]'}`}>
+                              <span className={`text-[13px] ${isOverdue ? 'text-[#ff9c9a]' : 'text-[#e65e24]'}`}>
                                 {isOverdue
                                   ? 'VENCIDA'
                                   : daysLeft !== null ? `${daysLeft} dias` : ''}
@@ -1566,12 +1566,12 @@ export default function MaintenancePage() {
             {/* ── ETAPA 2 ── Bloco financeiro: Lança quem paga o conserto, os custos brutos e as confirmações de anexos por cada serviço marcado. */}
             {completionStep === 2 && (
               <div className="space-y-4">
-                <p className="text-xs text-[#9e9e9e]">Preencha o custo e o responsável por cada item:</p>
+                <p className="text-[13px] text-[#9e9e9e]">Preencha o custo e o responsável por cada item:</p>
 
                 <div className="space-y-3">
                   {completionFinancials.map((fin, idx) => (
                     <div key={fin.id} className="rounded-xl border border-[#474747] bg-[#121212] p-4 space-y-3">
-                      <p className="text-sm font-medium text-[#f5f5f5]">{fin.description}</p>
+                      <p className="text-[13px] font-medium text-[#f5f5f5]">{fin.description}</p>
 
                       {/* Toggle de Responsabilidade e Custos (Split, Company, Customer) */}
                       <div className="flex flex-wrap gap-2">
@@ -1580,7 +1580,7 @@ export default function MaintenancePage() {
                             key={resp}
                             type="button"
                             onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, responsibility: resp } : f))}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            className={`px-3 py-1 rounded-full text-[12px] font-medium transition-colors ${
                               fin.responsibility === resp
                                 ? resp === 'split' ? 'bg-[#2d0363] text-[#a880ff]'
                                   : resp === 'company' ? 'bg-[#0e2f13] text-[#229731]'
@@ -1591,7 +1591,7 @@ export default function MaintenancePage() {
                             {resp === 'split' ? '50/50' : resp === 'company' ? 'Empresa' : 'Cliente'}
                           </button>
                         ))}
-                        <span className="text-xs text-[#616161] self-center">
+                        <span className="text-[13px] text-[#616161] self-center">
                           {fin.responsibility === 'split' && 'Custo dividido entre empresa e cliente.'}
                           {fin.responsibility === 'company' && 'Sairá do caixa da empresa.'}
                           {fin.responsibility === 'customer' && 'Cliente pagou — lançado em Despesas.'}
@@ -1615,7 +1615,7 @@ export default function MaintenancePage() {
                             type="button"
                             onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_odometer_photo: !f.has_odometer_photo } : f))}
                             title="Marcar foto do odômetro"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_odometer_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${fin.has_odometer_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
                           >
                             <Camera className="h-3.5 w-3.5" /> KM
                           </button>
@@ -1623,7 +1623,7 @@ export default function MaintenancePage() {
                             type="button"
                             onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_invoice_photo: !f.has_invoice_photo } : f))}
                             title="Marcar foto da nota fiscal"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${fin.has_invoice_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${fin.has_invoice_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
                           >
                             <FileText className="h-3.5 w-3.5" /> NF
                           </button>
@@ -1631,7 +1631,7 @@ export default function MaintenancePage() {
                       </div>
 
                       {fin.cost && parseFloat(fin.cost) > 0 && (
-                        <p className="text-xs text-[#9e9e9e] border-t border-[#474747] pt-2">
+                        <p className="text-[13px] text-[#9e9e9e] border-t border-[#474747] pt-2">
                           {fin.responsibility === 'company' && `→ Despesas da empresa: ${formatCurrency(parseFloat(fin.cost))}`}
                           {fin.responsibility === 'customer' && `→ Pago pelo cliente: ${formatCurrency(parseFloat(fin.cost))}`}
                           {fin.responsibility === 'split' && `→ Empresa: ${formatCurrency(parseFloat(fin.cost) / 2)} / Cliente: ${formatCurrency(parseFloat(fin.cost) / 2)}`}
@@ -1656,12 +1656,12 @@ export default function MaintenancePage() {
                   return (
                     <div className="rounded-xl border border-[#474747] bg-[#202020] px-4 py-3 space-y-2">
                       <p className="text-[14px] font-normal text-[#9e9e9e]">Resumo Financeiro</p>
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-[13px]">
                         <span className="text-[#f5f5f5]">Despesa da empresa</span>
                         <span className="font-bold text-[#229731]">{formatCurrency(totalEmpresa)}</span>
                       </div>
                       {totalCliente > 0 && (
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-[13px]">
                           <span className="text-[#f5f5f5]">Pago pelo cliente</span>
                           <span className="font-bold text-[#ff9c9a]">{formatCurrency(totalCliente)}</span>
                         </div>
@@ -1675,7 +1675,7 @@ export default function MaintenancePage() {
                             onChange={(e) => setDiscountConfirmed(e.target.checked)}
                             className="h-4 w-4 mt-0.5 rounded border-[#474747] bg-[#121212] accent-[#BAFF1A]"
                           />
-                          <span className="text-xs text-[#9e9e9e]">
+                          <span className="text-[13px] text-[#9e9e9e]">
                             Confirmo que será cobrado desconto de {formatCurrency(totalCliente)} para {activeContract.client_name}
                             {activeContract.next_billing_date ? ` na cobrança de ${formatDate(activeContract.next_billing_date + 'T12:00:00')}` : ''}
                           </span>
@@ -1714,7 +1714,7 @@ export default function MaintenancePage() {
             options={motorcycleSelectOptions}
           />
           {kmForm.motorcycle_id && (
-            <p className="text-xs text-[#9e9e9e]">
+            <p className="text-[13px] text-[#9e9e9e]">
               KM atual: <span className="text-[#f5f5f5] font-medium">
                 {fmtKm(motorcycles.find((m) => m.id === kmForm.motorcycle_id)?.km_current ?? 0)}
               </span>

@@ -114,11 +114,11 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
       >
         {/* Cabeçalho da Modal: Renderizado apenas se um `title` for fornecido. */}
         {title && (
-          <div className="flex items-center justify-between p-5 border-b border-[#474747] sticky top-0 bg-[#202020]/80 backdrop-blur-md z-10">
+          <div className="flex items-center justify-between p-5 border-b border-[#474747] sticky top-0 bg-[#202020] backdrop-blur-md z-10">
             <h2 className="text-lg font-medium text-[#f5f5f5]">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors"
+              className="p-1.5 rounded-full text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors"
               aria-label="Fechar modal"
             >
               <X className="w-5 h-5" />

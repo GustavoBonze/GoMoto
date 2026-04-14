@@ -277,8 +277,10 @@ export default function SettingsPage() {
     const isSuccess = feedback.type === 'success'
     return (
       <div
-        className={`flex items-center gap-2 text-[13px] font-medium ${
-          isSuccess ? 'text-[#229731]' : 'text-[#ff9c9a]'
+        className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-[13px] font-medium ${
+          isSuccess
+            ? 'bg-[#0e2f13] border border-[#229731] text-[#229731]'
+            : 'bg-[#7c1c1c] border border-[#ff9c9a] text-[#ff9c9a]'
         }`}
       >
         {isSuccess ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
@@ -304,7 +306,7 @@ export default function SettingsPage() {
               <Building2 className="w-5 h-5 text-[#BAFF1A]" />
             </div>
             <div>
-              <h2 className="text-[20px] font-bold text-[#f5f5f5]">Dados da Empresa</h2>
+              <h2 className="text-[28px] font-bold text-[#f5f5f5]">Dados da Empresa</h2>
               <p className="text-[13px] text-[#9e9e9e]">
                 Informações que aparecerão em contratos e relatórios.
               </p>
@@ -387,7 +389,7 @@ export default function SettingsPage() {
               <Lock className="w-5 h-5 text-[#a880ff]" />
             </div>
             <div>
-              <h2 className="text-[20px] font-bold text-[#f5f5f5]">Segurança</h2>
+              <h2 className="text-[28px] font-bold text-[#f5f5f5]">Segurança</h2>
               <p className="text-[13px] text-[#9e9e9e]">Altere sua senha de acesso ao painel.</p>
             </div>
           </div>
@@ -448,7 +450,7 @@ export default function SettingsPage() {
               <User className="w-5 h-5 text-[#e65e24]" />
             </div>
             <div>
-              <h2 className="text-[20px] font-bold text-[#f5f5f5]">Informações da Conta</h2>
+              <h2 className="text-[28px] font-bold text-[#f5f5f5]">Informações da Conta</h2>
               <p className="text-[13px] text-[#9e9e9e]">Detalhes do usuário autenticado no sistema.</p>
             </div>
           </div>

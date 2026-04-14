@@ -730,7 +730,7 @@ export default function ExpensesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas pill de categoria — geradas dinamicamente pelo memo categoryTabs */}
-          <div className="flex flex-wrap border-b border-[#323232]">
+          <div className="flex flex-wrap border-b border-[#616161]">
             {categoryTabs.map(tab => (
               <button
                 key={tab.id}
@@ -755,7 +755,7 @@ export default function ExpensesPage() {
               type="month"
               value={monthFilter}
               onChange={e => setMonthFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             />
 
             {/* Campo de busca com ícone — filtra em description e observations */}
@@ -766,7 +766,7 @@ export default function ExpensesPage() {
                 placeholder="Buscar..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -793,7 +793,7 @@ export default function ExpensesPage() {
           <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
             <Receipt className="mb-4 h-12 w-12 text-[#474747]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma despesa encontrada.</p>
-            <p className="mt-1 text-sm text-[#9e9e9e]">Ajuste os filtros ou registre uma nova despesa.</p>
+            <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou registre uma nova despesa.</p>
           </div>
 
         ) : (
@@ -812,17 +812,17 @@ export default function ExpensesPage() {
                   ────────────────────────────────────────────────────────── */}
                   <button
                     onClick={() => toggleCategory(category)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2a2a] transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 hover:bg-[#2a2a2a] transition-colors text-left"
                   >
                     {/* Seta: rotaciona -90° quando colapsado (via classe Tailwind) */}
                     <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
 
                     {/* Nome da categoria em destaque */}
-                    <span className="font-medium text-[#f5f5f5] text-sm">{category}</span>
+                    <span className="font-medium text-[#f5f5f5] text-[13px]">{category}</span>
 
                     {/* Contagem de lançamentos + valor total alinhados à direita */}
                     <div className="ml-auto flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#323232] text-[#9e9e9e]">
+                      <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#323232] text-[#9e9e9e]">
                         {items.length} lançamento{items.length !== 1 ? 's' : ''}
                       </span>
                       {/* Total da categoria em vermelho — representa saída financeira */}
@@ -840,15 +840,15 @@ export default function ExpensesPage() {
                   {isExpanded && (
                     <div className="border-t border-[#474747]">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+                        <table className="w-full text-left text-[13px] text-[#f5f5f5]">
 
                           {/* Cabeçalho da tabela: fundo #323232 conforme design system */}
                           <thead className="bg-[#323232] text-[#c7c7c7]">
                             <tr>
-                              <th className="h-16 px-4 font-bold">Data</th>
-                              <th className="h-16 px-4 font-bold">Descrição</th>
-                              <th className="h-16 px-4 font-bold">Valor</th>
-                              <th className="h-16 px-4 text-right font-bold">Ações</th>
+                              <th className="h-9 px-4 font-bold">Data</th>
+                              <th className="h-9 px-4 font-bold">Descrição</th>
+                              <th className="h-9 px-4 font-bold">Valor</th>
+                              <th className="h-9 px-4 text-right font-bold">Ações</th>
                             </tr>
                           </thead>
 
@@ -857,7 +857,7 @@ export default function ExpensesPage() {
                               /* Calcula a moto vinculada uma única vez por linha (evita 3x find) */
                               const moto = motorcycles.find(m => m.id === item.motorcycle_id)
                               return (
-                              <tr key={item.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                              <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
 
                                 {/* Data: formatada para DD/MM/AAAA via formatDate */}
                                 <td className="px-4">
@@ -868,13 +868,13 @@ export default function ExpensesPage() {
                                 <td className="px-4 max-w-xs">
                                   <p className="font-medium text-[#f5f5f5]">{item.description}</p>
                                   {item.observations && (
-                                    <p className="text-xs text-[#9e9e9e] mt-0.5 line-clamp-1">
+                                    <p className="text-[12px] text-[#9e9e9e] mt-0.5 line-clamp-1">
                                       {item.observations}
                                     </p>
                                   )}
                                   {/* Placa e modelo da moto vinculada, se existir */}
                                   {moto && (
-                                    <p className="text-xs text-[#9e9e9e] mt-0.5">
+                                    <p className="text-[12px] text-[#9e9e9e] mt-0.5">
                                       {moto.license_plate}{' — '}{moto.model}
                                     </p>
                                   )}
@@ -1015,7 +1015,7 @@ export default function ExpensesPage() {
             <div className="space-y-1">
               <label className="text-[14px] text-[#c7c7c7]">
                 Nota Fiscal
-                <span className="ml-2 text-[#9e9e9e] text-xs">(PDF ou imagem)</span>
+                <span className="ml-2 text-[#9e9e9e] text-[12px]">(PDF ou imagem)</span>
               </label>
               <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
                 form.invoiceFile || existingInvoiceUrl
@@ -1023,7 +1023,7 @@ export default function ExpensesPage() {
                   : 'border-[#323232] hover:border-[#474747]'
               }`}>
                 <FileText className="w-4 h-4 text-[#9e9e9e] shrink-0" />
-                <span className="flex-1 text-sm truncate text-[#9e9e9e]">
+                <span className="flex-1 text-[13px] truncate text-[#9e9e9e]">
                   {form.invoiceFile
                     ? form.invoiceFile.name
                     : existingInvoiceUrl
@@ -1071,7 +1071,7 @@ export default function ExpensesPage() {
             <div className="space-y-1">
               <label className="text-[14px] text-[#c7c7c7]">
                 Arquivo Adicional
-                <span className="ml-2 text-[#9e9e9e] text-xs">(opcional)</span>
+                <span className="ml-2 text-[#9e9e9e] text-[12px]">(opcional)</span>
               </label>
               <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
                 form.attachmentFile || existingAttachmentUrl
@@ -1079,7 +1079,7 @@ export default function ExpensesPage() {
                   : 'border-[#323232] hover:border-[#474747]'
               }`}>
                 <Paperclip className="w-4 h-4 text-[#9e9e9e] shrink-0" />
-                <span className="flex-1 text-sm truncate text-[#9e9e9e]">
+                <span className="flex-1 text-[13px] truncate text-[#9e9e9e]">
                   {form.attachmentFile
                     ? form.attachmentFile.name
                     : existingAttachmentUrl
@@ -1127,8 +1127,8 @@ export default function ExpensesPage() {
             <div className="bg-[#3a180f] border border-[#e65e24] rounded-xl p-3 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-[#e65e24] shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-medium text-[#e65e24]">Despesa sem Nota Fiscal</p>
-                <p className="text-xs text-[#e65e24] mt-0.5 leading-tight opacity-80">
+                <p className="text-[12px] font-medium text-[#e65e24]">Despesa sem Nota Fiscal</p>
+                <p className="text-[12px] text-[#e65e24] mt-0.5 leading-tight opacity-80">
                   Não recomendado para controle financeiro. Deseja realmente continuar?
                 </p>
               </div>
@@ -1166,7 +1166,7 @@ export default function ExpensesPage() {
       >
         <div className="space-y-4">
           {/* Texto de confirmação: exibe o nome da despesa a ser excluída */}
-          <p className="text-[#9e9e9e] text-sm">
+          <p className="text-[#9e9e9e] text-[13px]">
             Tem certeza que deseja excluir a despesa{' '}
             <span className="text-[#f5f5f5] font-medium">{deleting?.description}</span>?
             Esta ação removerá permanentemente o registro.

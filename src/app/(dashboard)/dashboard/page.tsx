@@ -290,10 +290,10 @@ export default async function DashboardPage() {
             {data.idleMotorcycles.map((moto) => (
               <div
                 key={moto.license_plate}
-                className="flex items-center gap-2 rounded-xl border border-[#e65e24]/30 bg-[#2a1f00] px-3 py-2"
+                className="flex items-center gap-2 rounded-full border border-[#e65e24] bg-[#3a180f] px-3 py-2"
               >
                 <div className="w-1.5 h-1.5 bg-[#e65e24] rounded-full shrink-0" />
-                <span className="text-[11px] text-[#e65e24] font-medium">
+                <span className="text-[12px] text-[#e65e24] font-medium">
                   {moto.license_plate} parada há 7+ dias
                 </span>
               </div>
@@ -301,10 +301,10 @@ export default async function DashboardPage() {
             {data.multipleOverdueCustomers.map((customer) => (
               <div
                 key={customer.name}
-                className="flex items-center gap-2 rounded-xl border border-[#ff9c9a]/30 bg-[#2a0000] px-3 py-2"
+                className="flex items-center gap-2 rounded-full border border-[#ff9c9a] bg-[#7c1c1c] px-3 py-2"
               >
                 <div className="w-1.5 h-1.5 bg-[#ff9c9a] rounded-full shrink-0" />
-                <span className="text-[11px] text-[#ff9c9a] font-medium">
+                <span className="text-[12px] text-[#ff9c9a] font-medium">
                   {customer.name} 2+ cobranças vencidas
                 </span>
               </div>
@@ -347,13 +347,13 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[14px] font-bold text-[#f5f5f5]">Contratos Ativos</h3>
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Contratos Ativos</h3>
               <a href="/contratos" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver todos
               </a>
             </div>
             {data.recentContracts.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[#9e9e9e]">
+                <div className="px-4 py-6 text-center text-[12px] text-[#9e9e9e]">
                 Nenhum contrato ativo.
               </div>
             ) : (
@@ -366,10 +366,10 @@ export default async function DashboardPage() {
                     {contract.customers?.name ?? 'Cliente'}
                   </p>
                   <div className="mt-1 flex items-center justify-between gap-2">
-                    <p className="text-[11px] text-[#9e9e9e] truncate">
+                    <p className="text-[12px] text-[#9e9e9e] truncate">
                       {contract.motorcycles?.license_plate ?? '-'}
                     </p>
-                    <p className="text-[11px] text-[#9e9e9e]">
+                    <p className="text-[12px] text-[#9e9e9e]">
                       {formatCurrency(contract.monthly_amount)}
                     </p>
                   </div>
@@ -380,13 +380,13 @@ export default async function DashboardPage() {
 
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[14px] font-bold text-[#f5f5f5]">Cobranças Vencidas</h3>
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Cobranças Vencidas</h3>
               <a href="/cobrancas" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver todas
               </a>
             </div>
             {data.overduePaymentsList.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[#9e9e9e]">Tudo em dia!</div>
+              <div className="px-4 py-6 text-center text-[12px] text-[#9e9e9e]">Tudo em dia!</div>
             ) : (
               data.overduePaymentsList.slice(0, 4).map((payment, index, items) => {
                 const daysOverdue = Math.max(
@@ -407,10 +407,10 @@ export default async function DashboardPage() {
                       {payment.customers?.name ?? 'Cliente'}
                     </p>
                     <div className="mt-1 flex items-center justify-between gap-2">
-                      <p className="text-[11px] text-[#ff9c9a]">
+                      <p className="text-[12px] text-[#ff9c9a]">
                         {formatCurrency(payment.amount)}
                       </p>
-                      <p className="text-[11px] text-[#9e9e9e]">{daysOverdue} dias</p>
+                      <p className="text-[12px] text-[#9e9e9e]">{daysOverdue} dias</p>
                     </div>
                   </div>
                 )
@@ -420,13 +420,13 @@ export default async function DashboardPage() {
 
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[14px] font-bold text-[#f5f5f5]">Fila de Espera</h3>
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Fila de Espera</h3>
               <a href="/fila" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver fila
               </a>
             </div>
             {data.queueEntries.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[#9e9e9e]">Fila vazia</div>
+              <div className="px-4 py-6 text-center text-[12px] text-[#9e9e9e]">Fila vazia</div>
             ) : (
               data.queueEntries.slice(0, 4).map((entry, index, items) => {
                 const waitDays = Math.floor(
@@ -447,7 +447,7 @@ export default async function DashboardPage() {
                         {entry.customers?.name ?? 'Cliente'}
                       </p>
                     </div>
-                    <p className="mt-1 text-[11px] text-[#9e9e9e]">{waitDays} dias</p>
+                    <p className="mt-1 text-[12px] text-[#9e9e9e]">{waitDays} dias</p>
                   </div>
                 )
               })
@@ -456,13 +456,13 @@ export default async function DashboardPage() {
 
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[14px] font-bold text-[#f5f5f5]">Manutenções</h3>
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Manutenções</h3>
               <a href="/manutencao" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver todas
               </a>
             </div>
             {data.upcomingMaintenances.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[#9e9e9e]">
+              <div className="px-4 py-6 text-center text-[12px] text-[#9e9e9e]">
                 Nenhuma agendada
               </div>
             ) : (
@@ -477,12 +477,12 @@ export default async function DashboardPage() {
                     </p>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <p
-                        className={`text-[11px] ${MAINTENANCE_TYPE_COLORS[maintenance.type as keyof typeof MAINTENANCE_TYPE_COLORS] ?? 'text-[#9e9e9e]'}`}
+                        className={`text-[12px] ${MAINTENANCE_TYPE_COLORS[maintenance.type as keyof typeof MAINTENANCE_TYPE_COLORS] ?? 'text-[#9e9e9e]'}`}
                       >
                         {MAINTENANCE_TYPE_LABELS[maintenance.type as keyof typeof MAINTENANCE_TYPE_LABELS] ??
                           maintenance.type}
                       </p>
-                      <p className="text-[11px] text-[#9e9e9e]">
+                      <p className="text-[12px] text-[#9e9e9e]">
                         {formatDate(maintenance.scheduled_date)}
                       </p>
                     </div>
@@ -494,11 +494,11 @@ export default async function DashboardPage() {
 
           <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[14px] font-bold text-[#f5f5f5]">Top Clientes</h3>
+              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Top Clientes</h3>
               <a href="/clientes" className="text-[11px] text-[#BAFF1A] font-bold hover:underline">Ver todos</a>
             </div>
             {data.topCustomers.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[#9e9e9e]">Sem dados ainda</div>
+              <div className="px-4 py-6 text-center text-[12px] text-[#9e9e9e]">Sem dados ainda</div>
             ) : (
               data.topCustomers.map((customer, index) => (
                 <div
@@ -506,10 +506,10 @@ export default async function DashboardPage() {
                   className={`px-4 py-2.5 hover:bg-[#323232] transition-colors${index < data.topCustomers.length - 1 ? ' border-b border-[#323232]' : ''}`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-[#BAFF1A] shrink-0">{index + 1}º</span>
+                    <span className="text-[12px] font-bold text-[#BAFF1A] shrink-0">{index + 1}º</span>
                     <p className="text-[12px] font-medium text-[#f5f5f5] truncate">{customer.name}</p>
                   </div>
-                  <p className="text-[11px] text-[#9e9e9e]">{formatCurrency(customer.total)} total</p>
+                  <p className="text-[12px] text-[#9e9e9e]">{formatCurrency(customer.total)} total</p>
                 </div>
               ))
             )}

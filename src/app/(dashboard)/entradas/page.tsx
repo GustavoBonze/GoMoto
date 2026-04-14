@@ -385,7 +385,7 @@ export default function EntradasPage() {
             <Plus className="w-5 h-5" />
             Nova Entrada
           </Button>
-          <button className="p-2 rounded-lg text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors">
+          <button className="p-2 rounded-full text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors">
             <Bell className="w-5 h-5" />
           </button>
         </div>
@@ -432,7 +432,7 @@ export default function EntradasPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Pills de referência */}
-          <div className="flex flex-wrap border-b border-[#323232]">
+          <div className="flex flex-wrap border-b border-[#616161]">
             {referenceTabs.map(tab => (
               <button
                 key={tab.id}
@@ -456,7 +456,7 @@ export default function EntradasPage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motos.map((m) => (
@@ -470,7 +470,7 @@ export default function EntradasPage() {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-sm text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             />
 
             <div className="relative">
@@ -480,7 +480,7 @@ export default function EntradasPage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-sm text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -495,7 +495,7 @@ export default function EntradasPage() {
           <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-[#474747]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma entrada encontrada.</p>
-            <p className="mt-1 text-sm text-[#9e9e9e]">Ajuste os filtros ou registre uma nova entrada.</p>
+            <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou registre uma nova entrada.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -507,12 +507,12 @@ export default function EntradasPage() {
                   {/* Cabeçalho clicável do accordion */}
                   <button
                     onClick={() => toggleGroup(reference)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#323232] transition-colors text-left"
                   >
                     <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
-                    <span className="font-medium text-[#f5f5f5] text-sm">{reference}</span>
+                    <span className="font-medium text-[#f5f5f5] text-[13px]">{reference}</span>
                     <div className="ml-auto flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#474747]/40 text-[#9e9e9e]">
+                      <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#474747] text-[#9e9e9e]">
                         {items.length} lançamento{items.length !== 1 ? 's' : ''}
                       </span>
                       <span className="text-[13px] font-bold text-[#BAFF1A] ml-1">
@@ -525,26 +525,26 @@ export default function EntradasPage() {
                   {isExpanded && (
                     <div className="border-t border-[#474747]">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-[16px] text-[#f5f5f5]">
+                        <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                           <thead className="bg-[#323232] text-[#c7c7c7]">
                             <tr>
-                              <th className="h-16 px-4 font-bold">Data</th>
-                              <th className="h-16 px-4 font-bold">Placa</th>
-                              <th className="h-16 px-4 font-bold">Locatário</th>
-                              <th className="h-16 px-4 font-bold">Período</th>
-                              <th className="h-16 px-4 font-bold">Método</th>
-                              <th className="h-16 px-4 font-bold">Valor</th>
-                              <th className="h-16 px-4 text-right font-bold">Ações</th>
+                              <th className="h-9 px-4 font-bold">Data</th>
+                              <th className="h-9 px-4 font-bold">Placa</th>
+                              <th className="h-9 px-4 font-bold">Locatário</th>
+                              <th className="h-9 px-4 font-bold">Período</th>
+                              <th className="h-9 px-4 font-bold">Método</th>
+                              <th className="h-9 px-4 font-bold">Valor</th>
+                              <th className="h-9 px-4 text-right font-bold">Ações</th>
                             </tr>
                           </thead>
                           <tbody>
                             {items.map(income => (
-                              <tr key={income.id} className="h-16 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                              <tr key={income.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
                                 <td className="px-4">
                                   <p className="text-[#f5f5f5]">{formatDate(income.date)}</p>
                                 </td>
                                 <td className="px-4">
-                                  <span className="bg-[#323232] text-[#BAFF1A] px-2 py-0.5 rounded-full text-xs font-mono">
+                                  <span className="bg-[#323232] text-[#BAFF1A] px-2 py-0.5 rounded-full text-[12px] font-mono">
                                     {income.vehicle}
                                   </span>
                                 </td>

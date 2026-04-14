@@ -92,8 +92,8 @@ export function StatCard({ title, value, subtitle, icon: Icon, color = 'brand', 
         <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
         {subtitle && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{subtitle}</p>}
       </div>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-        <Icon className="h-5 w-5" />
+      <div className="rounded-full bg-[#323232] p-3 text-[#BAFF1A]">
+        <Icon className="h-6 w-6" />
       </div>
     </div>
   )
