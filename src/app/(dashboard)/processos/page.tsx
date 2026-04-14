@@ -902,14 +902,14 @@ export default function ProcessesPage() {
         {/* SEÇÃO DE FILTROS: Busca textual e filtro por categoria. */}
         <div className="flex items-center gap-3 flex-wrap">
           {/* Input de busca livre */}
-          <div className="flex items-center gap-2 px-4 bg-[#202020] border border-[#474747] rounded-full h-10 w-64 focus-within:border-[#616161]">
+          <div className="flex items-center gap-2 px-4 bg-[#323232] border-2 border-[#323232] rounded-full h-10 w-64 focus-within:border-[#474747]">
             <Search className="w-4 h-4 text-[#9e9e9e] flex-shrink-0" />
             <input
               type="text"
               placeholder="Buscar pergunta ou resposta..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[#f5f5f5] text-sm outline-none placeholder:text-[#616161]"
+              className="flex-1 bg-transparent text-[#f5f5f5] text-[13px] outline-none placeholder:text-[#616161]"
             />
           </div>
           {/* Divisor visual */}
@@ -922,10 +922,10 @@ export default function ProcessesPage() {
                 <button
                   key={opt.value}
                   onClick={() => setCategoryFilter(opt.value)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
+                  className={`px-3 py-2 text-[13px] font-medium transition-all duration-150 border-b-2 ${
                     categoryFilter === opt.value
-                      ? 'border-b-2 border-[#BAFF1A] text-[#f5f5f5] font-medium'
-                      : 'border-b-2 border-transparent text-[#9e9e9e] hover:text-[#f5f5f5] font-medium'
+                      ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                      : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                   }`}
                 >
                   {opt.label}
@@ -964,33 +964,19 @@ export default function ProcessesPage() {
                           Interno
                         </span>
                       )}
-                      <p className="font-medium text-[#f5f5f5] text-sm leading-relaxed">
+                      <p className="font-medium text-[#f5f5f5] text-[13px] leading-relaxed">
                         {process.question}
                       </p>
                     </div>
                     
                     {/* Ações e Indicador de Status do Acordeão */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation() // Impede que o clique no botão também expanda/recolha o acordeão.
-                          handleEdit(process)
-                        }}
-                        className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors"
-                        title="Editar processo"
-                      >
-                        <Edit2 className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(process.id)
-                        }}
-                        className="p-1.5 rounded-lg text-[#9e9e9e] hover:text-[#ff9c9a] hover:bg-[#7c1c1c] transition-colors"
-                        title="Excluir processo"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleEdit(process) }} title="Editar processo">
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleDelete(process.id) }} title="Excluir processo">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                       {/* Ícone de Seta que muda conforme o estado expandido. */}
                       {expandedId === process.id ? (
                         <ChevronUp className="w-4 h-4 text-[#9e9e9e]" />
@@ -1003,7 +989,7 @@ export default function ProcessesPage() {
                   {/* Conteúdo Expansível (A resposta para a pergunta). */}
                   {expandedId === process.id && (
                     <div className="px-4 pb-4 border-t border-[#474747] pt-3">
-                      <p className="text-sm text-[#9e9e9e] leading-relaxed whitespace-pre-wrap">{process.answer}</p>
+                      <p className="text-[13px] text-[#9e9e9e] leading-relaxed whitespace-pre-wrap">{process.answer}</p>
                     </div>
                   )}
                 </div>

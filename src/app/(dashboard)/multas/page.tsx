@@ -191,11 +191,15 @@ function KpiCard({
   label,
   value,
   sub,
+  iconBg = 'bg-[#323232]',
+  iconColor = 'text-[#BAFF1A]',
 }: {
   icon: React.ElementType
   label: string
   value: string | number
   sub?: string
+  iconBg?: string
+  iconColor?: string
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
@@ -204,7 +208,7 @@ function KpiCard({
         <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
         {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
       </div>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
         <Icon className="h-5 w-5" />
       </div>
     </div>
