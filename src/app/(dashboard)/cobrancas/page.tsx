@@ -610,7 +610,7 @@ export default function CobrancasPage() {
               placeholder="Buscar por cliente ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-1.5 rounded-full bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
+              className="h-10 pl-9 pr-4 rounded-lg bg-[#323232] border-2 border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
             />
           </div>
         </div>

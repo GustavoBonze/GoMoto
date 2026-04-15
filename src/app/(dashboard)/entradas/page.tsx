@@ -19,8 +19,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// React
+import { useState, useEffect, useMemo, useCallback } from 'react';
+
+// Libs externas
 import { Plus, Edit2, Trash2, TrendingUp, Calendar, DollarSign, Search, ChevronDown, Bell } from 'lucide-react';
+
+// Libs internas
 import type { Income } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -41,17 +46,33 @@ interface Moto {
   make: string;
 }
 
+/**
+ * @interface IncomeFormState
+ * @description Interface para o estado do formulário de entrada.
+ */
+interface IncomeFormState {
+  description: string;
+  vehicle: string;
+  date: string;
+  lessee: string;
+  amount: string;
+  reference: string;
+  payment_method: string;
+  observations: string;
+}
+
 // --- CONSTANTES ---
 
-/** @constant REFERENCIAS — Tipos possíveis para uma entrada financeira avulsa. */
-const REFERENCIAS = [
+/** @constant REFERENCES — Tipos possíveis para uma entrada financeira avulsa. */
+const REFERENCES = [
+  'Caucao',
   'Multa',
   'Proporcional',
   'Outros',
 ];
 
-/** @constant METODOS_PAGAMENTO — Formas de pagamento aceitas pela empresa. */
-const METODOS_PAGAMENTO = [
+/** @constant PAYMENT_METHODS — Formas de pagamento aceitas pela empresa. */
+const PAYMENT_METHODS = [
   'PIX',
   'Dinheiro',
   'Cartão de Crédito',
@@ -60,14 +81,14 @@ const METODOS_PAGAMENTO = [
   'Transferência',
 ];
 
-/** @constant REFERENCE_OPTIONS — Opções do select de tipo de referência. */
-const REFERENCE_OPTIONS = REFERENCIAS.map(r => ({ value: r, label: r }));
+/** @constant referenceOptions — Opções do select de tipo de referência. */
+const referenceOptions = REFERENCES.map(r => ({ value: r, label: r }));
 
-/** @constant PAYMENT_OPTIONS — Opções do select de método de pagamento. */
-const PAYMENT_OPTIONS = METODOS_PAGAMENTO.map(m => ({ value: m, label: m }));
+/** @constant paymentOptions — Opções do select de método de pagamento. */
+const paymentOptions = PAYMENT_METHODS.map(m => ({ value: m, label: m }));
 
-/** @constant FORM_INICIAL — Estado padrão do formulário ao criar uma nova entrada. */
-const FORM_INICIAL = {
+/** @constant INITIAL_FORM_STATE — Estado padrão do formulário ao criar uma nova entrada. */
+const INITIAL_FORM_STATE: IncomeFormState = {
   description: '',
   vehicle: '',
   date: new Date().toISOString().split('T')[0],
@@ -88,30 +109,86 @@ export default function EntradasPage() {
   const supabase = createClient();
 
   // --- Estados de Dados ---
+  /**
+   * @type {Income[]}
+   * @description Armazena a lista de entradas financeiras carregadas do Supabase.
+   */
   const [incomes, setIncomes] = useState<Income[]>([]);
+  /**
+   * @type {Moto[]}
+   * @description Armazena a lista de motocicletas carregadas do Supabase, usada para autocomplete e seleção.
+   */
   const [motos, setMotos] = useState<Moto[]>([]);
 
   // --- Estados de Carregamento e Ações ---
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  /**
+   * @type {boolean}
+   * @description Indica se os dados estão sendo carregados do Supabase.
+   */
+  const [loading, setLoading] = useState<boolean>(true);
+  /**
+   * @type {boolean}
+   * @description Indica se uma operação de salvar (criar/editar) está em andamento.
+   */
+  const [saving, setSaving] = useState<boolean>(false);
+  /**
+   * @type {boolean}
+   * @description Indica se uma operação de exclusão está em andamento.
+   */
+  const [deleting, setDeleting] = useState<boolean>(false);
 
   // --- Estados de Filtro ---
-  const [searchQuery, setSearchQuery] = useState('');
-  const [referenceFilter, setReferenceFilter] = useState('');
-  const [motorcycleFilter, setMotorcycleFilter] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(() => {
+  /**
+   * @type {string}
+   * @description Armazena o termo de busca textual para filtrar as entradas.
+   */
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  /**
+   * @type {string}
+   * @description Armazena o filtro de tipo de referência selecionado.
+   */
+  const [referenceFilter, setReferenceFilter] = useState<string>('');
+  /**
+   * @type {string}
+   * @description Armazena o filtro de placa de motocicleta selecionado.
+   */
+  const [motorcycleFilter, setMotorcycleFilter] = useState<string>('');
+  /**
+   * @type {string}
+   * @description Armazena o mês e ano selecionados para filtrar as entradas.
+   */
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
 
   // --- Estados de Controle de Modais ---
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  /**
+   * @type {boolean}
+   * @description Controla a visibilidade do modal de criação/edição de entrada.
+   */
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  /**
+   * @type {boolean}
+   * @description Controla a visibilidade do modal de confirmação de exclusão.
+   */
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  /**
+   * @type {Income | null}
+   * @description Armazena os dados da entrada atualmente selecionada para edição ou exclusão.
+   */
   const [currentIncome, setCurrentIncome] = useState<Income | null>(null);
 
   // --- Estado do Formulário ---
-  const [formData, setFormData] = useState(FORM_INICIAL);
+  /**
+   * @type {IncomeFormState}
+   * @description Armazena os dados do formulário de entrada.
+   */
+  const [formData, setFormData] = useState<IncomeFormState>(INITIAL_FORM_STATE);
+  /**
+   * @type {Record<string, string>}
+   * @description Armazena os erros de validação do formulário.
+   */
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // --- BUSCA DE DADOS ---
@@ -230,7 +307,7 @@ export default function EntradasPage() {
 
   /**
    * @description Agrupa as entradas filtradas por tipo de referência para o accordion.
-   * Aplica o filtro de pill ativo (referenceFilter) e mantém a ordem de REFERENCIAS.
+   * Aplica o filtro de pill ativo (referenceFilter) e mantém a ordem de REFERENCES.
    */
   const groupedIncomes = useMemo(() => {
     const source = referenceFilter
@@ -247,8 +324,8 @@ export default function EntradasPage() {
       {} as Record<string, { items: Income[]; total: number }>
     );
 
-    // Apenas tipos canônicos de REFERENCIAS, na ordem definida
-    return REFERENCIAS
+    // Apenas tipos canônicos de REFERENCES, na ordem definida
+    return REFERENCES
       .filter(ref => grouped[ref]?.items.length > 0)
       .map(ref => ({ reference: ref, ...grouped[ref] }));
   }, [filteredIncomes, referenceFilter]);
@@ -261,7 +338,7 @@ export default function EntradasPage() {
 
     return [
       { id: '', label: 'Todas', count: filteredIncomes.length },
-      ...REFERENCIAS.map(ref => ({ id: ref, label: ref, count: counts[ref] ?? 0 })),
+      ...REFERENCES.map(ref => ({ id: ref, label: ref, count: counts[ref] ?? 0 })),
     ];
   }, [filteredIncomes]);
 
@@ -289,7 +366,7 @@ export default function EntradasPage() {
       });
     } else {
       setCurrentIncome(null);
-      setFormData(FORM_INICIAL);
+      setFormData(INITIAL_FORM_STATE);
     }
     setFormErrors({});
     setIsModalOpen(true);
@@ -298,7 +375,7 @@ export default function EntradasPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setCurrentIncome(null);
-    setFormData(FORM_INICIAL);
+    setFormData(INITIAL_FORM_STATE);
     setFormErrors({});
   };
 
@@ -385,9 +462,7 @@ export default function EntradasPage() {
             <Plus className="w-5 h-5" />
             Nova Entrada
           </Button>
-          <button className="p-2 rounded-full text-[#c7c7c7] hover:text-[#f5f5f5] hover:bg-[#323232] transition-colors">
-            <Bell className="w-5 h-5" />
-          </button>
+
         </div>
       </div>
 
@@ -456,7 +531,7 @@ export default function EntradasPage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motos.map((m) => (
@@ -470,7 +545,7 @@ export default function EntradasPage() {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="h-10 rounded-full border border-[#474747] bg-[#202020] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
             />
 
             <div className="relative">
@@ -480,7 +555,7 @@ export default function EntradasPage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-full border border-[#474747] bg-[#202020] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -616,7 +691,7 @@ export default function EntradasPage() {
             label="Tipo de Referência"
             value={formData.reference}
             onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
-            options={REFERENCE_OPTIONS}
+            options={referenceOptions}
             required
           />
 
@@ -652,7 +727,7 @@ export default function EntradasPage() {
             label="Método de Pagamento"
             value={formData.payment_method}
             onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-            options={PAYMENT_OPTIONS}
+            options={paymentOptions}
           />
 
           {/* Vínculo — ao selecionar a moto, preenche o locatário automaticamente */}

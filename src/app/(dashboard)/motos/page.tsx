@@ -581,7 +581,7 @@ export default function MotorcyclesPage() {
               placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className='w-full h-10 pl-10 pr-4 rounded-full bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus-within:border-[#474747] transition-all'
+              className='w-full h-10 pl-10 pr-4 rounded-lg bg-[#323232] border-2 border-[#323232] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus-within:border-[#474747] transition-all'
             />
           </div>
         </div>
