@@ -124,6 +124,7 @@ export default function ProcessesPage() {
 
   useEffect(() => {
     void fetchProcesses()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // --- Lógica de Filtro e Agrupamento ---
@@ -295,7 +296,7 @@ export default function ProcessesPage() {
       <div className="p-6 space-y-4">
         {/* Filtros e Busca */}
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 px-4 bg-[#323232] border-2 border-[#323232] rounded-full h-10 w-64 focus-within:border-[#474747]">
+          <div className="flex items-center gap-2 px-4 bg-[#323232] border border-[#474747] rounded-full h-10 w-64 focus-within:border-[#616161]">
             <Search className="w-4 h-4 text-[#9e9e9e] flex-shrink-0" />
             <input
               type="text"
@@ -306,16 +307,16 @@ export default function ProcessesPage() {
             />
           </div>
 
-          <div className="w-px h-5 bg-[#474747]" />
+          <div className="w-px h-5 bg-[#616161]" />
           <BookOpen className="w-4 h-4 text-[#9e9e9e]" />
-          
-          <div className="flex gap-2 flex-wrap border-b border-[#323232]">
+
+          <div className="flex flex-wrap border-b border-[#616161]">
             {[{ value: '', label: 'Todas' }, ...categories.map((c) => ({ value: c, label: c }))].map(
               (opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setCategoryFilter(opt.value)}
-                  className={`px-3 py-2 text-[13px] font-medium transition-all duration-150 border-b-2 ${
+                  className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                     categoryFilter === opt.value
                       ? 'border-[#BAFF1A] text-[#f5f5f5]'
                       : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -339,14 +340,14 @@ export default function ProcessesPage() {
               <div key={category} className="space-y-2">
                 <div className="flex items-center gap-2 py-1">
                   <Badge variant={categoryBadgeVariant[category] ?? 'muted'}>{category}</Badge>
-                  <span className="text-[12px] text-[#9e9e9e]">{items.length} processo(s)</span>
+                  <span className="text-[13px] text-[#9e9e9e]">{items.length} processo(s)</span>
                 </div>
 
                 <div className="space-y-1">
                   {items.map((process) => (
                     <div
                       key={process.id}
-                      className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden transition-colors hover:border-[#474747]"
+                      className="bg-[#202020] rounded-xl overflow-hidden"
                     >
                       <button
                         className="w-full min-h-[56px] flex items-center justify-between gap-4 p-4 text-left"
@@ -354,7 +355,7 @@ export default function ProcessesPage() {
                       >
                         <div className="flex items-start gap-2 min-w-0">
                           {process.category === 'Procedimentos Internos' && (
-                            <span className="mt-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#2d0363] text-[#a880ff]">
+                            <span className="mt-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[13px] font-medium bg-[#2d0363] text-[#a880ff]">
                               Interno
                             </span>
                           )}
@@ -397,7 +398,7 @@ export default function ProcessesPage() {
                       </button>
 
                       {expandedId === process.id && (
-                        <div className="px-4 pb-4 border-t border-[#474747] pt-3">
+                        <div className="px-4 pb-4 border-t border-[#323232] pt-3">
                           <p className="text-[13px] text-[#9e9e9e] leading-relaxed whitespace-pre-wrap">
                             {process.answer}
                           </p>
@@ -414,13 +415,13 @@ export default function ProcessesPage() {
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
                   <BookOpen className="w-12 h-12 text-[#616161] mx-auto mb-3" />
-                  <p className="text-[#9e9e9e]">
+                  <p className="text-[13px] text-[#9e9e9e]">
                     {search ? `Nenhum resultado para "${search}"` : 'Nenhum processo encontrado'}
                   </p>
                   {search && (
-                    <button 
-                      onClick={() => setSearch('')} 
-                      className="mt-2 text-[12px] text-[#BAFF1A] hover:underline"
+                    <button
+                      onClick={() => setSearch('')}
+                      className="mt-2 text-[13px] text-[#BAFF1A] hover:underline"
                     >
                       Limpar busca
                     </button>

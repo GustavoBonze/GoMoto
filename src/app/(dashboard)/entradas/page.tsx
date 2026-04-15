@@ -23,12 +23,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 // Libs externas
-import { Plus, Edit2, Trash2, TrendingUp, Calendar, DollarSign, Search, ChevronDown, Bell } from 'lucide-react';
+import { Plus, Edit2, Trash2, TrendingUp, Calendar, DollarSign, Search, ChevronDown } from 'lucide-react';
 
-// Libs internas
+// Tipos
 import type { Income } from '@/types';
+
+// Supabase
 import { createClient } from '@/lib/supabase/client';
+
+// Utilitários
 import { formatCurrency, formatDate } from '@/lib/utils';
+
+// Componentes da UI
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -36,10 +42,10 @@ import { Modal } from '@/components/ui/Modal';
 // --- INTERFACES LOCAIS ---
 
 /**
- * @interface Moto
- * @description Estrutura simplificada de moto usada no datalist de autocomplete de placas.
+ * @interface Motorcycle
+ * @description Estrutura simplificada de motocicleta usada no autocomplete de placas e seleção.
  */
-interface Moto {
+interface Motorcycle {
   id: string;
   license_plate: string;
   model: string;
@@ -63,16 +69,16 @@ interface IncomeFormState {
 
 // --- CONSTANTES ---
 
-/** @constant REFERENCES — Tipos possíveis para uma entrada financeira avulsa. */
-const REFERENCES = [
+/** @constant REFERENCES_TYPES — Tipos possíveis para uma entrada financeira avulsa (ex: Caução, Multa). */
+const REFERENCES_TYPES: string[] = [
   'Caucao',
   'Multa',
   'Proporcional',
   'Outros',
 ];
 
-/** @constant PAYMENT_METHODS — Formas de pagamento aceitas pela empresa. */
-const PAYMENT_METHODS = [
+/** @constant PAYMENT_METHODS — Formas de pagamento aceitas pela empresa (ex: PIX, Dinheiro). */
+const PAYMENT_METHODS: string[] = [
   'PIX',
   'Dinheiro',
   'Cartão de Crédito',
@@ -81,11 +87,11 @@ const PAYMENT_METHODS = [
   'Transferência',
 ];
 
-/** @constant referenceOptions — Opções do select de tipo de referência. */
-const referenceOptions = REFERENCES.map(r => ({ value: r, label: r }));
+/** @constant REFERENCE_OPTIONS — Opções formatadas para o componente Select de tipo de referência. */
+const REFERENCE_OPTIONS = REFERENCES_TYPES.map(r => ({ value: r, label: r }));
 
-/** @constant paymentOptions — Opções do select de método de pagamento. */
-const paymentOptions = PAYMENT_METHODS.map(m => ({ value: m, label: m }));
+/** @constant PAYMENT_OPTIONS — Opções formatadas para o componente Select de método de pagamento. */
+const PAYMENT_OPTIONS = PAYMENT_METHODS.map(m => ({ value: m, label: m }));
 
 /** @constant INITIAL_FORM_STATE — Estado padrão do formulário ao criar uma nova entrada. */
 const INITIAL_FORM_STATE: IncomeFormState = {
@@ -115,10 +121,10 @@ export default function EntradasPage() {
    */
   const [incomes, setIncomes] = useState<Income[]>([]);
   /**
-   * @type {Moto[]}
+   * @type {Motorcycle[]}
    * @description Armazena a lista de motocicletas carregadas do Supabase, usada para autocomplete e seleção.
    */
-  const [motos, setMotos] = useState<Moto[]>([]);
+  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
 
   // --- Estados de Carregamento e Ações ---
   /**
@@ -194,25 +200,25 @@ export default function EntradasPage() {
   // --- BUSCA DE DADOS ---
 
   /**
-   * @description Busca as entradas e as motos do Supabase.
-   * Filtra as entradas pelo mês selecionado usando os limites de data.
+   * @function fetchData
+   * @description Busca as entradas e as motocicletas do Supabase, aplicando filtro por mês.
    */
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       const [yearStr, monthStr] = selectedMonth.split('-');
       const year = parseInt(yearStr);
       const month = parseInt(monthStr);
 
-      const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
-      const lastDay = new Date(year, month, 0).toISOString().split('T')[0];
+      const firstDayOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDayOfMonth = new Date(year, month, 0).toISOString().split('T')[0];
 
-      const [incomesResult, motosResult] = await Promise.all([
+      const [incomesResult, motorcyclesResult] = await Promise.all([
         supabase
           .from('incomes')
           .select('*')
-          .gte('date', firstDay)
-          .lte('date', lastDay)
+          .gte('date', firstDayOfMonth)
+          .lte('date', lastDayOfMonth)
           .order('date', { ascending: false }),
         supabase
           .from('motorcycles')
@@ -221,46 +227,57 @@ export default function EntradasPage() {
       ]);
 
       if (incomesResult.error) throw incomesResult.error;
-      if (motosResult.error) throw motosResult.error;
+      if (motorcyclesResult.error) throw motorcyclesResult.error;
 
       setIncomes((incomesResult.data as Income[]) || []);
-      setMotos((motosResult.data as Moto[]) || []);
-    } catch {
+      setMotorcycles((motorcyclesResult.data as Motorcycle[]) || []);
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
     } finally {
       setLoading(false);
     }
   }, [selectedMonth, supabase]);
 
+  /**
+   * @hook useEffect
+   * @description Efeito para carregar os dados sempre que `fetchData` for atualizado (ex: mudança de mês).
+   */
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // --- OPÇÕES DO SELECT DE MOTO ---
+  // --- OPÇÕES DO SELECT DE MOTOCICLETA ---
 
-  /** @description Opções do select de placa — inclui placa, marca e modelo para fácil identificação. */
+  /**
+   * @constant motorcycleSelectOptions
+   * @description Opções formatadas para o componente Select de placa de motocicleta,
+   *              incluindo placa, marca e modelo para fácil identificação.
+   */
   const motorcycleSelectOptions = useMemo(() => [
     { value: '', label: 'Selecione uma moto...' },
-    ...motos.map(m => ({ value: m.license_plate, label: `${m.license_plate} — ${m.make} ${m.model}` })),
-  ], [motos]);
+    ...motorcycles.map(m => ({ value: m.license_plate, label: `${m.license_plate} — ${m.make} ${m.model}` })),
+  ], [motorcycles]);
 
   // --- BUSCA AUTOMÁTICA DE LOCATÁRIO ---
 
   /**
-   * @description Busca o cliente que tinha contrato ativo para a moto na data informada.
-   * Usa a tabela contracts com join em customers para identificar quem estava com a moto.
-   * Se a moto mudou de cliente ao longo do tempo, sempre retorna o correto para aquela data.
+   * @function lookupLessee
+   * @description Busca o cliente que tinha contrato ativo para a motocicleta na data informada.
+   *              Utiliza a tabela 'contracts' com join em 'customers' para identificar o locatário.
+   * @param {string} plate - A placa da motocicleta.
+   * @param {string} date - A data para verificar o contrato (formato YYYY-MM-DD).
    */
-  const lookupLessee = useCallback(async (plate: string, date: string) => {
+  const lookupLessee = useCallback(async (plate: string, date: string): Promise<void> => {
     if (!plate || !date) return;
 
-    const moto = motos.find(m => m.license_plate === plate);
-    if (!moto) return;
+    const selectedMotorcycle = motorcycles.find(m => m.license_plate === plate);
+    if (!selectedMotorcycle) return;
 
     try {
       const { data, error } = await supabase
         .from('contracts')
         .select('customers(name)')
-        .eq('motorcycle_id', moto.id)
+        .eq('motorcycle_id', selectedMotorcycle.id)
         .lte('start_date', date)
         .or(`end_date.is.null,end_date.gte.${date}`)
         .order('start_date', { ascending: false })
@@ -268,17 +285,27 @@ export default function EntradasPage() {
         .maybeSingle();
 
       if (!error && data?.customers) {
-        const name = (data.customers as unknown as { name: string }).name;
-        setFormData(prev => ({ ...prev, lessee: name }));
+        // Supabase infere joins embedded como array mesmo em relação one-to-one;
+        // normaliza via unknown antes do cast final para satisfazer o compilador.
+        const customers = data.customers as unknown as { name: string } | { name: string }[];
+        const lesseeName = Array.isArray(customers) ? customers[0]?.name : customers.name;
+        if (lesseeName) {
+          setFormData(prev => ({ ...prev, lessee: lesseeName }));
+        }
       }
-    } catch {
-      // erro silencioso — lessee permanece com valor anterior
+    } catch (error) {
+      console.error('Erro ao buscar locatário:', error);
+      // Erro silencioso — lessee permanece com valor anterior
     }
-  }, [motos, supabase]);
+  }, [motorcycles, supabase]);
 
   // --- CÁLCULOS E FILTRAGEM ---
 
-  const filteredIncomes = useMemo(() => {
+  /**
+   * @constant filteredIncomes
+   * @description Entradas financeiras filtradas com base na pesquisa, referência e motocicleta.
+   */
+  const filteredIncomes = useMemo((): Income[] => {
     return incomes.filter((income) => {
       const lowerQuery = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || (
@@ -287,27 +314,37 @@ export default function EntradasPage() {
         income.reference?.toLowerCase().includes(lowerQuery)
       );
       const matchesReference = !referenceFilter || income.reference === referenceFilter;
-      const matchesMoto = !motorcycleFilter || income.vehicle === motorcycleFilter;
-      return matchesSearch && matchesReference && matchesMoto;
+      const matchesMotorcycle = !motorcycleFilter || income.vehicle === motorcycleFilter;
+      return matchesSearch && matchesReference && matchesMotorcycle;
     });
   }, [incomes, searchQuery, referenceFilter, motorcycleFilter]);
 
   // --- ACCORDION ---
 
-  /** Set de tipos com o accordion colapsado. Se ausente → expandido (padrão). */
+  /**
+   * @type {Set<string>}
+   * @description Mantém um registro dos grupos de referência que estão colapsados no acordeão.
+   *              Se um ID está presente no Set, o grupo correspondente está colapsado; caso contrário, está expandido.
+   */
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  const toggleGroup = (id: string) => {
+  /**
+   * @function toggleGroup
+   * @description Alterna o estado de expansão/colapso de um grupo no acordeão.
+   * @param {string} groupId - O identificador do grupo a ser alternado.
+   */
+  const toggleGroup = useCallback((groupId: string): void => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(groupId) ? next.delete(groupId) : next.add(groupId);
       return next;
     });
-  };
+  }, []);
 
   /**
-   * @description Agrupa as entradas filtradas por tipo de referência para o accordion.
-   * Aplica o filtro de pill ativo (referenceFilter) e mantém a ordem de REFERENCES.
+   * @constant groupedIncomes
+   * @description Agrupa as entradas filtradas por tipo de referência para exibição no acordeão.
+   *              Mantém a ordem definida em `REFERENCES_TYPES` e calcula o total para cada grupo.
    */
   const groupedIncomes = useMemo(() => {
     const source = referenceFilter
@@ -324,24 +361,36 @@ export default function EntradasPage() {
       {} as Record<string, { items: Income[]; total: number }>
     );
 
-    // Apenas tipos canônicos de REFERENCES, na ordem definida
-    return REFERENCES
+    // Apenas tipos canônicos de REFERENCES_TYPES, na ordem definida
+    return REFERENCES_TYPES
       .filter(ref => grouped[ref]?.items.length > 0)
       .map(ref => ({ reference: ref, ...grouped[ref] }));
   }, [filteredIncomes, referenceFilter]);
 
+  /**
+   * @constant referenceTabs
+   * @description Gera os dados para as "pills" de filtro de referência, incluindo a contagem de lançamentos.
+   */
   const referenceTabs = useMemo(() => {
-    const counts = filteredIncomes.reduce((acc, i) => {
+    const counts: Record<string, number> = filteredIncomes.reduce((acc, i) => {
       acc[i.reference] = (acc[i.reference] ?? 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return [
       { id: '', label: 'Todas', count: filteredIncomes.length },
-      ...REFERENCES.map(ref => ({ id: ref, label: ref, count: counts[ref] ?? 0 })),
+      ...REFERENCES_TYPES.map(ref => ({ id: ref, label: ref, count: counts[ref] ?? 0 })),
     ];
   }, [filteredIncomes]);
 
+  /**
+   * @constant totalAmount
+   * @description O valor total de todas as entradas filtradas.
+   * @constant launchCount
+   * @description O número total de lançamentos de entradas filtradas.
+   * @constant averageTicket
+   * @description O valor médio por lançamento de entrada filtrado.
+   */
   const { totalAmount, launchCount, averageTicket } = useMemo(() => {
     const total = filteredIncomes.reduce((acc, curr) => acc + Number(curr.amount), 0);
     const count = filteredIncomes.length;
@@ -351,7 +400,12 @@ export default function EntradasPage() {
 
   // --- HANDLERS DE MODAL ---
 
-  const handleOpenModal = (income?: Income) => {
+  /**
+   * @function handleOpenModal
+   * @description Abre o modal de criação/edição de entrada, preenchendo o formulário se uma entrada for fornecida.
+   * @param {Income} [income] - A entrada a ser editada (opcional).
+   */
+  const handleOpenModal = useCallback((income?: Income): void => {
     if (income) {
       setCurrentIncome(income);
       setFormData({
@@ -370,28 +424,46 @@ export default function EntradasPage() {
     }
     setFormErrors({});
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  /**
+   * @function handleCloseModal
+   * @description Fecha o modal de criação/edição e redefine os estados relacionados.
+   */
+  const handleCloseModal = useCallback((): void => {
     setIsModalOpen(false);
     setCurrentIncome(null);
     setFormData(INITIAL_FORM_STATE);
     setFormErrors({});
-  };
+  }, []);
 
-  const handleOpenDeleteModal = (income: Income) => {
+  /**
+   * @function handleOpenDeleteModal
+   * @description Abre o modal de confirmação de exclusão para uma entrada específica.
+   * @param {Income} income - A entrada a ser excluída.
+   */
+  const handleOpenDeleteModal = useCallback((income: Income): void => {
     setCurrentIncome(income);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseDeleteModal = () => {
+  /**
+   * @function handleCloseDeleteModal
+   * @description Fecha o modal de confirmação de exclusão e redefine o estado.
+   */
+  const handleCloseDeleteModal = useCallback((): void => {
     setIsDeleteModalOpen(false);
     setCurrentIncome(null);
-  };
+  }, []);
 
   // --- OPERAÇÕES CRUD ---
 
-  const validateForm = (): boolean => {
+  /**
+   * @function validateForm
+   * @description Valida os campos do formulário de entrada e define os erros.
+   * @returns {boolean} - Retorna `true` se o formulário for válido, `false` caso contrário.
+   */
+  const validateForm = useCallback((): boolean => {
     const errors: Record<string, string> = {};
     if (!formData.description) errors.description = 'A descrição é obrigatória';
     if (!formData.vehicle) errors.vehicle = 'A placa é obrigatória';
@@ -400,9 +472,14 @@ export default function EntradasPage() {
     if (!formData.amount || isNaN(Number(formData.amount))) errors.amount = 'Informe um valor válido';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  /**
+   * @function handleSave
+   * @description Lida com o envio do formulário, salvando uma nova entrada ou atualizando uma existente.
+   * @param {React.FormEvent} e - O evento de formulário.
+   */
+  const handleSave = useCallback(async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!validateForm()) return;
     setSaving(true);
@@ -428,14 +505,19 @@ export default function EntradasPage() {
 
       handleCloseModal();
       fetchData();
-    } catch {
+    } catch (error) {
+      console.error('Erro ao salvar entrada:', error);
       alert('Erro ao salvar os dados. Verifique e tente novamente.');
     } finally {
       setSaving(false);
     }
-  };
+  }, [formData, currentIncome, supabase, validateForm, handleCloseModal, fetchData]);
 
-  const handleDelete = async () => {
+  /**
+   * @function handleDelete
+   * @description Lida com a exclusão de uma entrada.
+   */
+  const handleDelete = useCallback(async (): Promise<void> => {
     if (!currentIncome) return;
     setDeleting(true);
     try {
@@ -443,12 +525,13 @@ export default function EntradasPage() {
       if (error) throw error;
       handleCloseDeleteModal();
       fetchData();
-    } catch {
+    } catch (error) {
+      console.error('Erro ao excluir entrada:', error);
       alert('Erro ao excluir a entrada.');
     } finally {
       setDeleting(false);
     }
-  };
+  }, [currentIncome, supabase, handleCloseDeleteModal, fetchData]);
 
   // --- RENDERIZAÇÃO ---
 
@@ -462,7 +545,6 @@ export default function EntradasPage() {
             <Plus className="w-5 h-5" />
             Nova Entrada
           </Button>
-
         </div>
       </div>
 
@@ -470,10 +552,10 @@ export default function EntradasPage() {
         {/* KPI cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {/* Total do Mês */}
-          <div className="bg-[#202020] rounded-2xl p-6 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Total do Mês</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(totalAmount)}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Total do Mês</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(totalAmount)}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <TrendingUp className="h-5 w-5 text-[#BAFF1A]" />
@@ -481,10 +563,10 @@ export default function EntradasPage() {
           </div>
 
           {/* Lançamentos no Mês */}
-          <div className="bg-[#202020] rounded-2xl p-6 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Lançamentos no Mês</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5]">{launchCount}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Lançamentos no Mês</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{launchCount}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <Calendar className="h-5 w-5 text-[#BAFF1A]" />
@@ -492,10 +574,10 @@ export default function EntradasPage() {
           </div>
 
           {/* Ticket Médio */}
-          <div className="bg-[#202020] rounded-2xl p-6 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Ticket Médio</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(averageTicket)}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Ticket Médio</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(averageTicket)}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <DollarSign className="h-5 w-5 text-[#BAFF1A]" />
@@ -531,10 +613,10 @@ export default function EntradasPage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="">Todas as motos</option>
-              {motos.map((m) => (
+              {motorcycles.map((m) => (
                 <option key={m.id} value={m.license_plate} className="bg-[#202020]">
                   {m.license_plate} — {m.make} {m.model}
                 </option>
@@ -545,7 +627,7 @@ export default function EntradasPage() {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             />
 
             <div className="relative">
@@ -555,7 +637,7 @@ export default function EntradasPage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-lg border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -567,9 +649,9 @@ export default function EntradasPage() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#BAFF1A] border-t-transparent" />
           </div>
         ) : groupedIncomes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
-            <TrendingUp className="mb-4 h-12 w-12 text-[#474747]" />
-            <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma entrada encontrada.</p>
+          <div className="flex flex-col items-center justify-center rounded-xl border border-[#323232] bg-[#202020] p-16 text-center">
+            <TrendingUp className="mb-4 h-12 w-12 text-[#616161]" />
+            <p className="text-[15px] font-medium text-[#f5f5f5]">Nenhuma entrada encontrada.</p>
             <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou registre uma nova entrada.</p>
           </div>
         ) : (
@@ -577,20 +659,20 @@ export default function EntradasPage() {
             {groupedIncomes.map(({ reference, items, total }) => {
               const isExpanded = !collapsedGroups.has(reference);
               return (
-                <div key={reference} className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+                <div key={reference} className="overflow-hidden rounded-xl border border-[#323232] bg-[#202020]">
 
                   {/* Cabeçalho clicável do accordion */}
                   <button
                     onClick={() => toggleGroup(reference)}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#323232] transition-colors text-left"
                   >
-                    <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <ChevronDown className={`w-4 h-4 text-[#9e9e9e] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
                     <span className="font-medium text-[#f5f5f5] text-[13px]">{reference}</span>
                     <div className="ml-auto flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#474747] text-[#9e9e9e]">
+                      <span className="px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#323232] text-[#9e9e9e]">
                         {items.length} lançamento{items.length !== 1 ? 's' : ''}
                       </span>
-                      <span className="text-[13px] font-bold text-[#BAFF1A] ml-1">
+                      <span className="text-[13px] font-medium text-[#BAFF1A] ml-1">
                         {formatCurrency(total)}
                       </span>
                     </div>
@@ -598,50 +680,50 @@ export default function EntradasPage() {
 
                   {/* Tabela expandida */}
                   {isExpanded && (
-                    <div className="border-t border-[#474747]">
+                    <div className="border-t border-[#323232]">
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-                          <thead className="bg-[#323232] text-[#c7c7c7]">
-                            <tr>
-                              <th className="h-9 px-4 font-bold">Data</th>
-                              <th className="h-9 px-4 font-bold">Placa</th>
-                              <th className="h-9 px-4 font-bold">Locatário</th>
-                              <th className="h-9 px-4 font-bold">Período</th>
-                              <th className="h-9 px-4 font-bold">Método</th>
-                              <th className="h-9 px-4 font-bold">Valor</th>
-                              <th className="h-9 px-4 text-right font-bold">Ações</th>
+                          <thead>
+                            <tr className="border-b border-[#323232]">
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Data</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Placa</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Locatário</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Período</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Método</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Valor</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e] text-right">Ações</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {items.map(income => (
-                              <tr key={income.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
-                                <td className="px-4">
+                            {items.map((income: Income) => (
+                              <tr key={income.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232]">
+                                <td className="px-4 text-[13px]">
                                   <p className="text-[#f5f5f5]">{formatDate(income.date)}</p>
                                 </td>
-                                <td className="px-4">
+                                <td className="px-4 text-[13px]">
                                   <span className="bg-[#323232] text-[#BAFF1A] px-2 py-0.5 rounded-full text-[12px] font-mono">
                                     {income.vehicle}
                                   </span>
                                 </td>
-                                <td className="px-4">
+                                <td className="px-4 text-[13px]">
                                   <p className="font-medium text-[#f5f5f5]">{income.lessee}</p>
                                 </td>
-                                <td className="px-4">
+                                <td className="px-4 text-[13px]">
                                   <p className="text-[#f5f5f5]">
                                     {income.period_from && income.period_to
                                       ? `${formatDate(income.period_from)} — ${formatDate(income.period_to)}`
                                       : '—'}
                                   </p>
                                 </td>
-                                <td className="px-4">
+                                <td className="px-4 text-[13px]">
                                   <p className="text-[#f5f5f5]">{income.payment_method}</p>
                                 </td>
-                                <td className="px-4">
-                                  <span className="font-bold text-[#BAFF1A]">
+                                <td className="px-4 text-[13px]">
+                                  <span className="font-medium text-[#BAFF1A]">
                                     {formatCurrency(Number(income.amount))}
                                   </span>
                                 </td>
-                                <td className="px-4 text-right">
+                                <td className="px-4 text-[13px] text-right">
                                   <div className="flex items-center justify-end gap-1">
                                     <Button variant="secondary" size="sm" className="h-8 w-8 p-0"
                                       onClick={() => handleOpenModal(income)} title="Editar">
@@ -691,7 +773,7 @@ export default function EntradasPage() {
             label="Tipo de Referência"
             value={formData.reference}
             onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
-            options={referenceOptions}
+            options={REFERENCE_OPTIONS}
             required
           />
 
@@ -727,7 +809,7 @@ export default function EntradasPage() {
             label="Método de Pagamento"
             value={formData.payment_method}
             onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-            options={paymentOptions}
+            options={PAYMENT_OPTIONS}
           />
 
           {/* Vínculo — ao selecionar a moto, preenche o locatário automaticamente */}
@@ -771,7 +853,7 @@ export default function EntradasPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-[16px] text-[#c7c7c7] leading-relaxed">
+          <p className="text-[13px] text-[#9e9e9e] leading-relaxed">
             Tem certeza que deseja excluir a entrada de{' '}
             <span className="font-medium text-[#BAFF1A]">
               {currentIncome ? formatCurrency(Number(currentIncome.amount)) : ''}

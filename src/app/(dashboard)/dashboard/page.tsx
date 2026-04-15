@@ -345,9 +345,9 @@ export default async function DashboardPage() {
         />
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Contratos Ativos</h3>
+          <div className="bg-[#202020] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
+              <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Contratos Ativos</h3>
               <a href="/contratos" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver todos
               </a>
@@ -378,9 +378,9 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Cobranças Vencidas</h3>
+          <div className="bg-[#202020] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
+              <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Cobranças Vencidas</h3>
               <a href="/cobrancas" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver todas
               </a>
@@ -418,9 +418,9 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Fila de Espera</h3>
+          <div className="bg-[#202020] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
+              <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Fila de Espera</h3>
               <a href="/fila" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver fila
               </a>
@@ -454,9 +454,9 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Manutenções</h3>
+          <div className="bg-[#202020] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
+              <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Manutenções</h3>
               <a href="/manutencao" className="text-[11px] text-[#BAFF1A] font-bold">
                 Ver todas
               </a>
@@ -492,9 +492,9 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="bg-[#202020] border border-[#474747] rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#474747] flex items-center justify-between">
-              <h3 className="text-[20px] font-bold text-[#f5f5f5]">Top Clientes</h3>
+          <div className="bg-[#202020] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
+              <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Top Clientes</h3>
               <a href="/clientes" className="text-[11px] text-[#BAFF1A] font-bold hover:underline">Ver todos</a>
             </div>
             {data.topCustomers.length === 0 ? (

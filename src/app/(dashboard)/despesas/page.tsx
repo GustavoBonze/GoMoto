@@ -173,19 +173,17 @@ const supabase = createClient()
  *   Evita ser redefinido a cada render do pai. Como não tem estado próprio,
  *   é um componente puro — apenas renderiza o que recebe via props.
  *
- * @param icon      - Componente de ícone Lucide (ex: TrendingDown)
- * @param iconBg    - Classe Tailwind para o fundo do círculo (ex: "bg-[#7c1c1c]/40")
- * @param iconColor - Classe Tailwind para a cor do texto/ícone (ex: "text-[#ff9c9a]")
- * @param label     - Rótulo da métrica exibido acima do valor
- * @param value     - Valor principal da métrica (string ou número)
- * @param sub       - Texto secundário opcional abaixo do valor
+ * @param icon  - Componente de ícone Lucide (ex: TrendingDown)
+ * @param label - Rótulo da métrica exibido acima do valor
+ * @param value - Valor principal da métrica (string ou número)
+ * @param sub   - Texto secundário opcional abaixo do valor
  */
 function KpiCard({ icon: Icon, label, value, sub }: { icon: React.ElementType, label: string, value: string | number, sub?: string }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+    <div className="flex items-center justify-between rounded-xl bg-[#202020] px-4 py-4">
       <div>
-        <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
-        <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
+        <p className="text-[13px] text-[#9e9e9e]">{label}</p>
+        <p className="text-2xl font-bold text-[#f5f5f5]">{value}</p>
         {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
       </div>
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
@@ -327,6 +325,7 @@ export default function ExpensesPage() {
       .order('date', { ascending: false }) // mais recentes primeiro
 
     if (error) {
+      console.error('Erro ao carregar despesas:', error.message)
     } else {
       setExpenses((data as Expense[]) ?? [])
     }
@@ -755,7 +754,7 @@ export default function ExpensesPage() {
               type="month"
               value={monthFilter}
               onChange={e => setMonthFilter(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             />
 
             {/* Campo de busca com ícone — filtra em description e observations */}
@@ -766,7 +765,7 @@ export default function ExpensesPage() {
                 placeholder="Buscar..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-lg border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -790,8 +789,8 @@ export default function ExpensesPage() {
 
         ) : groupedExpenses.length === 0 ? (
           // Estado 2: sem resultados — orienta o usuário a ajustar filtros ou cadastrar
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
-            <Receipt className="mb-4 h-12 w-12 text-[#474747]" />
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#202020] p-16 text-center">
+            <Receipt className="mb-4 h-12 w-12 text-[#616161]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma despesa encontrada.</p>
             <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou registre uma nova despesa.</p>
           </div>
@@ -804,7 +803,7 @@ export default function ExpensesPage() {
               const isExpanded = !collapsedCategories.has(category)
 
               return (
-                <div key={category} className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+                <div key={category} className="overflow-hidden rounded-xl bg-[#202020]">
 
                   {/* ── Cabeçalho do accordion (clicável) ───────────────────
                       Ao clicar, toggleCategory alterna o Set de colapsados.
@@ -812,10 +811,10 @@ export default function ExpensesPage() {
                   ────────────────────────────────────────────────────────── */}
                   <button
                     onClick={() => toggleCategory(category)}
-                    className="w-full flex items-center gap-3 px-4 hover:bg-[#2a2a2a] transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#323232] transition-colors text-left"
                   >
                     {/* Seta: rotaciona -90° quando colapsado (via classe Tailwind) */}
-                    <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <ChevronDown className={`w-4 h-4 text-[#9e9e9e] shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
 
                     {/* Nome da categoria em destaque */}
                     <span className="font-medium text-[#f5f5f5] text-[13px]">{category}</span>
@@ -838,17 +837,17 @@ export default function ExpensesPage() {
                       sem cortar o border-radius do card pai.
                   ────────────────────────────────────────────────────────── */}
                   {isExpanded && (
-                    <div className="border-t border-[#474747]">
+                    <div className="border-t border-[#323232]">
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-[13px] text-[#f5f5f5]">
 
-                          {/* Cabeçalho da tabela: fundo #323232 conforme design system */}
-                          <thead className="bg-[#323232] text-[#c7c7c7]">
-                            <tr>
-                              <th className="h-9 px-4 font-bold">Data</th>
-                              <th className="h-9 px-4 font-bold">Descrição</th>
-                              <th className="h-9 px-4 font-bold">Valor</th>
-                              <th className="h-9 px-4 text-right font-bold">Ações</th>
+                          {/* Cabeçalho da tabela — padrão do design system: sem bg, uppercase, cor secundária */}
+                          <thead>
+                            <tr className="border-b border-[#323232]">
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Data</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Descrição</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Valor</th>
+                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e] text-right">Ações</th>
                             </tr>
                           </thead>
 
@@ -857,7 +856,7 @@ export default function ExpensesPage() {
                               /* Calcula a moto vinculada uma única vez por linha (evita 3x find) */
                               const moto = motorcycles.find(m => m.id === item.motorcycle_id)
                               return (
-                              <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                              <tr key={item.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232]">
 
                                 {/* Data: formatada para DD/MM/AAAA via formatDate */}
                                 <td className="px-4">
@@ -906,7 +905,7 @@ export default function ExpensesPage() {
 
                                 {/* Valor em vermelho — destaca o impacto financeiro */}
                                 <td className="px-4">
-                                  <span className="font-bold text-[#ff9c9a]">
+                                  <span className="font-medium text-[#ff9c9a]">
                                     {formatCurrency(Number(item.amount))}
                                   </span>
                                 </td>
@@ -1008,19 +1007,19 @@ export default function ExpensesPage() {
 
           {/* Seção de documentos — dois uploads lado a lado */}
           <div className="space-y-2">
-            <p className="text-[14px] font-normal text-[#9e9e9e]">Documentos</p>
+            <p className="text-[13px] text-[#9e9e9e]">Documentos</p>
             <div className="grid grid-cols-2 gap-3">
 
             {/* Nota Fiscal */}
             <div className="space-y-1">
-              <label className="text-[14px] text-[#c7c7c7]">
+              <label className="text-[13px] text-[#9e9e9e] mb-1 block">
                 Nota Fiscal
-                <span className="ml-2 text-[#9e9e9e] text-[12px]">(PDF ou imagem)</span>
+                <span className="ml-2 text-[#616161] text-[12px]">(PDF ou imagem)</span>
               </label>
-              <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
+              <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border rounded-lg h-12 transition-colors ${
                 form.invoiceFile || existingInvoiceUrl
                   ? 'border-[#6b9900]'
-                  : 'border-[#323232] hover:border-[#474747]'
+                  : 'border-[#474747] hover:border-[#BAFF1A]'
               }`}>
                 <FileText className="w-4 h-4 text-[#9e9e9e] shrink-0" />
                 <span className="flex-1 text-[13px] truncate text-[#9e9e9e]">
@@ -1069,14 +1068,14 @@ export default function ExpensesPage() {
 
             {/* Arquivo Adicional */}
             <div className="space-y-1">
-              <label className="text-[14px] text-[#c7c7c7]">
+              <label className="text-[13px] text-[#9e9e9e] mb-1 block">
                 Arquivo Adicional
-                <span className="ml-2 text-[#9e9e9e] text-[12px]">(opcional)</span>
+                <span className="ml-2 text-[#616161] text-[12px]">(opcional)</span>
               </label>
-              <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${
+              <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border rounded-lg h-12 transition-colors ${
                 form.attachmentFile || existingAttachmentUrl
-                  ? 'border-[#474747]'
-                  : 'border-[#323232] hover:border-[#474747]'
+                  ? 'border-[#a880ff]'
+                  : 'border-[#474747] hover:border-[#BAFF1A]'
               }`}>
                 <Paperclip className="w-4 h-4 text-[#9e9e9e] shrink-0" />
                 <span className="flex-1 text-[13px] truncate text-[#9e9e9e]">

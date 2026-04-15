@@ -18,7 +18,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Edit2, Trash2, CheckCircle, AlertTriangle, Search, MessageCircle, CheckCircle2, Zap, DollarSign } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -315,71 +315,92 @@ export default function CobrancasPage() {
   /**
    * @variable filtered
    * @description Aplica filtros de aba e busca textual sobre a lista de cobranças.
+   * useMemo evita reprocessar a lista a cada render causado por estados não relacionados (ex: modais).
    */
-  const filtered = charges
-    .filter((c) => activeTab === 'all' || c.status === activeTab)
-    .filter((c) => {
-      if (!search) return true
-      const q = search.toLowerCase()
-      return (
-        (c.customers?.name ?? '').toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q)
-      )
+  const filtered = useMemo(
+    () => charges
+      .filter((c) => activeTab === 'all' || c.status === activeTab)
+      .filter((c) => {
+        if (!search) return true
+        const q = search.toLowerCase()
+        return (
+          (c.customers?.name ?? '').toLowerCase().includes(q) ||
+          c.description.toLowerCase().includes(q)
+        )
+      }),
+    [charges, activeTab, search]
+  )
+
+  /**
+   * @variable metrics
+   * @description Todos os cálculos financeiros derivados de `charges`.
+   * Agrupados em um único useMemo para evitar múltiplas varreduras do array por render.
+   */
+  const metrics = useMemo(() => {
+    const today = new Date()
+    const in30Days = new Date(today)
+    in30Days.setDate(today.getDate() + 30)
+
+    const paidCharges = charges.filter((c) => c.status === 'paid')
+    const totalPaid = paidCharges.reduce((sum, c) => sum + c.amount, 0)
+    const averageTicket = paidCharges.length > 0 ? totalPaid / paidCharges.length : 0
+
+    const totalPending = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+    const projection30Days = charges
+      .filter((c) => c.status === 'pending' && new Date(c.due_date + 'T00:00:00') <= in30Days)
+      .reduce((sum, c) => sum + c.amount, 0)
+
+    const totalOverdue = charges.filter((c) => c.status === 'overdue').reduce((sum, c) => sum + c.amount, 0)
+    const sortedOverdue = charges
+      .filter((c) => c.status === 'overdue')
+      .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+    const oldestCharge = sortedOverdue[0]
+    const daysOverdue = oldestCharge
+      ? Math.floor((today.getTime() - new Date(oldestCharge.due_date + 'T00:00:00').getTime()) / 86400000)
+      : 0
+
+    const defaultersCount = charges.filter((c) => c.status === 'overdue' || c.status === 'loss').length
+    const defaultRate = charges.length > 0 ? (defaultersCount / charges.length) * 100 : 0
+
+    const paidOnTime = paidCharges.filter((c) => c.payment_date && c.payment_date <= c.due_date).length
+    const punctualityRate = paidCharges.length > 0 ? (paidOnTime / paidCharges.length) * 100 : 0
+
+    const totalUnpaid = totalPending + totalOverdue
+    const averageTime = paidCharges.length > 0
+      ? paidCharges.reduce((sum, c) => {
+          const days = c.payment_date
+            ? Math.floor((new Date(c.payment_date).getTime() - new Date(c.due_date).getTime()) / 86400000)
+            : 0
+          return sum + days
+        }, 0) / paidCharges.length
+      : 0
+
+    const totalLoss = charges.filter((c) => c.status === 'loss').reduce((sum, c) => sum + c.amount, 0)
+    const lossByCustomer: Record<string, number> = {}
+    charges.filter((c) => c.status === 'loss').forEach((c) => {
+      const name = c.customers?.name ?? 'Desconhecido'
+      lossByCustomer[name] = (lossByCustomer[name] ?? 0) + c.amount
     })
+    const topLoss = Object.entries(lossByCustomer).sort((a, b) => b[1] - a[1])[0]
 
-  /** CÁLCULOS FINANCEIROS E MÉTRICAS */
-
-  /** @variable totalPaid - Soma de cobranças com status 'paid'. */
-  const totalPaid = charges.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
-  const paidCharges = charges.filter((c) => c.status === 'paid')
-  /** @variable averageTicket - Média de valor por cobrança paga. */
-  const averageTicket = paidCharges.length > 0 ? totalPaid / paidCharges.length : 0
-
-  /** @variable totalPending - Soma de cobranças com status 'pending'. */
-  const totalPending = charges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
-  /** @variable projection30Days - Cobranças pendentes que vencem nos próximos 30 dias. */
-  const today = new Date()
-  const in30Days = new Date(today); in30Days.setDate(today.getDate() + 30)
-  const projection30Days = charges
-    .filter((c) => c.status === 'pending' && new Date(c.due_date + 'T00:00:00') <= in30Days)
-    .reduce((sum, c) => sum + c.amount, 0)
-
-  /** @variable totalOverdue - Soma de cobranças com status 'overdue'. */
-  const totalOverdue = charges.filter((c) => c.status === 'overdue').reduce((sum, c) => sum + c.amount, 0)
-  const sortedOverdue = charges
-    .filter((c) => c.status === 'overdue')
-    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
-  const oldestCharge = sortedOverdue[0]
-  const daysOverdue = oldestCharge
-    ? Math.floor((today.getTime() - new Date(oldestCharge.due_date + 'T00:00:00').getTime()) / 86400000)
-    : 0
-
-  /** @variable defaultersCount - Quantidade de itens em atraso ou perdidos. */
-  const defaultersCount = charges.filter((c) => c.status === 'overdue' || c.status === 'loss').length
-  const defaultRate = charges.length > 0 ? (defaultersCount / charges.length) * 100 : 0
-  /** @variable paidOnTime - Cobranças pagas no prazo ou antecipadas. */
-  const paidOnTime = paidCharges.filter((c) => c.payment_date && c.payment_date <= c.due_date).length
-  const punctualityRate = paidCharges.length > 0 ? (paidOnTime / paidCharges.length) * 100 : 0
-
-  /** @variable totalUnpaid - Pendentes + vencidas (tudo que não entrou no caixa). */
-  const totalUnpaid = totalPending + totalOverdue
-  const averageTime = paidCharges.length > 0
-    ? paidCharges.reduce((sum, c) => {
-        const days = c.payment_date
-          ? Math.floor((new Date(c.payment_date).getTime() - new Date(c.due_date).getTime()) / 86400000)
-          : 0
-        return sum + days
-      }, 0) / paidCharges.length
-    : 0
-
-  /** @variable totalLoss - Soma dos prejuízos contabilizados. */
-  const totalLoss = charges.filter((c) => c.status === 'loss').reduce((sum, c) => sum + c.amount, 0)
-  const lossByCustomer: Record<string, number> = {}
-  charges.filter((c) => c.status === 'loss').forEach((c) => {
-    const name = c.customers?.name ?? 'Desconhecido'
-    lossByCustomer[name] = (lossByCustomer[name] ?? 0) + c.amount
-  })
-  const topLoss = Object.entries(lossByCustomer).sort((a, b) => b[1] - a[1])[0]
+    return {
+      paidCharges,
+      totalPaid,
+      averageTicket,
+      totalPending,
+      projection30Days,
+      totalOverdue,
+      oldestCharge,
+      daysOverdue,
+      defaultersCount,
+      defaultRate,
+      punctualityRate,
+      totalUnpaid,
+      averageTime,
+      totalLoss,
+      topLoss,
+    }
+  }, [charges])
 
   return (
     <div className="flex flex-col min-h-full">
@@ -454,46 +475,44 @@ export default function CobrancasPage() {
 
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#474747]">
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Total Recebido</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5] mt-1">{formatCurrency(totalPaid)}</p>
-              <p className="text-[12px] text-[#9e9e9e] mt-0.5">{paidCharges.length} cobranças pagas</p>
+            <div className="p-4 border-b border-[#323232]">
+              <p className="text-[13px] text-[#9e9e9e]">Total Recebido</p>
+              <p className="text-2xl font-bold text-[#f5f5f5] mt-1">{formatCurrency(metrics.totalPaid)}</p>
+              <p className="text-[12px] text-[#9e9e9e] mt-0.5">{metrics.paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-[12px] text-[#9e9e9e]">Ticket médio</span>
-              {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
-              <span className="text-[12px] font-bold text-[#f5f5f5]">{formatCurrency(averageTicket)}</span>
+              <span className="text-[12px] font-medium text-[#f5f5f5]">{formatCurrency(metrics.averageTicket)}</span>
             </div>
           </Card>
 
           {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#474747]">
-              <p className="text-[14px] font-normal text-[#9e9e9e]">A Receber</p>
-              <p className="text-[28px] font-bold text-[#e65e24] mt-1">{formatCurrency(totalPending)}</p>
+            <div className="p-4 border-b border-[#323232]">
+              <p className="text-[13px] text-[#9e9e9e]">A Receber</p>
+              <p className="text-2xl font-bold text-[#e65e24] mt-1">{formatCurrency(metrics.totalPending)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-[12px] text-[#9e9e9e]">Vencem em 30 dias</span>
-              {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
-              <span className="text-[12px] font-bold text-[#e65e24]">{formatCurrency(projection30Days)}</span>
+              <span className="text-[12px] font-medium text-[#e65e24]">{formatCurrency(metrics.projection30Days)}</span>
             </div>
           </Card>
 
           {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#474747]">
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
-              <p className="text-[28px] font-bold text-[#ff9c9a] mt-1">{formatCurrency(totalOverdue)}</p>
+            <div className="p-4 border-b border-[#323232]">
+              <p className="text-[13px] text-[#9e9e9e]">Vencidas</p>
+              <p className="text-2xl font-bold text-[#ff9c9a] mt-1">{formatCurrency(metrics.totalOverdue)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
             <div className="px-4 py-3">
-              {oldestCharge ? (
+              {metrics.oldestCharge ? (
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-[12px] text-[#9e9e9e] truncate max-w-[130px]" title={oldestCharge.customers?.name ?? ''}>
-                    {(oldestCharge.customers?.name ?? '—').split(' ')[0]}
+                  <span className="text-[12px] text-[#9e9e9e] truncate max-w-[130px]" title={metrics.oldestCharge.customers?.name ?? ''}>
+                    {(metrics.oldestCharge.customers?.name ?? '—').split(' ')[0]}
                   </span>
-                  <span className="text-[12px] font-medium text-[#ff9c9a] shrink-0">{daysOverdue}d atraso</span>
+                  <span className="text-[12px] font-medium text-[#ff9c9a] shrink-0">{metrics.daysOverdue}d atraso</span>
                 </div>
               ) : (
                 <span className="text-[12px] text-[#229731]">Nenhuma em atraso</span>
@@ -503,75 +522,75 @@ export default function CobrancasPage() {
 
           {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#474747]">
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Inadimplência</p>
-              <p className={`text-[28px] font-bold mt-1 ${defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
-                {defaultRate.toFixed(1)}%
+            <div className="p-4 border-b border-[#323232]">
+              <p className="text-[13px] text-[#9e9e9e]">Inadimplência</p>
+              <p className={`text-2xl font-bold mt-1 ${metrics.defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
+                {metrics.defaultRate.toFixed(1)}%
               </p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">
-                {defaultersCount} cobrança(s) vencida(s) ou perdida(s) de {charges.length}
+                {metrics.defaultersCount} cobrança(s) vencida(s) ou perdida(s) de {charges.length}
               </p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-[12px] text-[#9e9e9e]">Pontualidade</p>
-                <p className="text-[12px] text-[#616161] mt-0.5">das {paidCharges.length} pagas</p>
+                <p className="text-[12px] text-[#616161] mt-0.5">das {metrics.paidCharges.length} pagas</p>
               </div>
-              <span className={`text-[13px] font-medium ${punctualityRate >= 80 ? 'text-[#229731]' : punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
-                {punctualityRate.toFixed(1)}%
+              <span className={`text-[13px] font-medium ${metrics.punctualityRate >= 80 ? 'text-[#229731]' : metrics.punctualityRate >= 50 ? 'text-[#e65e24]' : 'text-[#ff9c9a]'}`}>
+                {metrics.punctualityRate.toFixed(1)}%
               </span>
             </div>
           </Card>
 
           {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
-            <div className="p-4 border-b border-[#474747]">
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Valores Não Pagos</p>
-              <p className={`text-[28px] font-bold mt-1 ${totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#229731]'}`}>
-                {formatCurrency(totalUnpaid)}
+            <div className="p-4 border-b border-[#323232]">
+              <p className="text-[13px] text-[#9e9e9e]">Valores Não Pagos</p>
+              <p className={`text-2xl font-bold mt-1 ${metrics.totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#229731]'}`}>
+                {formatCurrency(metrics.totalUnpaid)}
               </p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
               <span className="text-[12px] text-[#9e9e9e]">Tempo médio de receb.</span>
               <span className="text-[12px] font-medium text-[#f5f5f5]">
-                {averageTime === 0 ? 'No prazo' : averageTime > 0 ? `${averageTime.toFixed(0)}d após venc.` : `${Math.abs(averageTime).toFixed(0)}d antecipado`}
+                {metrics.averageTime === 0 ? 'No prazo' : metrics.averageTime > 0 ? `${metrics.averageTime.toFixed(0)}d após venc.` : `${Math.abs(metrics.averageTime).toFixed(0)}d antecipado`}
               </span>
             </div>
           </Card>
 
           {/* Card 6: Prejuízos Contabilizados */}
-          <Card padding="none" className={totalLoss > 0 ? 'border-[#ff9c9a] bg-[#7c1c1c]' : ''}>
-            <div className={`p-4 border-b ${totalLoss > 0 ? 'border-[#ff9c9a]' : 'border-[#474747]'}`}>
+          <Card padding="none" className={metrics.totalLoss > 0 ? 'border-[#ff9c9a] bg-[#7c1c1c]' : ''}>
+            <div className={`p-4 border-b ${metrics.totalLoss > 0 ? 'border-[#ff9c9a]' : 'border-[#323232]'}`}>
               <div className="flex items-center gap-2">
-                <p className={`text-[14px] font-normal ${totalLoss > 0 ? 'text-[#9e9e9e]' : 'text-[#9e9e9e]'}`}>
+                <p className="text-[13px] text-[#9e9e9e]">
                   Prejuízos Contabilizados
                 </p>
-                {totalLoss > 0 && (
+                {metrics.totalLoss > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[#7c1c1c] border border-[#ff9c9a] px-2 py-0.5 text-[12px] font-medium text-[#ff9c9a]">
                     Atenção
                   </span>
                 )}
               </div>
-              <p className={`text-[28px] font-bold mt-1 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
-                {formatCurrency(totalLoss)}
+              <p className={`text-2xl font-bold mt-1 ${metrics.totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
+                {formatCurrency(metrics.totalLoss)}
               </p>
-              <p className={`text-[12px] mt-0.5 ${totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
+              <p className={`text-[12px] mt-0.5 ${metrics.totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
                 {charges.filter((c) => c.status === 'loss').length === 0
                   ? 'Nenhum prejuízo registrado'
                   : `${charges.filter((c) => c.status === 'loss').length} cobrança(s) irrecuperável(is)`}
               </p>
             </div>
             <div className="px-4 py-3">
-              {topLoss ? (
+              {metrics.topLoss ? (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[12px] text-[#9e9e9e]">Maior prejuízo</p>
-                    <p className="text-[12px] font-medium text-[#f5f5f5] truncate max-w-[130px]" title={topLoss[0]}>
-                      {topLoss[0].split(' ')[0]}
+                    <p className="text-[12px] font-medium text-[#f5f5f5] truncate max-w-[130px]" title={metrics.topLoss[0]}>
+                      {metrics.topLoss[0].split(' ')[0]}
                     </p>
                   </div>
-                  <span className="text-[13px] font-bold text-[#ff9c9a] shrink-0">{formatCurrency(topLoss[1])}</span>
+                  <span className="text-[13px] font-medium text-[#ff9c9a] shrink-0">{formatCurrency(metrics.topLoss[1])}</span>
                 </div>
               ) : (
                 <span className="text-[12px] text-[#229731]">Nenhum prejuízo registrado</span>
@@ -588,10 +607,10 @@ export default function CobrancasPage() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-3 py-2 text-[16px] transition-all duration-150 border-b-2 ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   activeTab === tab.value
-                    ? 'border-[#BAFF1A] text-[#f5f5f5] font-medium'
-                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5] font-normal'
+                    ? 'border-[#BAFF1A] text-[#f5f5f5]'
+                    : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
                 }`}
               >
                 {tab.label}
@@ -610,13 +629,13 @@ export default function CobrancasPage() {
               placeholder="Buscar por cliente ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 pl-9 pr-4 rounded-lg bg-[#323232] border-2 border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] w-72"
+              className="h-10 pl-9 pr-4 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A] w-72"
             />
           </div>
         </div>
 
         {/* Tabela de Cobranças */}
-        <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+        <div className="overflow-hidden rounded-xl bg-[#202020]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-3">
@@ -634,15 +653,15 @@ export default function CobrancasPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-                <thead className="bg-[#323232] text-[#c7c7c7]">
-                  <tr>
-                    <th className="h-9 px-4 font-bold">Cliente</th>
-                    <th className="h-9 px-4 font-bold">Descrição</th>
-                    <th className="h-9 px-4 font-bold">Valor</th>
-                    <th className="h-9 px-4 font-bold">Vencimento</th>
-                    <th className="h-9 px-4 font-bold">Status</th>
-                    <th className="h-9 px-4 font-bold">Dt. Pagamento</th>
-                    <th className="h-9 px-4 text-right font-bold">Ações</th>
+                <thead className="text-[#9e9e9e]">
+                  <tr className="border-b border-[#323232]">
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Cliente</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Descrição</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Valor</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Vencimento</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Status</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Dt. Pagamento</th>
+                    <th className="h-9 px-4 text-right text-[13px] font-medium uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -650,8 +669,8 @@ export default function CobrancasPage() {
                     const phone = row.customers?.phone
                     const wpLink = phone ? `https://wa.me/55${phone.replace(/\D/g, '')}` : null
                     return (
-                      <tr key={row.id} className="transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] h-9">
-                        <td className="px-4 font-medium">
+                      <tr key={row.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232]">
+                        <td className="px-4 text-[13px]">
                           <div className="flex items-center gap-2">
                             <span className="text-[#f5f5f5]">{row.customers?.name ?? '—'}</span>
                             {wpLink && (
@@ -669,8 +688,7 @@ export default function CobrancasPage() {
                           </div>
                         </td>
                         <td className="px-4 text-[13px]">{row.description}</td>
-                        {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
-                        <td className="whitespace-nowrap px-4 font-bold text-[#f5f5f5]">{formatCurrency(row.amount)}</td>
+                        <td className="whitespace-nowrap px-4 text-[13px] font-medium text-[#f5f5f5]">{formatCurrency(row.amount)}</td>
                         <td className="whitespace-nowrap px-4 text-[13px]">{formatDate(row.due_date)}</td>
                         <td className="px-4"><StatusBadge status={row.status} /></td>
                         <td className="whitespace-nowrap px-4 text-[13px] text-[#9e9e9e]">
@@ -791,8 +809,7 @@ export default function CobrancasPage() {
               <div className="space-y-0.5">
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingPaid.customers?.name ?? '—'}</p>
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingPaid.description}</p>
-                {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
-                <p className="text-[13px] font-bold text-[#229731]">{formatCurrency(confirmingPaid.amount)}</p>
+                <p className="text-[13px] font-medium text-[#229731]">{formatCurrency(confirmingPaid.amount)}</p>
               </div>
             )}
           </div>
@@ -830,8 +847,7 @@ export default function CobrancasPage() {
               <div className="space-y-0.5">
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingLoss.customers?.name ?? '—'}</p>
                 <p className="text-[12px] text-[#9e9e9e]">{confirmingLoss.description}</p>
-                {/* DS-CHOICE: font-bold — compare com font-medium nas outras páginas */}
-                <p className="text-[13px] font-bold text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
+                <p className="text-[13px] font-medium text-[#ff9c9a]">{formatCurrency(confirmingLoss.amount)}</p>
               </div>
             )}
           </div>

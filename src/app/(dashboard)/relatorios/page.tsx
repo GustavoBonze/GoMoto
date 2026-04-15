@@ -16,7 +16,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   BarChart2,
   Bike,
@@ -114,6 +114,19 @@ const monthlyStats = {
 }
 
 /**
+ * @const REPORT_COLOR_MAP
+ * @description Mapeamento de estilos por cor semântica do relatório.
+ * Definido no módulo (fora do componente) para ser criado apenas uma vez.
+ */
+const REPORT_COLOR_MAP: Record<ReportCard['color'], { bg: string; text: string; border: string }> = {
+  brand:   { bg: 'bg-[#243300]', text: 'text-[#BAFF1A]', border: 'border-[#6b9900]' },
+  success: { bg: 'bg-[#0e2f13]', text: 'text-[#229731]', border: 'border-[#28b438]' },
+  warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]', border: 'border-[#e65e24]' },
+  danger:  { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]', border: 'border-[#ff9c9a]' },
+  info:    { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]', border: 'border-[#a880ff]' },
+}
+
+/**
  * @component ReportsPage
  * @description Componente principal que renderiza o cabeçalho, o resumo mensal e a lista de relatórios.
  */
@@ -133,18 +146,19 @@ export default function ReportsPage() {
    * de que a funcionalidade está em construção. Em uma versão futura, esta função
    * iniciaria o processo de geração e download do relatório correspondente.
    */
-  function handleGenerateReport() {
+  const handleGenerateReport = useCallback(() => {
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000) // Oculta a notificação após 3 segundos.
-  }
+  }, [])
 
   /**
    * @const monthName
    * @description Formata a data atual para exibir o nome do mês e o ano em português.
    * Ex: "Março de 2026". Usado para dar contexto temporal aos dados exibidos.
    */
-  const monthName = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(
-    new Date()
+  const monthName = useMemo(
+    () => new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date()),
+    []
   )
 
   return (
@@ -206,27 +220,19 @@ export default function ReportsPage() {
             Relatórios disponíveis
           </p>
           
+          {/**
+           * @const reportColorMap
+           * @description Mapeamento de estilos baseado na propriedade `color` do relatório.
+           * Definido fora do .map() para não ser recriado a cada iteração.
+           */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {reports.map((report) => {
-              /**
-               * @const colorMap
-               * @description Mapeamento de estilos baseado na propriedade `color` do relatório.
-               * O "porquê": Permite associar uma cor semântica a um conjunto de classes CSS,
-               * mantendo a lógica de estilização centralizada e fácil de modificar.
-               */
-              const colorMap = {
-                brand: { bg: 'bg-[#243300]', text: 'text-[#BAFF1A]', border: 'border-[#6b9900]' },
-                success: { bg: 'bg-[#0e2f13]', text: 'text-[#229731]', border: 'border-[#28b438]' },
-                warning: { bg: 'bg-[#3a180f]', text: 'text-[#e65e24]', border: 'border-[#e65e24]' },
-                danger: { bg: 'bg-[#7c1c1c]', text: 'text-[#ff9c9a]', border: 'border-[#ff9c9a]' },
-                info: { bg: 'bg-[#2d0363]', text: 'text-[#a880ff]', border: 'border-[#a880ff]' },
-              }
-              const styles = colorMap[report.color]
+              const styles = REPORT_COLOR_MAP[report.color]
 
               return (
                 <div
                   key={report.id}
-                  className="bg-[#202020] border border-[#474747] rounded-2xl p-5 flex items-start gap-4 hover:border-[#616161] transition-colors"
+                  className="bg-[#202020] rounded-xl p-4 flex items-start gap-4 hover:bg-[#262626] transition-colors"
                 >
                   {/* Container do Ícone com cores dinâmicas */}
                   <div className={`p-3 rounded-full flex-shrink-0 ${styles.bg} border ${styles.border}`}>
@@ -236,15 +242,15 @@ export default function ReportsPage() {
                   <div className="flex-1 min-w-0">
                     {/* Título e Badge de disponibilidade */}
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-[20px] font-bold text-[#f5f5f5]">{report.title}</h3>
+                      <h3 className="text-[14px] font-semibold text-[#f5f5f5]">{report.title}</h3>
                       {!report.available && (
                         <Badge variant="muted" className="text-[12px]">
                           Em breve
                         </Badge>
                       )}
                     </div>
-                    
-                    <p className="text-[12px] text-[#9e9e9e] mb-4 leading-relaxed">{report.description}</p>
+
+                    <p className="text-[13px] text-[#9e9e9e] mb-4 leading-relaxed">{report.description}</p>
                     
                     {/* Botão de ação (desabilitado se o relatório não estiver disponível) */}
                     <Button

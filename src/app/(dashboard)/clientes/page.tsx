@@ -418,14 +418,15 @@ export default function ClientesPage() {
   }, [customers, statusFilter, stateFilter, searchTerm])
 
   /**
-   * @constant tabs - Pílulas de filtro rápido com contadores dinâmicos.
+   * @memo tabs - Pílulas de filtro rápido com contadores dinâmicos.
    * O contador da pílula "Todos" reflete o total sem filtro de status.
+   * Memoizado para evitar recriar o array a cada render.
    */
-  const tabs: { value: StatusFilter; label: string; count: number }[] = [
+  const tabs = useMemo<{ value: StatusFilter; label: string; count: number }[]>(() => [
     { value: 'all',    label: 'Todos',       count: customers.length },
     { value: 'active', label: 'Ativos',      count: kpis.active },
     { value: 'former', label: 'Ex-Clientes', count: kpis.former },
-  ]
+  ], [customers.length, kpis.active, kpis.former])
 
   // ---------------------------------------------------------------------------
   // Render
@@ -444,20 +445,20 @@ export default function ClientesPage() {
         {/* ── KPI CARDS ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4">
 
-          <div className="bg-[#202020] rounded-2xl border border-[#474747] px-6 py-4 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Clientes Ativos</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5]">{kpis.active}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Clientes Ativos</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{kpis.active}</p>
             </div>
             <div className="flex shrink-0 items-center justify-center rounded-full bg-[#323232] p-3">
               <Users className="h-6 w-6 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="bg-[#202020] rounded-2xl border border-[#474747] px-6 py-4 flex items-center justify-between">
+          <div className="bg-[#202020] rounded-xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Ex-Clientes</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5]">{kpis.former}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Ex-Clientes</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{kpis.former}</p>
             </div>
             <div className="flex shrink-0 items-center justify-center rounded-full bg-[#323232] p-3">
               <UserMinus className="h-6 w-6 text-[#BAFF1A]" />
@@ -468,7 +469,7 @@ export default function ClientesPage() {
 
         {/* Banner de erro de rede */}
         {error && (
-          <div className="bg-[#7c1c1c] border border-[#ff9c9a] rounded-2xl px-4 py-3 text-[#ff9c9a]">
+          <div className="bg-[#7c1c1c] rounded-xl px-4 py-3 text-[#ff9c9a]">
             Erro ao carregar dados: {error}
           </div>
         )}
@@ -477,12 +478,12 @@ export default function ClientesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Abas de status — esquerda */}
-          <div className="flex gap-0 flex-wrap border-b border-[#616161]">
+          <div className="flex flex-wrap border-b border-[#616161]">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -490,7 +491,7 @@ export default function ClientesPage() {
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <span className="ml-1.5">({tab.count})</span>
+                  <span className="ml-1.5 text-[#616161]">({tab.count})</span>
                 )}
               </button>
             ))}
@@ -501,7 +502,7 @@ export default function ClientesPage() {
             <select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="">Todos os estados</option>
               {STATE_OPTIONS.map((opt) => (
@@ -518,7 +519,7 @@ export default function ClientesPage() {
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-lg border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -530,23 +531,23 @@ export default function ClientesPage() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#BAFF1A] border-t-transparent" />
           </div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
-            <Users className="mb-4 h-12 w-12 text-[#474747]" />
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#202020] p-16 text-center">
+            <Users className="mb-4 h-12 w-12 text-[#616161]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhum cliente encontrado.</p>
             <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou verifique a fila de espera.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+          <div className="overflow-hidden rounded-xl bg-[#202020]">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-                <thead className="bg-[#323232] text-[#c7c7c7]">
-                  <tr>
-                    <th className="h-9 px-4 font-bold">Nome</th>
-                    <th className="h-9 px-4 font-bold">CPF</th>
-                    <th className="h-9 px-4 font-bold">Telefone</th>
-                    <th className="h-9 px-4 font-bold">Moto Atual</th>
-                    <th className="h-9 px-4 font-bold">Status</th>
-                    <th className="h-9 px-4 text-right font-bold">Ações</th>
+                <thead className="text-[#9e9e9e]">
+                  <tr className="border-b border-[#323232]">
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Nome</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">CPF</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Telefone</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Moto Atual</th>
+                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Status</th>
+                    <th className="h-9 px-4 text-right text-[13px] font-medium uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -555,28 +556,28 @@ export default function ClientesPage() {
                     return (
                       <tr
                         key={customer.id}
-                        className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] cursor-pointer"
+                        className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232] cursor-pointer"
                         onClick={() => setViewingCustomer(customer)}
                       >
-                        <td className="px-4">
+                        <td className="px-4 text-[13px]">
                           <p className="font-medium text-[#f5f5f5]">{customer.name}</p>
                         </td>
-                        <td className="px-4">
-                          <p className="font-mono text-[#c7c7c7]">{customer.cpf}</p>
+                        <td className="px-4 text-[13px]">
+                          <p className="font-mono text-[#f5f5f5]">{customer.cpf}</p>
                         </td>
-                        <td className="px-4">
+                        <td className="px-4 text-[13px]">
                           <a
                             href={`https://wa.me/55${customer.phone?.replace(/\D/g, '')}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-[#c7c7c7] hover:text-[#BAFF1A] transition-colors w-fit"
+                            className="flex items-center gap-1.5 text-[#f5f5f5] hover:text-[#BAFF1A] transition-colors w-fit"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MessageCircle className="w-3.5 h-3.5 shrink-0" />
                             {customer.phone}
                           </a>
                         </td>
-                        <td className="px-4">
+                        <td className="px-4 text-[13px]">
                           {contractInfo ? (
                             <Badge variant="brand">
                               {contractInfo.license_plate} — {contractInfo.model}
@@ -585,14 +586,14 @@ export default function ClientesPage() {
                             <span className="text-[#616161]">—</span>
                           )}
                         </td>
-                        <td className="px-4">
+                        <td className="px-4 text-[13px]">
                           {customer.active !== false ? (
                             <Badge variant="success">Ativo</Badge>
                           ) : (
                             <Badge variant="danger">Ex-Cliente</Badge>
                           )}
                         </td>
-                        <td className="px-4 text-right">
+                        <td className="px-4 text-right text-[13px]">
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Ver detalhes"
                               onClick={(e) => { e.stopPropagation(); setViewingCustomer(customer) }}>
@@ -676,9 +677,9 @@ export default function ClientesPage() {
       {/* ------------------------------------------------------------------ */}
       <Modal open={deletingCustomer !== null} onClose={() => setDeletingCustomer(null)}
         title="Confirmar Exclusão" size="sm">
-        <p className="text-[#c7c7c7] leading-relaxed mb-6">
+        <p className="text-[13px] text-[#9e9e9e] leading-relaxed mb-6">
           Tem certeza que deseja excluir o cliente{' '}
-          <span className="font-bold text-[#f5f5f5]">{deletingCustomer?.name}</span>?
+          <span className="font-medium text-[#f5f5f5]">{deletingCustomer?.name}</span>?
           Esta ação não pode ser desfeita.
         </p>
         <div className="flex justify-end gap-3">
@@ -696,11 +697,11 @@ export default function ClientesPage() {
       <Modal open={viewingCustomer !== null} onClose={() => setViewingCustomer(null)}
         title="Detalhes do Cliente" size="lg">
         {viewingCustomer && (
-          <div className="space-y-5 text-[#c7c7c7]">
+          <div className="space-y-5 text-[#f5f5f5]">
 
             {/* Cabeçalho: nome + badge de status */}
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-[28px] font-bold text-[#f5f5f5] leading-tight">{viewingCustomer.name}</h3>
+              <h3 className="text-2xl font-bold text-[#f5f5f5] leading-tight">{viewingCustomer.name}</h3>
               {viewingCustomer.active !== false
                 ? <Badge variant="success">Ativo</Badge>
                 : <Badge variant="danger">Ex-Cliente</Badge>}
@@ -746,8 +747,8 @@ export default function ClientesPage() {
               )}
               {viewingCustomer.observations && (
                 <div className="md:col-span-2">
-                  <p className="text-[12px] font-medium text-[#616161] mb-1">Observações</p>
-                  <p className="text-[#c7c7c7] bg-[#323232] border border-[#474747] rounded-2xl px-3 py-2 leading-relaxed">
+                  <p className="text-[12px] font-medium text-[#9e9e9e] mb-1">Observações</p>
+                  <p className="text-[13px] text-[#f5f5f5] bg-[#323232] border border-[#474747] rounded-lg px-3 py-2 leading-relaxed">
                     {viewingCustomer.observations}
                   </p>
                 </div>
@@ -777,7 +778,7 @@ export default function ClientesPage() {
               </div>
             )}
 
-            <div className="flex justify-end pt-4 border-t border-[#474747]">
+            <div className="flex justify-end pt-4 border-t border-[#323232]">
               <Button variant="secondary" onClick={() => setViewingCustomer(null)}>Fechar</Button>
             </div>
           </div>
@@ -808,9 +809,9 @@ function DetailsField({
 }) {
   return (
     <div>
-      <p className="text-[12px] font-medium text-[#616161] mb-0.5">{label}</p>
-      <p className={`text-[#f5f5f5] ${mono ? 'font-mono' : ''}`}>
-        {value || <span className="text-[#474747] italic">—</span>}
+      <p className="text-[12px] font-medium text-[#9e9e9e] mb-0.5">{label}</p>
+      <p className={`text-[13px] text-[#f5f5f5] ${mono ? 'font-mono' : ''}`}>
+        {value || <span className="text-[#616161] italic">—</span>}
       </p>
     </div>
   )
@@ -824,9 +825,9 @@ function DetailsField({
 function DocumentThumb({ url, label, alt }: { url: string; label: string; alt: string }) {
   return (
     <div className="space-y-2">
-      <p className="text-[12px] font-medium text-[#616161]">{label}</p>
+      <p className="text-[12px] font-medium text-[#9e9e9e]">{label}</p>
       <a href={url} target="_blank" rel="noopener noreferrer"
-        className="block relative group rounded-2xl overflow-hidden border border-[#474747]">
+        className="block relative group rounded-xl overflow-hidden border border-[#323232]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={alt} className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

@@ -21,7 +21,7 @@
 'use client'
 
 // Hooks do React necessários para gerenciar os múltiplos estados da página
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 // Cliente Supabase no lado do browser — usado para todas as operações de leitura/escrita
 import { createClient } from '@/lib/supabase/client'
@@ -274,13 +274,13 @@ function DocumentUploadSection({
   const suffix = mode === 'edit' ? '(substituir documento)' : '(PDF ou imagem)'
 
   return (
-    <div className="md:col-span-2 border-t border-[#474747] pt-4 mt-2 space-y-3">
-      <p className="text-[14px] font-normal text-[#9e9e9e]">Documentos</p>
+    <div className="md:col-span-2 border-t border-[#323232] pt-4 mt-2 space-y-3">
+      <p className="text-[13px] text-[#9e9e9e]">Documentos</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
         {/* CNH */}
         <div className="space-y-1">
-          <label className="text-[14px] text-[#c7c7c7]">
+          <label className="text-[13px] text-[#f5f5f5]">
             CNH
             <span className="ml-2 text-[#9e9e9e] text-[12px]">{suffix}</span>
           </label>
@@ -302,7 +302,7 @@ function DocumentUploadSection({
 
         {/* Comprovante de Residência */}
         <div className="space-y-1">
-          <label className="text-[14px] text-[#c7c7c7]">
+          <label className="text-[13px] text-[#f5f5f5]">
             Comprovante de Residência
             <span className="ml-2 text-[#9e9e9e] text-[12px]">{suffix}</span>
           </label>
@@ -347,8 +347,8 @@ function DocumentUploadSection({
  * 4. O alerta visual indica quando há oportunidade de alocar (motos disponíveis + fila não vazia)
  */
 export default function QueuePage() {
-  // Cliente Supabase instanciado uma vez no componente e reutilizado em todas as operações
-  const supabase = createClient()
+  // Cliente Supabase estabilizado com useMemo para não criar nova instância a cada render
+  const supabase = useMemo(() => createClient(), [])
 
   // ---------------------------------------------------------------------------
   // ESTADOS DE DADOS
@@ -536,7 +536,7 @@ export default function QueuePage() {
    * Chamada após fechar o modal sem salvar ou após salvar com sucesso,
    * garantindo que o próximo candidato não herde dados do anterior.
    */
-  const resetAddForm = () => setAddForm(DEFAULT_ADD_FORM)
+  const resetAddForm = useCallback(() => setAddForm(DEFAULT_ADD_FORM), [])
 
   // =============================================================================
   // FUNÇÕES DE LEITURA (FETCH)
@@ -552,7 +552,7 @@ export default function QueuePage() {
    * ASC garante que o primeiro da lista é sempre o candidato de maior prioridade.
    * Chamada após cada operação de escrita para manter a UI sincronizada.
    */
-  const fetchQueue = async () => {
+  const fetchQueue = useCallback(async () => {
     const { data, error } = await supabase
       .from('queue_entries')
       .select('*, customers(name, phone, drivers_license)')
@@ -564,7 +564,7 @@ export default function QueuePage() {
 
     // Cast necessário pois o Supabase não infere automaticamente o tipo do join aninhado
     setQueueEntries((data as unknown as QueueEntry[]) || [])
-  }
+  }, [supabase])
 
   /**
    * @function fetchMotosCount
@@ -575,7 +575,7 @@ export default function QueuePage() {
    * retornando apenas o número sem carregar os dados das motos. Isso é suficiente
    * para exibir o card de estatísticas e disparar o alerta de oportunidade.
    */
-  const fetchMotosCount = async () => {
+  const fetchMotosCount = useCallback(async () => {
     const { count, error } = await supabase
       .from('motorcycles')
       .select('id', { count: 'exact', head: true })
@@ -586,7 +586,7 @@ export default function QueuePage() {
     }
 
     setAvailableMotosCount(count || 0)
-  }
+  }, [supabase])
 
   /**
    * @function fetchAvailableMotorcycles
@@ -598,7 +598,7 @@ export default function QueuePage() {
    * para pré-preencher o campo "KM Inicial" automaticamente. Chamada sob demanda
    * ao abrir o modal, não na inicialização, para evitar queries desnecessárias.
    */
-  const fetchAvailableMotorcycles = async () => {
+  const fetchAvailableMotorcycles = useCallback(async () => {
     const { data, error } = await supabase
       .from('motorcycles')
       .select('id, license_plate, model, make, km_current')
@@ -610,7 +610,7 @@ export default function QueuePage() {
     }
 
     setAvailableMotorcycles(data || [])
-  }
+  }, [supabase])
 
   /**
    * @function loadData
@@ -622,7 +622,7 @@ export default function QueuePage() {
    * em vez de sequenciais). O estado `loading` garante que a tabela não apareça
    * com dados incompletos enquanto as queries estão em andamento.
    */
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       // Executa ambas as queries em paralelo para minimizar o tempo de carregamento
@@ -632,13 +632,12 @@ export default function QueuePage() {
       // Garante que o loading seja desativado mesmo se uma das queries falhar
       setLoading(false)
     }
-  }
+  }, [fetchQueue, fetchMotosCount])
 
   // Carrega os dados uma única vez ao montar o componente
   useEffect(() => {
     loadData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadData])
 
   // =============================================================================
   // FUNÇÕES DE ESCRITA (MUTATIONS)
@@ -657,7 +656,7 @@ export default function QueuePage() {
    * As atualizações são feitas sequencialmente (não em paralelo) para evitar
    * conflitos em caso de existir restrição única na coluna `position`.
    */
-  const reorderQueuePositions = async () => {
+  const reorderQueuePositions = useCallback(async () => {
     // Busca a fila atual em ordem para saber quais posições precisam ser corrigidas
     const { data: currentQueue } = await supabase
       .from('queue_entries')
@@ -677,7 +676,7 @@ export default function QueuePage() {
           .eq('id', currentQueue[i].id)
       }
     }
-  }
+  }, [supabase])
 
   /**
    * @function handleAddToQueue
@@ -698,7 +697,7 @@ export default function QueuePage() {
    * - Nome, CPF e Telefone são obrigatórios (mínimo para identificar o candidato)
    * - Documentos são opcionais no cadastro (podem ser adicionados depois via edição)
    */
-  const handleAddToQueue = async () => {
+  const handleAddToQueue = useCallback(async () => {
     // Validação mínima: nome, CPF e telefone são obrigatórios para identificar o candidato
     if (!addForm.name || !addForm.cpf || !addForm.phone) {
       alert('Nome, CPF e Telefone são obrigatórios.')
@@ -791,7 +790,7 @@ export default function QueuePage() {
     } finally {
       setSaving(false)
     }
-  }
+  }, [supabase, addForm, queueEntries, fetchQueue, resetAddForm])
 
   /**
    * @function handleRemoveFromQueue
@@ -803,7 +802,7 @@ export default function QueuePage() {
    * e marca `in_queue: false` para que o candidato não apareça em nenhuma tela.
    * Após a remoção, as posições são reordenadas para eliminar buracos.
    */
-  const handleRemoveFromQueue = async () => {
+  const handleRemoveFromQueue = useCallback(async () => {
     // Verificação de segurança: não deve ser chamada sem uma entrada selecionada
     if (!selectedEntry) return
 
@@ -836,7 +835,7 @@ export default function QueuePage() {
     } finally {
       setSaving(false)
     }
-  }
+  }, [supabase, selectedEntry, reorderQueuePositions, fetchQueue])
 
   /**
    * @function openMoveModal
@@ -850,7 +849,7 @@ export default function QueuePage() {
    * @param entry - A entrada da fila que será movida
    * @param direction - Direção do movimento: 'up' (prioridade maior) ou 'down'
    */
-  const openMoveModal = (entry: QueueEntry, direction: 'up' | 'down') => {
+  const openMoveModal = useCallback((entry: QueueEntry, direction: 'up' | 'down') => {
     // Não permite subir se já é o primeiro (posição 1)
     if (direction === 'up' && entry.position <= 1) return
     // Não permite descer se já é o último
@@ -861,7 +860,7 @@ export default function QueuePage() {
     // Reseta o motivo para forçar o operador a selecionar um novo para cada movimentação
     setMoveReason('')
     setIsMoveModalOpen(true)
-  }
+  }, [queueEntries])
 
   /**
    * @function handleConfirmMove
@@ -875,7 +874,7 @@ export default function QueuePage() {
    * As atualizações são feitas em sequência (não em paralelo) para evitar
    * condição de corrida caso o banco tenha restrição única na coluna `position`.
    */
-  const handleConfirmMove = async () => {
+  const handleConfirmMove = useCallback(async () => {
     // Verificações de segurança antes de executar
     if (!moveEntry || !moveDirection) return
 
@@ -914,7 +913,7 @@ export default function QueuePage() {
     } finally {
       setSaving(false)
     }
-  }
+  }, [supabase, moveEntry, moveDirection, moveReason, queueEntries, fetchQueue])
 
   /**
    * @function openEditModal
@@ -928,7 +927,7 @@ export default function QueuePage() {
    *
    * @param entry - A entrada da fila cujo candidato será editado
    */
-  const openEditModal = async (entry: QueueEntry) => {
+  const openEditModal = useCallback(async (entry: QueueEntry) => {
     setEditingEntry(entry)
 
     // Busca todos os campos do cliente para popular o formulário de edição
@@ -961,7 +960,7 @@ export default function QueuePage() {
       })
     }
     setIsEditModalOpen(true)
-  }
+  }, [supabase])
 
   /**
    * @function handleSaveEdit
@@ -976,7 +975,7 @@ export default function QueuePage() {
    * @validações
    * - Nome, CPF e Telefone são obrigatórios (mínimo para identificar o candidato)
    */
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     // Verificação de segurança: não deve ser chamada sem uma entrada em edição
     if (!editingEntry) return
 
@@ -1049,7 +1048,7 @@ export default function QueuePage() {
     } finally {
       setEditSaving(false)
     }
-  }
+  }, [supabase, editForm, editingEntry, fetchQueue])
 
   /**
    * @function openRemoveModal
@@ -1061,10 +1060,10 @@ export default function QueuePage() {
    *
    * @param entry - A entrada da fila que será removida
    */
-  const openRemoveModal = (entry: QueueEntry) => {
+  const openRemoveModal = useCallback((entry: QueueEntry) => {
     setSelectedEntry(entry)
     setIsRemoveModalOpen(true)
-  }
+  }, [])
 
   /**
    * @function openContractModal
@@ -1077,7 +1076,7 @@ export default function QueuePage() {
    *
    * @param entry - A entrada da fila que será convertida em contrato
    */
-  const openContractModal = async (entry: QueueEntry) => {
+  const openContractModal = useCallback(async (entry: QueueEntry) => {
     setContractEntry(entry)
     // Carrega motos disponíveis em tempo real para garantir dados atualizados
     await fetchAvailableMotorcycles()
@@ -1093,7 +1092,7 @@ export default function QueuePage() {
       initial_km: '',
     })
     setIsContractModalOpen(true)
-  }
+  }, [fetchAvailableMotorcycles])
 
   /**
    * @function handleCloseContract
@@ -1115,7 +1114,7 @@ export default function QueuePage() {
    * @validações
    * - Moto, data de início, valor semanal e KM inicial são obrigatórios
    */
-  const handleCloseContract = async () => {
+  const handleCloseContract = useCallback(async () => {
     const { motorcycle_id, start_date, weekly_amount, initial_km, deposit_paid, deposit_amount, deposit_payment_method, end_date } = contractForm
 
     // Valida campos obrigatórios antes de iniciar o fluxo multi-etapas
@@ -1194,7 +1193,7 @@ export default function QueuePage() {
     } finally {
       setContractSaving(false)
     }
-  }
+  }, [supabase, contractForm, contractEntry, availableMotorcycles, reorderQueuePositions, loadData])
 
   // =============================================================================
   // RENDERIZAÇÃO
@@ -1248,43 +1247,43 @@ export default function QueuePage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
 
         {/* Card: total de candidatos aguardando */}
-        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+        <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
           <div>
-            <p className="text-[14px] font-normal text-[#9e9e9e]">Total na Fila</p>
-            <p className="text-[28px] font-bold text-[#f5f5f5]">{queueEntries.length}</p>
+            <p className="text-[13px] text-[#9e9e9e]">Total na Fila</p>
+            <p className="text-xl font-bold text-[#f5f5f5]">{queueEntries.length}</p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-            <Users className="h-6 w-6" />
+            <Users className="h-5 w-5" />
           </div>
         </div>
 
         {/* Card: motos disponíveis para alocação imediata */}
-        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+        <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
           <div>
-            <p className="text-[14px] font-normal text-[#9e9e9e]">Motos Disponíveis</p>
-            <p className="text-[28px] font-bold text-[#f5f5f5]">{availableMotosCount}</p>
+            <p className="text-[13px] text-[#9e9e9e]">Motos Disponíveis</p>
+            <p className="text-xl font-bold text-[#f5f5f5]">{availableMotosCount}</p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-            <Bike className="h-6 w-6" />
+            <Bike className="h-5 w-5" />
           </div>
         </div>
 
         {/* Card: nome do próximo candidato — facilita identificação rápida de quem atender */}
-        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+        <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-normal text-[#9e9e9e]">Próximo da Fila</p>
-            <p className="truncate text-[28px] font-bold text-[#f5f5f5]" title={nextInLine ?? ''}>
+            <p className="text-[13px] text-[#9e9e9e]">Próximo da Fila</p>
+            <p className="truncate text-xl font-bold text-[#f5f5f5]" title={nextInLine ?? ''}>
               {nextInLine}
             </p>
           </div>
           <div className="ml-3 flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-            <UserPlus className="h-6 w-6" />
+            <UserPlus className="h-5 w-5" />
           </div>
         </div>
       </div>
 
       {/* Tabela principal da fila de espera */}
-      <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+      <div className="overflow-hidden rounded-xl bg-[#202020]">
         {queueEntries.length === 0 ? (
           // Estado vazio: exibido quando não há candidatos na fila
           <div className="flex flex-col items-center justify-center p-12 text-center">
@@ -1297,20 +1296,20 @@ export default function QueuePage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-              <thead className="bg-[#323232] text-[#c7c7c7]">
-                <tr>
-                  <th className="h-9 px-4 font-bold">#</th>
-                  <th className="h-9 px-4 font-bold">Cliente</th>
-                  <th className="h-9 px-4 font-bold">Telefone</th>
-                  <th className="h-9 px-4 font-bold">CNH</th>
-                  <th className="h-9 px-4 font-bold">Desde</th>
-                  <th className="h-9 px-4 font-bold">Observações</th>
-                  <th className="h-9 px-4 text-right font-bold">Ações</th>
+              <thead>
+                <tr className="border-b border-[#323232]">
+                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">#</th>
+                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Cliente</th>
+                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Telefone</th>
+                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">CNH</th>
+                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Desde</th>
+                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Observações</th>
+                  <th className="h-9 px-4 text-right text-[13px] font-medium uppercase text-[#9e9e9e]">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {queueEntries.map((entry, index) => (
-                  <tr key={entry.id} className="transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] h-9">
+                  <tr key={entry.id} className="border-b border-[#323232] transition-colors hover:bg-[#323232] h-9">
 
                     {/* Posição na fila exibida como Badge para destaque visual */}
                     <td className="whitespace-nowrap px-4">
@@ -1498,7 +1497,7 @@ export default function QueuePage() {
               />
 
               {/* Seção de caução: permite registrar se a caução foi paga no ato do contrato */}
-              <div className="md:col-span-2 mt-4 pt-4 border-t border-[#474747]">
+              <div className="md:col-span-2 mt-4 pt-4 border-t border-[#323232]">
                 <h4 className="text-[14px] font-medium text-[#f5f5f5] mb-3">Caução</h4>
 
                 {/* Toggle de caução: botão ativo = primary (lime), inativo = outline */}
@@ -1549,7 +1548,7 @@ export default function QueuePage() {
         </div>
 
         {/* Rodapé do modal com botões de cancelar e confirmar */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-[#474747] mt-4">
+        <div className="flex justify-end gap-3 pt-4 border-t border-[#323232] mt-4">
           <Button
             variant="secondary"
             onClick={() => setIsContractModalOpen(false)}
@@ -1657,7 +1656,7 @@ export default function QueuePage() {
             />
 
             {/* Separador visual para seção de habilitação */}
-            <div className="md:col-span-2 border-t border-[#474747] pt-4 mt-2">
+            <div className="md:col-span-2 border-t border-[#323232] pt-4 mt-2">
               <h4 className="text-[12px] text-[#9e9e9e]">Habilitação</h4>
             </div>
 
@@ -1706,7 +1705,7 @@ export default function QueuePage() {
         </div>
 
         {/* Rodapé do modal */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-[#474747] mt-4">
+        <div className="flex justify-end gap-3 pt-4 border-t border-[#323232] mt-4">
           <Button
             variant="secondary"
             onClick={() => setIsAddModalOpen(false)}
@@ -1765,7 +1764,7 @@ export default function QueuePage() {
 
             {/* Separador visual de seção de habilitação */}
             <div className="md:col-span-2">
-              <p className="text-[12px] font-medium text-[#9e9e9e] mb-3 border-t border-[#474747] pt-4 mt-2">Habilitação</p>
+              <p className="text-[12px] font-medium text-[#9e9e9e] mb-3 border-t border-[#323232] pt-4 mt-2">Habilitação</p>
             </div>
 
             {/* Dados da CNH — editáveis caso o candidato tenha renovado ou corrigido dados */}
@@ -1790,7 +1789,7 @@ export default function QueuePage() {
         </div>
 
         {/* Rodapé do modal de edição */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-[#474747] mt-4">
+        <div className="flex justify-end gap-3 pt-4 border-t border-[#323232] mt-4">
           <Button variant="secondary" onClick={() => setIsEditModalOpen(false)} disabled={editSaving}>Cancelar</Button>
           <Button variant="primary" onClick={handleSaveEdit} loading={editSaving} disabled={editSaving}>Salvar Alterações</Button>
         </div>
@@ -1813,7 +1812,7 @@ export default function QueuePage() {
           return (
             <div className="flex flex-col gap-4 py-2">
               {/* Resumo da operação para confirmar ao operador o que será feito */}
-              <p className="text-[13px] text-[#c7c7c7]">
+              <p className="text-[13px] text-[#9e9e9e]">
                 <strong className="text-[#f5f5f5]">{moveEntry.customers?.name}</strong> vai{' '}
                 {/* Cor diferente para cima (positivo/brand) e baixo (negativo/vermelho) */}
                 <span className={moveDirection === 'up' ? 'text-[#BAFF1A]' : 'text-[#ff9c9a]'}>
@@ -1860,7 +1859,7 @@ export default function QueuePage() {
             <strong>{selectedEntry?.customers?.name}</strong> da fila de espera?
           </p>
           {/* Explica o impacto da ação — os demais candidatos serão reposicionados automaticamente */}
-          <p className="mt-2 text-[14px] font-normal text-[#9e9e9e]">
+          <p className="mt-2 text-[13px] text-[#9e9e9e]">
             O cliente será liberado e os demais serão reposicionados automaticamente.
           </p>
         </div>

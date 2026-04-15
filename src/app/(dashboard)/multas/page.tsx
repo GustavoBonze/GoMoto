@@ -150,6 +150,27 @@ const COMMON_INFRACTIONS = [
 ]
 
 /**
+ * Opções fixas do select de responsável.
+ * Definidas no nível de módulo pois são valores estáticos — não mudam entre renders.
+ */
+const RESPONSIBLE_OPTIONS = [
+  { value: 'customer', label: 'Cliente'  },
+  { value: 'company',  label: 'Empresa'  },
+]
+
+/**
+ * Opções do select de preenchimento rápido.
+ * Definidas no nível de módulo pois derivam de COMMON_INFRACTIONS, que é estático.
+ */
+const INFRACTION_QUICKFILL_OPTIONS = [
+  { value: '', label: 'Selecione uma infração comum...' },
+  ...COMMON_INFRACTIONS.map(i => ({
+    value: i.description,
+    label: `${i.description} — ${formatCurrency(i.amount)}`,
+  })),
+]
+
+/**
  * Estado inicial do formulário de cadastro/edição.
  * Usado tanto para resetar o form ao fechar o modal quanto para
  * inicializar o estado sem precisar de valores undefined.
@@ -202,10 +223,10 @@ function KpiCard({
   iconColor?: string
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+    <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
       <div>
-        <p className="text-[14px] font-normal text-[#9e9e9e]">{label}</p>
-        <p className="text-[28px] font-bold text-[#f5f5f5]">{value}</p>
+        <p className="text-[13px] text-[#9e9e9e]">{label}</p>
+        <p className="text-2xl font-bold text-[#f5f5f5]">{value}</p>
         {sub && <p className="text-[12px] mt-0.5 text-[#9e9e9e]">{sub}</p>}
       </div>
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
@@ -719,27 +740,6 @@ export default function MultasPage() {
   ], [motorcycles])
 
   /**
-   * Opções fixas do select de responsável.
-   * Não precisa de useMemo pois é um array estático pequeno.
-   */
-  const responsibleOptions = [
-    { value: 'customer', label: 'Cliente'  },
-    { value: 'company',  label: 'Empresa'  },
-  ]
-
-  /**
-   * Opções do select de preenchimento rápido.
-   * Exibe descrição + valor formatado para cada infração do CTB.
-   */
-  const infractionQuickfillOptions = useMemo(() => [
-    { value: '', label: 'Selecione uma infração comum...' },
-    ...COMMON_INFRACTIONS.map(i => ({
-      value: i.description,
-      label: `${i.description} — ${formatCurrency(i.amount)}`,
-    })),
-  ], [])
-
-  /**
    * Definição das abas de filtro de status.
    * Calculada com base nos kpis para exibir contagens ao lado dos labels.
    * "Pendentes" exibe apenas os sem urgência (total pendentes - vencidas - a vencer).
@@ -778,7 +778,7 @@ export default function MultasPage() {
 
         {/* Mensagem de erro global — exibida apenas quando há falha no carregamento ou save */}
         {error && (
-          <div className="p-3 rounded-lg bg-[#7c1c1c] border border-[#ff9c9a] text-[13px] text-[#ff9c9a]">
+          <div className="p-3 rounded-lg bg-[#7c1c1c] text-[13px] text-[#ff9c9a]">
             {error}
           </div>
         )}
@@ -791,7 +791,7 @@ export default function MultasPage() {
           {/* Total: todas as multas cadastradas */}
           <KpiCard
             icon={FileText}
-            iconBg="bg-[#474747]"
+            iconBg="bg-[#323232]"
             iconColor="text-[#9e9e9e]"
             label="Total"
             value={kpis.total}
@@ -849,7 +849,7 @@ export default function MultasPage() {
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.id
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -867,7 +867,7 @@ export default function MultasPage() {
             <select
               value={motorcycleFilter}
               onChange={e => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motorcycles.map(m => (
@@ -885,7 +885,7 @@ export default function MultasPage() {
                 placeholder="Buscar..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-lg border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -907,8 +907,8 @@ export default function MultasPage() {
 
         ) : groupedFines.length === 0 ? (
           // Estado vazio: exibido quando nenhum resultado passa pelos filtros
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
-            <FileText className="mb-4 h-12 w-12 text-[#474747]" />
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#202020] p-16 text-center">
+            <FileText className="mb-4 h-12 w-12 text-[#616161]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma multa encontrada.</p>
             <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou registre uma nova multa.</p>
           </div>
@@ -939,15 +939,15 @@ export default function MultasPage() {
                   : STATUS_DOT.ok
 
               return (
-                <div key={motorcycle_id} className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+                <div key={motorcycle_id} className="overflow-hidden rounded-xl bg-[#202020]">
 
                   {/* ── Cabeçalho do accordion (clicável) ───────────────── */}
                   <button
                     onClick={() => toggleGroup(motorcycle_id)}
-                    className="w-full flex items-center gap-3 px-4 hover:bg-[#323232] transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#323232] transition-colors text-left"
                   >
                     {/* Seta: rotaciona -90° quando colapsado */}
-                    <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <ChevronDown className={`w-4 h-4 text-[#9e9e9e] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
                     {/* Ponto colorido indicador do pior status */}
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor}`} />
                     {/* Placa em destaque monospace */}
@@ -970,7 +970,7 @@ export default function MultasPage() {
                         </span>
                       )}
                       {pendingTotal > 0 && (
-                        <span className="text-[13px] font-bold text-[#ff9c9a] ml-1">
+                        <span className="text-[13px] font-medium text-[#ff9c9a] ml-1">
                           {formatCurrency(pendingTotal)}
                         </span>
                       )}
@@ -979,21 +979,21 @@ export default function MultasPage() {
 
                   {/* ── Conteúdo (visível apenas quando isExpanded = true) ── */}
                   {isExpanded && (
-                    <div className="border-t border-[#474747]">
+                    <div className="border-t border-[#323232]">
 
                       {/* Tabela de multas pendentes */}
                       {pendingItems.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-                            {/* Cabeçalho com fundo #323232 conforme design system */}
-                            <thead className="bg-[#323232] text-[#c7c7c7]">
-                              <tr>
-                                <th className="h-9 px-4 font-bold">Infração</th>
-                                <th className="h-9 px-4 font-bold">Data / Vencimento</th>
-                                <th className="h-9 px-4 font-bold">Valor</th>
-                                <th className="h-9 px-4 font-bold">Responsável</th>
-                                <th className="h-9 px-4 font-bold">Status</th>
-                                <th className="h-9 px-4 text-right font-bold">Ações</th>
+                            {/* Cabeçalho — sem fundo, apenas tipografia secundária */}
+                            <thead>
+                              <tr className="border-b border-[#323232]">
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Infração</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Data / Vencimento</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Valor</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Responsável</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Status</th>
+                                <th className="h-9 px-4 text-right text-[#9e9e9e] text-[13px] font-medium uppercase">Ações</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1001,7 +1001,7 @@ export default function MultasPage() {
                                 // Extrai estilos de badge do mapa de constantes
                                 const badge = STATUS_BADGE[item._status]
                                 return (
-                                  <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                                  <tr key={item.id} className="h-9 text-[13px] border-b border-[#323232] transition-colors hover:bg-[#323232]">
 
                                     {/* Infração: descrição principal + observação + cliente */}
                                     <td className="px-4 max-w-xs">
@@ -1030,7 +1030,7 @@ export default function MultasPage() {
 
                                     {/* Valor em vermelho para destacar o impacto financeiro nas pendentes */}
                                     <td className="px-4">
-                                      <span className="font-bold text-[#ff9c9a]">
+                                      <span className="font-medium text-[#ff9c9a]">
                                         {formatCurrency(Number(item.amount))}
                                       </span>
                                     </td>
@@ -1040,7 +1040,7 @@ export default function MultasPage() {
                                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium ${
                                         item.responsible === 'customer'
                                           ? 'bg-[#2d0363] text-[#a880ff]'
-                                          : 'bg-[#474747] text-[#9e9e9e]'
+                                          : 'bg-[#323232] text-[#9e9e9e]'
                                       }`}>
                                         {item.responsible === 'customer' ? 'Cliente' : 'Empresa'}
                                       </span>
@@ -1085,7 +1085,7 @@ export default function MultasPage() {
 
                       {/* ── Histórico de multas pagas (colapsável) ─────── */}
                       {paidItems.length > 0 && (
-                        <div className={pendingItems.length > 0 ? 'border-t border-[#474747]' : ''}>
+                        <div className={pendingItems.length > 0 ? 'border-t border-[#323232]' : ''}>
                           {/* Toggle do histórico — texto e seta compactos */}
                           <button
                             onClick={() => toggleHistory(motorcycle_id)}
@@ -1104,7 +1104,7 @@ export default function MultasPage() {
                                 <tbody>
                                   {paidItems.map(item => (
                                     /* opacity-80 no tr para diferenciar visualmente o histórico dos itens pendentes */
-                                    <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-80">
+                                    <tr key={item.id} className="h-9 text-[13px] border-b border-[#323232] transition-colors hover:bg-[#323232] opacity-80">
                                       {/* Descrição + cliente */}
                                       <td className="px-4 w-1/2">
                                         <p className="text-[#9e9e9e]">{item.description}</p>
@@ -1117,7 +1117,7 @@ export default function MultasPage() {
                                         {item.payment_date ? formatDate(item.payment_date) : '—'}
                                       </td>
                                       {/* Valor em verde (quitado) */}
-                                      <td className="px-4 text-[13px] font-bold text-[#229731]">
+                                      <td className="px-4 text-[13px] font-medium text-[#229731]">
                                         {formatCurrency(Number(item.amount))}
                                       </td>
                                       {/* Ações do histórico: sem botão "Pagar" (já está paga) */}
@@ -1208,7 +1208,7 @@ export default function MultasPage() {
           {/* Preenchimento rápido: seleciona infração do CTB e preenche descrição + valor */}
           <Select
             label="Infrações Comuns (CTB) — preenchimento rápido"
-            options={infractionQuickfillOptions}
+            options={INFRACTION_QUICKFILL_OPTIONS}
             // Sincroniza a seleção se a descrição atual bate com alguma infração da lista
             value={COMMON_INFRACTIONS.find(i => i.description === form.description)?.description ?? ''}
             onChange={e => {
@@ -1258,7 +1258,7 @@ export default function MultasPage() {
             />
             <Select
               label="Responsável"
-              options={responsibleOptions}
+              options={RESPONSIBLE_OPTIONS}
               value={form.responsible}
               onChange={e => setForm({ ...form, responsible: e.target.value })}
             />
@@ -1297,12 +1297,12 @@ export default function MultasPage() {
       >
         <div className="space-y-4">
           {/* Resumo da multa a ser paga */}
-          <div className="p-3 bg-[#323232] border border-[#474747] rounded-lg space-y-1">
+          <div className="p-3 bg-[#323232] rounded-lg space-y-1">
             <p className="text-[13px] text-[#9e9e9e]">
               Cliente: <span className="text-[#f5f5f5] font-medium">{payingFine?.customers?.name ?? '—'}</span>
             </p>
             <p className="text-[13px] text-[#9e9e9e]">
-              Valor: <span className="text-[#ff9c9a] font-bold">
+              Valor: <span className="text-[#ff9c9a] font-medium">
                 {payingFine ? formatCurrency(Number(payingFine.amount)) : ''}
               </span>
             </p>

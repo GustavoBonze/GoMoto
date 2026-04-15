@@ -475,12 +475,7 @@ export default function MotorcyclesPage() {
 
       // Insere todos os registros de manutenção em lote
       try {
-        const { error: maintenanceError } = await supabase
-          .from('maintenances')
-          .insert(maintenanceRecords)
-
-        if (maintenanceError) {
-        }
+        await supabase.from('maintenances').insert(maintenanceRecords)
       } catch {
       }
     }
@@ -509,7 +504,7 @@ export default function MotorcyclesPage() {
     <div className='min-h-screen bg-[#121212]'>
       <div className='sticky top-0 z-10 bg-[#121212] border-b border-[#323232] px-6 h-20 flex items-center gap-4'>
         <h1 className='text-[28px] font-bold text-[#f5f5f5]'>Motocicletas</h1>
-        <span className='text-[14px] font-normal text-[#9e9e9e]'>{motorcycles.length} motos na frota</span>
+        <span className='text-[13px] font-normal text-[#9e9e9e]'>{motorcycles.length} motos na frota</span>
         <div className='ml-auto flex gap-3'>
           <Button onClick={openNewMotorcycle}><Plus className='w-4 h-4' />Nova Moto</Button>
         </div>
@@ -534,7 +529,7 @@ export default function MotorcyclesPage() {
           * Exibe as motos em posições geográficas (simuladas até integração GPS).
           * Futuramente: integração com rastreadores para posição em tempo real.
           * ────────────────────────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-[#474747] overflow-hidden" style={{ height: 460 }}>
+        <div className="rounded-xl border border-[#323232] overflow-hidden" style={{ height: 460 }}>
           {loading ? (
             <div className="w-full h-full flex items-center justify-center bg-[#181818]">
               <div className="flex flex-col items-center gap-3">
@@ -557,22 +552,21 @@ export default function MotorcyclesPage() {
         {/* FILTROS E BUSCA — acima do grid */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap border-b border-[#616161]">
-            {filterOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setFilter(opt.value)}
-                className={
-                  filter === opt.value
-                    ? 'px-3 py-2 text-[16px] font-medium transition-all border-b-2 border-[#BAFF1A] text-[#f5f5f5]'
-                    : 'px-3 py-2 text-[16px] font-medium transition-all border-b-2 border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
-                }
-              >
-                {opt.label}
-                {opt.value !== 'all' && (
-                  <span className="ml-1.5">({motorcycles.filter((m) => m.status === opt.value).length})</span>
-                )}
-              </button>
-            ))}
+            {filterOptions.map((opt) => {
+              const isActive = filter === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setFilter(opt.value)}
+                  className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${isActive ? 'border-[#BAFF1A] text-[#f5f5f5]' : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'}`}
+                >
+                  {opt.label}
+                  {opt.value !== 'all' && (
+                    <span className="ml-1.5 text-[#616161]">({motorcycles.filter((m) => m.status === opt.value).length})</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
           <div className="ml-auto relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#616161]" />
@@ -581,24 +575,24 @@ export default function MotorcyclesPage() {
               placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className='w-full h-10 pl-10 pr-4 rounded-lg bg-[#323232] border-2 border-[#323232] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus-within:border-[#474747] transition-all'
+              className='w-full h-10 pl-10 pr-4 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus:border-[#BAFF1A] transition-all'
             />
           </div>
         </div>
       </div>
 
       <div className='px-6 pb-10'>
-        <div className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]"><div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-xl bg-[#202020]"><div className="overflow-x-auto">
           <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-            <thead className="bg-[#323232] text-[#c7c7c7]">
+            <thead className="text-[#9e9e9e] border-b border-[#323232]">
               <tr>
-                <th className="h-9 px-3 font-bold">Placa</th>
-                <th className="h-9 px-3 font-bold">Motocicleta</th>
-                <th className="h-9 px-3 font-bold">Cliente</th>
-                <th className="h-9 px-3 font-bold">Valor/Semana</th>
-                <th className="h-9 px-3 font-bold">Endereço</th>
-                <th className="h-9 px-3 font-bold">Status</th>
-                <th className="h-9 px-3 text-right font-bold">Ações</th>
+                <th className="h-9 px-3 text-[13px] font-medium uppercase">Placa</th>
+                <th className="h-9 px-3 text-[13px] font-medium uppercase">Motocicleta</th>
+                <th className="h-9 px-3 text-[13px] font-medium uppercase">Cliente</th>
+                <th className="h-9 px-3 text-[13px] font-medium uppercase">Valor/Semana</th>
+                <th className="h-9 px-3 text-[13px] font-medium uppercase">Endereço</th>
+                <th className="h-9 px-3 text-[13px] font-medium uppercase">Status</th>
+                <th className="h-9 px-3 text-right text-[13px] font-medium uppercase">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -612,11 +606,11 @@ export default function MotorcyclesPage() {
                   const customer = contract?.customer
                   const weeklyValue = contract?.monthly_amount ? formatCurrency(contract.monthly_amount) : null
                   return (
-                    <tr key={moto.id} onClick={() => setSelectedMotoId(moto.id === selectedMotoId ? null : moto.id)} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] cursor-pointer">
+                    <tr key={moto.id} onClick={() => setSelectedMotoId(moto.id === selectedMotoId ? null : moto.id)} className="h-9 text-[13px] border-b border-[#323232] transition-colors hover:bg-[#323232] cursor-pointer">
                       <td className="px-4"><div className='flex items-center gap-2'><div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: statusColorMap[moto.status] ?? '#9e9e9e' }} /><span className='font-mono font-bold text-[#f5f5f5]'>{moto.license_plate}</span></div></td>
                       <td className="px-4"><p className="font-medium text-[#f5f5f5]">{moto.make} {moto.model}</p></td>
                       <td className="px-4">{customer ? (<div className="flex items-center gap-1.5"><User className="w-4 h-4 text-[#a880ff] flex-shrink-0" /><p className="font-medium text-[#f5f5f5] truncate">{customer.name}</p></div>) : (<p className="text-[#9e9e9e]">Sem locatário</p>)}</td>
-                      <td className="px-4">{weeklyValue ? (<span className='text-[#BAFF1A] font-bold'>{weeklyValue}</span>) : (<span className='text-[#9e9e9e]'>—</span>)}</td>
+                      <td className="px-4">{weeklyValue ? (<span className='text-[#BAFF1A] font-medium'>{weeklyValue}</span>) : (<span className='text-[#9e9e9e]'>—</span>)}</td>
                       <td className="px-4">{customer?.address ? (<div className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-[#9e9e9e] flex-shrink-0" /><p className="text-[#9e9e9e] truncate max-w-[180px]">{customer.address}</p></div>) : (<p className="text-[#9e9e9e]">—</p>)}</td>
                       <td className="px-4"><StatusBadge status={moto.status} /></td>
                       <td className="px-4 text-right"><div className="flex items-center justify-end gap-1"><Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Ver detalhes" onClick={(e) => { e.stopPropagation(); setMotorcycleDetails(moto) }}><Eye className="h-4 w-4" /></Button><Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Editar" onClick={(e) => { e.stopPropagation(); openEditMotorcycle(moto) }}><Edit2 className="h-4 w-4" /></Button><Button variant="danger" size="sm" className="h-8 w-8 p-0" title="Excluir" onClick={(e) => { e.stopPropagation(); setDeletingMotorcycle(moto) }}><Trash2 className="h-4 w-4" /></Button></div></td>
@@ -721,7 +715,7 @@ export default function MotorcyclesPage() {
           </div>
 
           {/* HISTÓRICO DE AQUISIÇÃO: Detalhes de quem a GoMoto comprou o veículo */}
-          <div className="border-t border-[#474747] pt-4 mt-2">
+          <div className="border-t border-[#323232] pt-4 mt-2">
             <h5 className="text-[14px] font-bold text-[#BAFF1A] mb-4">Informações da Compra</h5>
             <div className="grid grid-cols-2 gap-5">
               <Input
@@ -754,7 +748,7 @@ export default function MotorcyclesPage() {
           </div>
 
           {/* STATUS OPERACIONAL E USO ATUAL */}
-          <div className="grid grid-cols-2 gap-5 border-t border-[#474747] pt-4">
+          <div className="grid grid-cols-2 gap-5 border-t border-[#323232] pt-4">
             <Select
               label="Status Atual na Frota"
               options={statusOptions}
@@ -780,7 +774,7 @@ export default function MotorcyclesPage() {
           />
 
           {/* BOTÕES DE NAVEGAÇÃO DO MODAL */}
-          <div className="flex gap-4 justify-end pt-4 border-t border-[#474747]">
+          <div className="flex gap-4 justify-end pt-4 border-t border-[#323232]">
             <Button type="button" variant="ghost" onClick={closeModal}>
               CANCELAR
             </Button>
@@ -815,7 +809,7 @@ export default function MotorcyclesPage() {
             {/* LISTAGEM DOS ITENS DE MANUTENÇÃO PREVENTIVA */}
             <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
               {BOOTSTRAP_MAINTENANCE_ITEMS.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#474747]">
+                <div key={item.id} className="flex items-center gap-4 bg-[#282828] rounded-xl px-4 py-3 hover:bg-[#323232] transition-colors border border-transparent hover:border-[#323232]">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-[#f5f5f5]">{item.name}</p>
                     <p className="text-[12px] text-[#616161] font-medium">{item.hint}</p>
@@ -830,7 +824,7 @@ export default function MotorcyclesPage() {
                           placeholder="KM da Última Troca"
                           value={bootstrapItems[item.id] ?? ''}
                           onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          className="w-36 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#474747] text-right font-mono"
+                          className="w-36 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A] text-right font-mono"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-[#616161] font-bold">KM</span>
                       </div>
@@ -839,7 +833,7 @@ export default function MotorcyclesPage() {
                         type="date"
                         value={bootstrapItems[item.id] ?? ''}
                         onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                        className="w-44 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#323232] text-[13px] text-[#f5f5f5] focus:outline-none focus:border-[#474747]"
+                        className="w-44 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] focus:outline-none focus:border-[#BAFF1A]"
                       />
                     )}
                   </div>
@@ -858,7 +852,7 @@ export default function MotorcyclesPage() {
             )}
 
             {/* AÇÕES DE NAVEGAÇÃO DO WIZARD */}
-            <div className="flex gap-4 justify-between pt-4 border-t border-[#474747]">
+            <div className="flex gap-4 justify-between pt-4 border-t border-[#323232]">
               <Button variant="ghost" onClick={() => setStep(1)} className="px-6">
                 ← VOLTAR AOS DADOS
               </Button>
@@ -911,7 +905,7 @@ export default function MotorcyclesPage() {
         >
           <div className="space-y-8 p-1">
             {/* CABEÇALHO DO MODAL: Título e Status Principal */}
-            <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#474747]">
+            <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#323232]">
               <div>
                 <h3 className="text-[28px] font-bold text-[#f5f5f5]">
                   {motorcycleDetails.make} {motorcycleDetails.model}
@@ -935,7 +929,7 @@ export default function MotorcyclesPage() {
                         <User className="w-4 h-4 text-[#a880ff]" />
                         <span className="font-medium">{customerName}</span>
                       </div>
-                      <span className="text-[12px] font-bold text-[#BAFF1A]">{weeklyValue} / semana</span>
+                      <span className="text-[13px] font-medium text-[#BAFF1A]">{weeklyValue} / semana</span>
                     </div>
                   )
                 })()}
@@ -978,7 +972,7 @@ export default function MotorcyclesPage() {
 
             {/* SEÇÃO: HISTÓRICO DE PROPRIEDADE (Renderização Condicional) */}
             {(motorcycleDetails.previous_owner || motorcycleDetails.purchase_date || motorcycleDetails.fipe_value) && (
-              <div className="bg-[#282828] rounded-2xl p-6 border border-[#474747]">
+              <div className="bg-[#282828] rounded-xl p-6 border border-[#323232]">
                 <h5 className="text-[14px] font-bold text-[#BAFF1A] mb-6">Informações de Aquisição GoMoto</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                   {motorcycleDetails.previous_owner && (
@@ -1008,7 +1002,7 @@ export default function MotorcyclesPage() {
             {motorcycleDetails.observations && (
               <div className="space-y-3">
                 <h5 className="text-[14px] font-bold text-[#BAFF1A]">Notas do Veículo & Vistoria</h5>
-                <div className="bg-[#282828] rounded-xl p-5 border border-[#474747]">
+                <div className="bg-[#282828] rounded-xl p-5 border border-[#323232]">
                   <p className="text-[13px] text-[#9e9e9e] leading-relaxed italic">
                     "{motorcycleDetails.observations}"
                   </p>
@@ -1017,7 +1011,7 @@ export default function MotorcyclesPage() {
             )}
 
             {/* AÇÕES DE RODAPÉ DO MODAL */}
-            <div className="flex justify-end gap-4 pt-6 border-t border-[#474747]">
+            <div className="flex justify-end gap-4 pt-6 border-t border-[#323232]">
               <Button
                 variant="ghost"
                 onClick={() => setMotorcycleDetails(null)}
@@ -1070,7 +1064,7 @@ function DetailRow({
   
   return (
     <div className={fullWidth ? 'col-span-full' : ''}>
-      <p className="text-[14px] font-normal text-[#9e9e9e] mb-1.5">{label}</p>
+      <p className="text-[13px] font-normal text-[#9e9e9e] mb-1.5">{label}</p>
       <p
         className={`text-[13px] leading-tight ${mono ? 'font-mono tracking-tighter' : 'font-medium'} ${
           highlight ? 'text-[#BAFF1A]' : 'text-[#f5f5f5]'

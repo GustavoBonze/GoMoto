@@ -650,13 +650,13 @@ export default function MaintenancePage() {
    * @constant tabs
    * @description Array iterável desenhado a partir dos totais que rende as "Pílulas" superiores que o usuário clica.
    */
-  const tabs = [
+  const tabs = useMemo(() => [
     { value: 'all',       label: 'Todas',      count: withStatus.length },
     { value: 'overdue',   label: 'Vencidas',   count: totals.overdue },
     { value: 'upcoming',  label: 'Próximas',   count: totals.upcoming },
     { value: 'scheduled', label: 'Agendadas',  count: totals.scheduled },
     { value: 'completed', label: 'Realizadas', count: totals.completed },
-  ]
+  ], [withStatus.length, totals])
 
   /**
    * @constant motorcycleSelectOptions
@@ -972,50 +972,50 @@ export default function MaintenancePage() {
             Mostram de forma gritante e quantitativa a soma situacional global.
             Usam das extrações do memo totals. */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
-              <p className="text-[28px] font-bold text-[#ff9c9a]">{totals.overdue}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Vencidas</p>
+              <p className="text-2xl font-bold text-[#ff9c9a]">{totals.overdue}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <AlertTriangle className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Próximas</p>
-              <p className="text-[28px] font-bold text-[#e65e24]">{totals.upcoming}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Próximas</p>
+              <p className="text-2xl font-bold text-[#e65e24]">{totals.upcoming}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <Clock className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Agendadas</p>
-              <p className="text-[28px] font-bold text-[#a880ff]">{totals.scheduled}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Agendadas</p>
+              <p className="text-2xl font-bold text-[#a880ff]">{totals.scheduled}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <Wrench className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Realizadas mês</p>
-              <p className="text-[28px] font-bold text-[#229731]">{totals.completed}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Realizadas mês</p>
+              <p className="text-2xl font-bold text-[#229731]">{totals.completed}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <CheckCircle2 className="h-5 w-5 text-[#BAFF1A]" />
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
+          <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
             <div>
-              <p className="text-[14px] font-normal text-[#9e9e9e]">Custo do Mês</p>
-              <p className="text-[28px] font-bold text-[#f5f5f5]">{formatCurrency(totals.costThisMonth)}</p>
+              <p className="text-[13px] text-[#9e9e9e]">Custo do Mês</p>
+              <p className="text-2xl font-bold text-[#f5f5f5]">{formatCurrency(totals.costThisMonth)}</p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
               <DollarSign className="h-5 w-5 text-[#BAFF1A]" />
@@ -1033,7 +1033,7 @@ export default function MaintenancePage() {
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -1052,7 +1052,7 @@ export default function MaintenancePage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motorcycles.map((m) => (
@@ -1065,7 +1065,7 @@ export default function MaintenancePage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#474747] focus:outline-none"
+              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="all">Todos os tipos</option>
               <option value="preventive">Preventiva</option>
@@ -1080,7 +1080,7 @@ export default function MaintenancePage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-lg border-2 border-[#323232] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#474747] focus:outline-none w-44"
+                className="h-10 rounded-lg border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -1093,7 +1093,7 @@ export default function MaintenancePage() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#BAFF1A] border-t-transparent" />
           </div>
         ) : groupedByMoto.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-[#474747] bg-[#202020] p-16 text-center">
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#202020] p-16 text-center">
             <Wrench className="mb-4 h-12 w-12 text-[#474747]" />
             <p className="text-lg font-medium text-[#f5f5f5]">Nenhuma manutenção encontrada.</p>
             <p className="mt-1 text-[13px] text-[#9e9e9e]">Ajuste os filtros ou cadastre uma nova manutenção.</p>
@@ -1116,14 +1116,14 @@ export default function MaintenancePage() {
               const showHist   = historyMotos.has(motorcycle_id)
 
               return (
-                <div key={motorcycle_id} className="overflow-hidden rounded-2xl border border-[#474747] bg-[#202020]">
+                <div key={motorcycle_id} className="overflow-hidden rounded-xl bg-[#202020]">
 
                   {/* Cabeçalho Ativador (Chevron): Traz placa, modelo atualizado e contadores (bagdes) curtos de itens atrasados embutidos */}
                   <button
                     onClick={() => toggleMoto(motorcycle_id)}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#323232] transition-colors text-left"
                   >
-                    <ChevronDown className={`w-4 h-4 text-[#474747] shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <ChevronDown className={`w-4 h-4 text-[#9e9e9e] shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                       light === 'red' ? 'bg-[#ff3e3c]' : light === 'amber' ? 'bg-[#e65e24]' : 'bg-[#28b438]'
                     }`} />
@@ -1153,37 +1153,37 @@ export default function MaintenancePage() {
 
                   {/* Miolo do bloco sanfona que renderiza as tabelas quando ele está solto (not collapsed) */}
                   {isExpanded && (
-                    <div className="border-t border-[#474747]">
+                    <div className="border-t border-[#323232]">
 
                       {/* AREA 1: ITENS PENDENTES — Monta a tr de predição do odômetro. Se tiver em "Atrasada", "Proxima", ela cai aqui no loop da Moto */}
                       {pending.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-[13px] text-[#f5f5f5]">
-                            <thead className="bg-[#323232] text-[#c7c7c7]">
+                            <thead className="bg-[#323232]">
                               <tr>
-                                <th className="h-9 px-4 font-bold">Item</th>
-                                <th className="h-9 px-4 font-bold">Previsão</th>
-                                <th className="h-9 px-4 font-bold">Situação</th>
-                                <th className="h-9 px-4 font-bold">Status</th>
-                                <th className="h-9 px-4 text-right font-bold">Ações</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Item</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Previsão</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Situação</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Status</th>
+                                <th className="h-9 px-4 text-right text-[#9e9e9e] text-[13px] font-medium uppercase">Ações</th>
                               </tr>
                             </thead>
                             <tbody>
                               {pending.map((item) => (
-                                <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747]">
+                                <tr key={item.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232]">
                                   <td className="px-4">
-                                    <p className="font-medium text-[#f5f5f5]">{item.description}</p>
+                                    <p className="font-medium text-[#f5f5f5] text-[13px]">{item.description}</p>
                                     <StatusBadge status={item.type} />
                                   </td>
                                   <td className="px-4">
                                     {item.predicted_km != null ? (
                                       <div>
-                                        <p className="text-[#f5f5f5]">{fmtKm(item.predicted_km)}</p>
+                                        <p className="text-[#f5f5f5] text-[13px]">{fmtKm(item.predicted_km)}</p>
                                         <p className="text-[13px] text-[#616161]">Atual: {fmtKm(moto?.km_current ?? 0)}</p>
                                       </div>
                                     ) : item.scheduled_date ? (
-                                      <p className="text-[#f5f5f5]">{formatDate(item.scheduled_date + 'T12:00:00')}</p>
-                                    ) : <span className="text-[#9e9e9e]">—</span>}
+                                      <p className="text-[#f5f5f5] text-[13px]">{formatDate(item.scheduled_date + 'T12:00:00')}</p>
+                                    ) : <span className="text-[#9e9e9e] text-[13px]">—</span>}
                                   </td>
                                   <td className="px-4"><SituacaoCell m={item} /></td>
                                   <td className="px-4"><BadgeStatus status={item._status!} /></td>
@@ -1216,20 +1216,20 @@ export default function MaintenancePage() {
                           <table className="w-full text-left text-[13px]">
                             <tbody>
                               {completed.map((item) => (
-                                <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-80">
+                                <tr key={item.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232] opacity-80">
                                   <td className="px-4 w-64">
-                                    <p className="text-[#f5f5f5]">{item.description}</p>
+                                    <p className="text-[#f5f5f5] text-[13px]">{item.description}</p>
                                     <StatusBadge status={item.type} />
                                   </td>
-                                  <td className="px-4 text-[#9e9e9e]">
+                                  <td className="px-4 text-[#9e9e9e] text-[13px]">
                                     {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
                                     {item.completed_date && <p className="text-[13px]">{formatDate(item.completed_date + 'T12:00:00')}</p>}
                                   </td>
                                   <td className="px-4 text-[13px] text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                   <td className="px-4">
                                     <div className="flex gap-1">
-                                      <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
-                                      <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
+                                      <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
+                                      <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
                                     </div>
                                   </td>
                                   <td className="px-4 text-right">
@@ -1247,12 +1247,12 @@ export default function MaintenancePage() {
 
                       {/* AREA 3: HISTÓRICO COLAPSÁVEL — Condição onde a view normal é mista, mas exibe-se um botão que baixa uma gaveta extra exibindo o passivo da moto. */}
                       {!showDirectCompleted && completed.length > 0 && (
-                        <div className={pending.length > 0 ? 'border-t border-[#474747]' : ''}>
+                        <div className={pending.length > 0 ? 'border-t border-[#323232]' : ''}>
                           <button
                             onClick={() => toggleHistory(motorcycle_id)}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-[13px] text-[#616161] hover:text-[#9e9e9e] transition-colors"
+                            className="w-full flex items-center gap-2 px-4 py-2 text-[13px] text-[#9e9e9e] hover:text-[#f5f5f5] transition-colors"
                           >
-                            <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${showHist ? '' : '-rotate-90'}`} />
+                            <ChevronDown className={`w-3 h-3 transition-transform ${showHist ? '' : '-rotate-90'}`} />
                             {showHist
                               ? 'Ocultar histórico'
                               : `Ver histórico (${completed.length} realizada${completed.length > 1 ? 's' : ''})`}
@@ -1264,20 +1264,20 @@ export default function MaintenancePage() {
                                 <tbody>
                                   {/* Limitamos histórico colapsado com "slice" pra não afogar interface */}
                                   {completed.slice(0, 5).map((item) => (
-                                    <tr key={item.id} className="h-9 transition-colors odd:bg-transparent even:bg-[#323232] hover:bg-[#474747] opacity-70">
+                                    <tr key={item.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232] opacity-70">
                                       <td className="px-4 w-64">
-                                        <p className="text-[#c7c7c7]">{item.description}</p>
+                                        <p className="text-[#f5f5f5] text-[13px]">{item.description}</p>
                                         <StatusBadge status={item.type} />
                                       </td>
-                                      <td className="px-4 text-[#9e9e9e]">
+                                      <td className="px-4 text-[#9e9e9e] text-[13px]">
                                         {item.actual_km ? <p>{fmtKm(item.actual_km)}</p> : null}
                                         {item.completed_date && <p className="text-[13px]">{formatDate(item.completed_date + 'T12:00:00')}</p>}
                                       </td>
                                       <td className="px-4 text-[13px] text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                       <td className="px-4">
                                         <div className="flex gap-1">
-                                          <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
-                                          <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#474747]'}`} />
+                                          <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
+                                          <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
                                         </div>
                                       </td>
                                       <td className="px-4 text-right">
@@ -1318,8 +1318,8 @@ export default function MaintenancePage() {
               options={motorcycleSelectOptions}
             />
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[#c7c7c7]">Tipo</label>
-              <div className="flex h-12 items-center rounded-lg border border-[#323232] bg-[#323232] px-3 text-[13px] text-[#9e9e9e] cursor-not-allowed">
+              <label className="mb-1.5 block text-[13px] font-medium text-[#9e9e9e]">Tipo</label>
+              <div className="flex h-10 items-center rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#616161] cursor-not-allowed">
                 {editingMaintenance ? TYPE_LABEL_MAP[formData.type] || formData.type : 'Corretiva'}
               </div>
             </div>
@@ -1349,7 +1349,7 @@ export default function MaintenancePage() {
             />
             Marcar como concluída
           </label>
-          <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
+          <div className="flex justify-end gap-3 border-t border-[#323232] pt-4">
             <Button variant="secondary" onClick={closeFormModal}>Cancelar</Button>
             <Button variant="primary" onClick={handleSave} loading={saving}>Salvar</Button>
           </div>
@@ -1367,7 +1367,7 @@ export default function MaintenancePage() {
           <div className="space-y-4">
 
             {/* Quadro superior exibe metadados de leitura rápida sobre a ação sendo despachada */}
-            <div className="rounded-xl border border-[#474747] bg-[#121212] px-4 py-3 space-y-1">
+            <div className="rounded-xl bg-[#121212] px-4 py-3 space-y-1">
               <p className="text-[13px] font-medium text-[#f5f5f5]">{completingMaintenance.description}</p>
               <p className="text-[13px] text-[#9e9e9e]">
                 {completingMaintenance.motorcycles
@@ -1398,7 +1398,7 @@ export default function MaintenancePage() {
                 {(() => {
                   if (!completionKm) {
                     return (
-                      <div className="flex items-center gap-2 rounded-xl border border-[#474747] bg-[#202020] px-4 py-2 text-[#9e9e9e]">
+                      <div className="flex items-center gap-2 rounded-xl bg-[#202020] px-4 py-2 text-[#9e9e9e]">
                         <Info className="h-4 w-4 shrink-0" />
                         <span className="text-[13px]">Preencha o KM acima para ver a estimativa da próxima manutenção.</span>
                       </div>
@@ -1534,7 +1534,7 @@ export default function MaintenancePage() {
                   )
                 })()}
 
-                <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
+                <div className="flex justify-end gap-3 border-t border-[#323232] pt-4">
                   <Button variant="secondary" onClick={closeCompleteModal}>Cancelar</Button>
                   {/* Botão de Avanço, compila a matriz de finanças inicial antes de renderizar a Tela 2 */}
                   <Button
@@ -1570,7 +1570,7 @@ export default function MaintenancePage() {
 
                 <div className="space-y-3">
                   {completionFinancials.map((fin, idx) => (
-                    <div key={fin.id} className="rounded-xl border border-[#474747] bg-[#121212] p-4 space-y-3">
+                    <div key={fin.id} className="rounded-xl bg-[#121212] p-4 space-y-3">
                       <p className="text-[13px] font-medium text-[#f5f5f5]">{fin.description}</p>
 
                       {/* Toggle de Responsabilidade e Custos (Split, Company, Customer) */}
@@ -1631,7 +1631,7 @@ export default function MaintenancePage() {
                       </div>
 
                       {fin.cost && parseFloat(fin.cost) > 0 && (
-                        <p className="text-[13px] text-[#9e9e9e] border-t border-[#474747] pt-2">
+                        <p className="text-[13px] text-[#9e9e9e] border-t border-[#323232] pt-2">
                           {fin.responsibility === 'company' && `→ Despesas da empresa: ${formatCurrency(parseFloat(fin.cost))}`}
                           {fin.responsibility === 'customer' && `→ Pago pelo cliente: ${formatCurrency(parseFloat(fin.cost))}`}
                           {fin.responsibility === 'split' && `→ Empresa: ${formatCurrency(parseFloat(fin.cost) / 2)} / Cliente: ${formatCurrency(parseFloat(fin.cost) / 2)}`}
@@ -1654,21 +1654,21 @@ export default function MaintenancePage() {
                   const hasSplit = completionFinancials.some((f) => f.responsibility === 'split')
 
                   return (
-                    <div className="rounded-xl border border-[#474747] bg-[#202020] px-4 py-3 space-y-2">
-                      <p className="text-[14px] font-normal text-[#9e9e9e]">Resumo Financeiro</p>
+                    <div className="rounded-xl bg-[#202020] p-4 space-y-2">
+                      <p className="text-[13px] text-[#9e9e9e]">Resumo Financeiro</p>
                       <div className="flex justify-between text-[13px]">
                         <span className="text-[#f5f5f5]">Despesa da empresa</span>
-                        <span className="font-bold text-[#229731]">{formatCurrency(totalEmpresa)}</span>
+                        <span className="font-medium text-[#229731]">{formatCurrency(totalEmpresa)}</span>
                       </div>
                       {totalCliente > 0 && (
                         <div className="flex justify-between text-[13px]">
                           <span className="text-[#f5f5f5]">Pago pelo cliente</span>
-                          <span className="font-bold text-[#ff9c9a]">{formatCurrency(totalCliente)}</span>
+                          <span className="font-medium text-[#ff9c9a]">{formatCurrency(totalCliente)}</span>
                         </div>
                       )}
                       {/* Checkbox de responsabilidade exigindo o ciente que isso afeta o boleto mensal de aluguel ou compra de quem detém a moto. */}
                       {hasSplit && activeContract && totalCliente > 0 && (
-                        <label className="flex items-start gap-2 cursor-pointer mt-2 pt-2 border-t border-[#474747]">
+                        <label className="flex items-start gap-2 cursor-pointer mt-2 pt-2 border-t border-[#323232]">
                           <input
                             type="checkbox"
                             checked={discountConfirmed}
@@ -1685,7 +1685,7 @@ export default function MaintenancePage() {
                   )
                 })()}
 
-                <div className="flex justify-between gap-3 border-t border-[#474747] pt-4">
+                <div className="flex justify-between gap-3 border-t border-[#323232] pt-4">
                   <Button variant="secondary" onClick={() => setCompletionStep(1)}>← Voltar</Button>
                   <div className="flex gap-3">
                     <Button variant="secondary" onClick={closeCompleteModal}>Cancelar</Button>
@@ -1727,7 +1727,7 @@ export default function MaintenancePage() {
             onChange={(e) => setKmForm({ ...kmForm, km_current: e.target.value })}
             placeholder="Ex: 16500"
           />
-          <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
+          <div className="flex justify-end gap-3 border-t border-[#323232] pt-4">
             <Button variant="secondary" onClick={() => setIsKmModalOpen(false)}>Cancelar</Button>
             <Button variant="primary" onClick={handleUpdateKm} disabled={!kmForm.motorcycle_id || !kmForm.km_current}>
               <Gauge className="w-4 h-4" />
@@ -1740,8 +1740,8 @@ export default function MaintenancePage() {
       {/* MODAL 4: CONFIRMAÇÃO DE DELEÇÃO — Impede cliques acidentais de destruirem histórico da base. */}
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Confirmar Exclusão" size="sm">
         <div className="space-y-4">
-          <p className="text-[#c7c7c7]">Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.</p>
-          <div className="flex justify-end gap-3 border-t border-[#474747] pt-4">
+          <p className="text-[13px] text-[#f5f5f5]">Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.</p>
+          <div className="flex justify-end gap-3 border-t border-[#323232] pt-4">
             <Button variant="secondary" onClick={closeDeleteModal}>Cancelar</Button>
             <Button variant="danger" onClick={handleDelete}>Excluir</Button>
           </div>

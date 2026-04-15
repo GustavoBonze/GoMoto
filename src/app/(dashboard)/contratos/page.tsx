@@ -12,7 +12,7 @@
 
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Upload,
   Download,
@@ -92,8 +92,8 @@ export default function ModelosContratoPage() {
   // Slug do modelo selecionado para upload; usado para associar o arquivo escolhido no input hidden ao modelo correto
   const [activeSlug, setActiveSlug] = useState<string | null>(null)
 
-  // Instancia do cliente Supabase para uso no browser (client-side)
-  const supabase = createClient()
+  // Instancia do cliente Supabase estabilizada com useMemo para evitar recriação a cada render
+  const supabase = useMemo(() => createClient(), [])
   // Referencia ao input[type=file] oculto; acionado programaticamente via handleTriggerUpload para abrir o seletor de arquivos nativo
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -105,27 +105,26 @@ export default function ModelosContratoPage() {
    * quando existem. Erros de rede sao silenciados via console.error para nao
    * bloquear a interface do usuario.
    */
-  async function fetchTemplates() {
+  const fetchTemplates = useCallback(async () => {
     try {
       const { data, error: fetchError } = await supabase.from('contract_templates').select('*')
       if (!fetchError && data && data.length > 0) {
-        const merged = templates.map(t => {
-          const dbTemplate = data.find(d => d.slug === t.slug)
+        // Use functional updater to avoid closing over stale `templates` state
+        setTemplates(prev => prev.map(t => {
+          const dbTemplate = data.find((d: { slug: string }) => d.slug === t.slug)
           return dbTemplate ? { ...t, ...dbTemplate } : t
-        })
-        setTemplates(merged)
+        }))
         setError(null)
       }
     } catch (e) {
       console.error(e)
     }
-  }
+  }, [supabase])
 
   // Executa fetchTemplates apenas na montagem do componente para carregar os dados iniciais do banco
   useEffect(() => {
     fetchTemplates()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fetchTemplates])
 
   /**
    * Armazena o slug do modelo selecionado e aciona programaticamente o input
@@ -133,10 +132,10 @@ export default function ModelosContratoPage() {
    * nativo do sistema operacional sem expor o elemento na UI.
    * @param slug - Identificador unico do modelo que receberá o novo arquivo
    */
-  const handleTriggerUpload = (slug: string) => {
+  const handleTriggerUpload = useCallback((slug: string) => {
     setActiveSlug(slug)
     fileInputRef.current?.click()
-  }
+  }, [])
 
   /**
    * Processa o arquivo selecionado pelo usuario e realiza o upload para o Supabase Storage,
@@ -216,7 +215,7 @@ export default function ModelosContratoPage() {
 
   return (
     <div className="h-screen bg-[#121212] flex flex-col overflow-hidden select-none">
-      <header className="h-20 border-b border-[#474747] flex items-center justify-between px-6 shrink-0 bg-[#121212]">
+      <header className="h-20 border-b border-[#323232] flex items-center justify-between px-6 shrink-0 bg-[#121212]">
         <h1 className="text-[28px] font-bold text-[#f5f5f5]">Modelos de Contrato</h1>
         <div className="flex items-center gap-3">
           {(error || success) && (
@@ -233,19 +232,19 @@ export default function ModelosContratoPage() {
 
         <section className="grid grid-rows-2 gap-4 shrink-0">
           {templates.map((template) => (
-            <div key={template.slug} className="bg-[#202020] rounded-2xl p-5 border border-[#474747] flex items-center justify-between h-[120px] transition-all hover:border-[#616161]">
+            <div key={template.slug} className="bg-[#202020] rounded-xl p-4 flex items-center justify-between h-[120px] transition-all hover:bg-[#262626]">
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#323232]">
                   <FileEdit className="h-5 w-5 text-[#BAFF1A]" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-[20px] font-bold text-[#f5f5f5] truncate">{template.name}</h3>
-                  <p className="text-[14px] text-[#9e9e9e] leading-tight">{template.description}</p>
+                  <h3 className="text-[18px] font-semibold text-[#f5f5f5] truncate">{template.name}</h3>
+                  <p className="text-[13px] text-[#9e9e9e] leading-tight">{template.description}</p>
                 </div>
               </div>
 
               <div className="px-8 border-x border-[#323232] mx-8 flex flex-col items-center shrink-0 w-64">
-                <p className="text-[12px] text-[#9e9e9e] font-normal mb-1">Arquivo Atual</p>
+                <p className="text-[13px] text-[#9e9e9e] mb-1">Arquivo Atual</p>
                 {template.file_url ? (
                   <div className="flex items-center gap-2 text-[#229731] font-mono text-[13px] font-medium">
                     <CheckCircle className="w-4 h-4" />
@@ -277,18 +276,18 @@ export default function ModelosContratoPage() {
           ))}
         </section>
 
-        <section className="bg-[#202020] rounded-2xl p-6 border border-[#474747] flex-1 min-h-0 flex flex-col">
-          <header className="flex items-center gap-3 border-b border-[#474747] pb-3 mb-4 shrink-0">
+        <section className="bg-[#202020] rounded-xl p-4 flex-1 min-h-0 flex flex-col">
+          <header className="flex items-center gap-3 border-b border-[#323232] pb-3 mb-4 shrink-0">
             <Info className="w-5 h-5 text-[#BAFF1A]" />
-            <h3 className="text-[20px] font-bold text-[#f5f5f5]">Variaveis Dinamicas</h3>
-            <span className="text-[14px] text-[#9e9e9e] ml-4 font-normal">Tags para preenchimento automatico no Word.</span>
+            <h3 className="text-[18px] font-semibold text-[#f5f5f5]">Variaveis Dinamicas</h3>
+            <span className="text-[13px] text-[#9e9e9e] ml-4">Tags para preenchimento automatico no Word.</span>
           </header>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 overflow-y-auto pr-2 custom-scrollbar">
             {SUPPORTED_VARIABLES.map((v) => (
-              <div key={v.tag} className="bg-[#121212] rounded-xl p-4 border border-[#323232] flex items-center justify-between hover:border-[#BAFF1A] transition-all duration-150 group">
-                <code className="text-[#BAFF1A] font-mono text-[16px] font-bold">{v.tag}</code>
-                <span className="text-[13px] text-[#9e9e9e] group-hover:text-[#c7c7c7]">{v.desc}</span>
+              <div key={v.tag} className="bg-[#121212] rounded-lg p-3 border border-[#323232] flex items-center justify-between hover:border-[#BAFF1A] transition-all duration-150 group">
+                <code className="text-[#BAFF1A] font-mono text-[14px] font-bold">{v.tag}</code>
+                <span className="text-[13px] text-[#9e9e9e] group-hover:text-[#f5f5f5]">{v.desc}</span>
               </div>
             ))}
           </div>
