@@ -383,7 +383,7 @@ export default function MotorcycleMap({
 
   // ── RENDERIZAÇÃO ─────────────────────────────────────────────────────────
   return (
-    <div className="relative w-full h-full">
+    <div className="relative isolate w-full h-full">
 
       {/* Elemento DOM onde o Leaflet injeta o mapa — gerenciado pelo ref, não pelo React */}
       <div ref={mapRef} className="w-full h-full" />
