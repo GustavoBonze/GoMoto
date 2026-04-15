@@ -148,7 +148,7 @@ export default function EntradasPage() {
 
       setIncomes((incomesResult.data as Income[]) || []);
       setMotos((motosResult.data as Moto[]) || []);
-    } catch (error) {
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -351,7 +351,7 @@ export default function EntradasPage() {
 
       handleCloseModal();
       fetchData();
-    } catch (error) {
+    } catch {
       alert('Erro ao salvar os dados. Verifique e tente novamente.');
     } finally {
       setSaving(false);
@@ -366,7 +366,7 @@ export default function EntradasPage() {
       if (error) throw error;
       handleCloseDeleteModal();
       fetchData();
-    } catch (error) {
+    } catch {
       alert('Erro ao excluir a entrada.');
     } finally {
       setDeleting(false);

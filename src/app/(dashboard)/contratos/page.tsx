@@ -124,6 +124,7 @@ export default function ModelosContratoPage() {
   // Executa fetchTemplates apenas na montagem do componente para carregar os dados iniciais do banco
   useEffect(() => {
     fetchTemplates()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /**

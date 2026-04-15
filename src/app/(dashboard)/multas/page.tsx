@@ -386,7 +386,7 @@ export default function MultasPage() {
       setCustomers(customersRes.data ?? [])
       setMotorcycles(motosRes.data ?? [])
       setContracts(contractsRes.data ?? [])
-    } catch (err) {
+    } catch {
       setError('Não foi possível carregar os dados. Tente novamente.')
     } finally {
       // Sempre desativa o loading, mesmo em caso de erro
@@ -507,7 +507,7 @@ export default function MultasPage() {
 
       handleCloseModal()
       await fetchAllData()  // Recarrega para refletir as mudanças
-    } catch (err) {
+    } catch {
       setError('Erro ao salvar. Verifique os dados e tente novamente.')
     } finally {
       setSaving(false)
@@ -541,7 +541,7 @@ export default function MultasPage() {
       setPayingFine(null)
       setPaymentDateInput('')
       await fetchAllData()
-    } catch (err) {
+    } catch {
     } finally {
       setSaving(false)
     }
@@ -561,7 +561,7 @@ export default function MultasPage() {
 
       setDeleting(null)
       await fetchAllData()
-    } catch (err) {
+    } catch {
     } finally {
       setSaving(false)
     }

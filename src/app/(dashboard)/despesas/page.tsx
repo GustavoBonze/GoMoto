@@ -488,10 +488,10 @@ export default function ExpensesPage() {
 
     if (editing) {
       // Modo edição: atualiza apenas a linha com o ID da despesa em edição
-      const { error } = await supabase.from('expenses').update(payload).eq('id', editing.id)
+      await supabase.from('expenses').update(payload).eq('id', editing.id)
     } else {
       // Modo criação: insere nova linha na tabela expenses
-      const { error } = await supabase.from('expenses').insert(payload)
+      await supabase.from('expenses').insert(payload)
     }
 
     setSaving(false)
@@ -513,7 +513,7 @@ export default function ExpensesPage() {
     if (!deleting) return
 
     setSaving(true)
-    const { error } = await supabase.from('expenses').delete().eq('id', deleting.id)
+    await supabase.from('expenses').delete().eq('id', deleting.id)
 
     setSaving(false)
     setDeleting(null)    // fecha o modal de confirmação

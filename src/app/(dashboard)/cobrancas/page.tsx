@@ -161,7 +161,7 @@ export default function CobrancasPage() {
       ])
       setClientes(clientesData ?? [])
       setContratos((contratosData as unknown as ContratoOption[]) ?? [])
-    } catch (err) {
+    } catch {
     }
   }, [])
 

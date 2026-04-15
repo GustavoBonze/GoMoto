@@ -83,7 +83,7 @@ interface StatCardProps {
  * @description Componente especializado para dashboards que exibe uma métrica (KPI) com um ícone estilizado.
  * Segue o padrão do design system Bonze: texto à esquerda, ícone à direita.
  */
-export function StatCard({ title, value, subtitle, icon: Icon, color = 'brand', className }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon: Icon, className }: StatCardProps) {
   return (
     <div className={cn('flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4', className)}>
       {/* Seção de textos: Label, Valor principal e Sub (opcional). */}

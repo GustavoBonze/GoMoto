@@ -744,7 +744,7 @@ export default function MaintenancePage() {
       }
       closeFormModal()
       fetchMaintenances()
-    } catch (err) {
+    } catch {
     } finally {
       setSaving(false)
     }
@@ -891,7 +891,7 @@ export default function MaintenancePage() {
 
       closeCompleteModal()
       await Promise.all([fetchMaintenances(), fetchMotorcycles()])
-    } catch (err) {
+    } catch {
     } finally {
       setCompleting(false)
     }

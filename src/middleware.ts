@@ -9,6 +9,19 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// In-memory rate limiter for login attempts (per IP, sliding window)
+const loginAttempts = new Map<string, number[]>()
+const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const attempts = (loginAttempts.get(ip) ?? []).filter(t => now - t < RATE_LIMIT_WINDOW_MS)
+  attempts.push(now)
+  loginAttempts.set(ip, attempts)
+  return attempts.length > RATE_LIMIT_MAX
+}
+
 /**
  * @constant SUPABASE_URL
  * @description URL de API do projeto Supabase, recuperada das variáveis de ambiente.
@@ -42,6 +55,18 @@ const isSupabaseConfigured =
  * @returns {NextResponse} Resposta modificada (redirecionamento ou continuação).
  */
 export async function middleware(request: NextRequest) {
+  // Rate limit POST requests to /login
+  if (request.method === 'POST' && request.nextUrl.pathname === '/login') {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      ?? request.headers.get('x-real-ip')
+      ?? 'unknown'
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
+        { status: 429 }
+      )
+    }
+  }
   /**
    * Se o Supabase não estiver configurado no .env, o middleware libera o acesso total.
    * Isso facilita o desenvolvimento inicial e testes de UI sem necessidade de banco de dados.
@@ -75,7 +100,7 @@ export async function middleware(request: NextRequest) {
        */
       setAll(cookiesToSet) {
         // Atualiza a requisição com os cookies renovados
-        cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         // Cria nova resposta e aplica os cookies com as opções completas
         supabaseResponse = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>

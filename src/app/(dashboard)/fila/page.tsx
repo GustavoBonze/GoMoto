@@ -627,7 +627,7 @@ export default function QueuePage() {
     try {
       // Executa ambas as queries em paralelo para minimizar o tempo de carregamento
       await Promise.all([fetchQueue(), fetchMotosCount()])
-    } catch (error) {
+    } catch {
     } finally {
       // Garante que o loading seja desativado mesmo se uma das queries falhar
       setLoading(false)
@@ -786,7 +786,7 @@ export default function QueuePage() {
       setIsAddModalOpen(false)
       resetAddForm()
       await fetchQueue()
-    } catch (error) {
+    } catch {
       alert('Ocorreu um erro ao adicionar à fila. Verifique os dados e tente novamente.')
     } finally {
       setSaving(false)
@@ -832,7 +832,7 @@ export default function QueuePage() {
       setIsRemoveModalOpen(false)
       setSelectedEntry(null)
       await fetchQueue()
-    } catch (error) {
+    } catch {
     } finally {
       setSaving(false)
     }
@@ -909,7 +909,7 @@ export default function QueuePage() {
 
       setIsMoveModalOpen(false)
       await fetchQueue()
-    } catch (error) {
+    } catch {
       alert('Erro ao mover candidato na fila.')
     } finally {
       setSaving(false)
@@ -1044,7 +1044,7 @@ export default function QueuePage() {
 
       setIsEditModalOpen(false)
       await fetchQueue()
-    } catch (error) {
+    } catch {
       alert('Erro ao salvar. Verifique os dados e tente novamente.')
     } finally {
       setEditSaving(false)
@@ -1189,7 +1189,7 @@ export default function QueuePage() {
       setIsContractModalOpen(false)
       // Recarrega tanto a fila quanto a contagem de motos (pois uma moto saiu do disponível)
       loadData()
-    } catch (error) {
+    } catch {
       alert('Ocorreu um erro ao fechar o contrato. Tente novamente.')
     } finally {
       setContractSaving(false)

@@ -48,7 +48,6 @@ video-promo/
 
 # arquivos de auditoria temporários
 audit.mjs
-audit.ts
 
 # mapeamento InfinitePay — artefatos temporários de pesquisa
 .playwright-mcp/

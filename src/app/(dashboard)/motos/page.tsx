@@ -481,7 +481,7 @@ export default function MotorcyclesPage() {
 
         if (maintenanceError) {
         }
-      } catch (err) {
+      } catch {
       }
     }
 
