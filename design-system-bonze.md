@@ -666,35 +666,237 @@ Content max-width: none (full width)
 
 ## 12. SIDEBAR
 
+> Confirmado via CSS real extraído do app.infinitepay.io/home em 2026-04-14.
+> Implementado e validado via Playwright em 2026-04-15.
+> Implementado em `src/components/layout/Sidebar.tsx` — NÃO recriar, apenas atualizar.
+
+### 12.1 Container principal
+
+| Propriedade | Valor real | Classe Tailwind |
+|-------------|-----------|-----------------|
+| Position | `fixed` | `fixed inset-y-0 left-0` |
+| Largura colapsada | `85px` | `w-[85px]` |
+| Largura expandida (hover) | `280px` | `hover:w-[280px]` |
+| Altura | `100vh` | `h-screen` |
+| Background | `#121212` | `bg-[#121212]` |
+| Borda direita | `1px solid #323232` | `border-r border-[#323232]` |
+| z-index | `50` | `z-50` |
+| Transição | `0.3s cubic-bezier(0.4,0,0.2,1)` | `transition-all duration-300 ease-in-out` |
+| Overflow | `hidden` | `overflow-hidden` |
+| Flex | coluna | `flex flex-col` |
+
+**Mecanismo de expansão:** puramente via hover (`group` + `group-hover:`). **Sem botão toggle.**
+O elemento raiz recebe a classe `group`. Todos os filhos usam `group-hover:` para reagir.
+
+**Offset do conteúdo principal:** `pl-[85px]` (não 78px, não 80px — é 85px).
+
 ```tsx
-// Fixed sidebar (implemented in Sidebar.tsx — DO NOT recreate)
-// Width collapsed: 80px | Width expanded (hover): 260px
-// bg: #202020
-// Main content offset: pl-[78px]
-
-// Nav link ACTIVE   → bg-[#baff1a] text-[#000000] h-9 rounded-lg px-4 text-[14px] font-medium
-// Nav link INACTIVE → text-[#c7c7c7] h-10 rounded-lg px-4 text-[14px] font-normal hover:bg-[#323232] hover:text-[#f5f5f5]
-// Nav link HOVER    → bg-[#323232] text-[#f5f5f5] rounded-lg
-// Logo/account btn  → h-[64px] rounded-lg px-2 text-[16px]
-// "Seu banco" label → h-9 px-4 text-[14px] font-normal text-[#c7c7c7] rounded-lg (collapsed label)
+<aside className="group fixed inset-y-0 left-0 z-50 flex flex-col h-screen
+                  w-[85px] hover:w-[280px]
+                  bg-[#121212] border-r border-[#323232]
+                  overflow-hidden transition-all duration-300 ease-in-out">
+  {/* ... conteúdo ... */}
+</aside>
 ```
 
-GoMoto sidebar items:
+---
+
+### 12.2 Técnica de ocultação do label — CSS Grid Trick (OBRIGATÓRIO)
+
+**NUNCA usar `overflow-x-clip` no wrapper para esconder o texto.** Isso gera corte abrupto e transição horrível.
+
+O label de cada item usa **double-span com CSS Grid** para animar suavemente de largura 0 → auto:
+
+```tsx
+{/* Span externo: controla a largura via grid-template-columns */}
+<span className="inline-grid [grid-template-columns:0fr] group-hover:[grid-template-columns:1fr]
+                 transition-[grid-template-columns,opacity,transform] duration-300 ease-in-out
+                 opacity-0 -translate-x-2
+                 group-hover:opacity-100 group-hover:translate-x-0
+                 overflow-hidden">
+  {/* Span interno: mantém o texto em linha única */}
+  <span className="whitespace-nowrap overflow-hidden">Label aqui</span>
+</span>
 ```
-Dashboard → /dashboard
-Motos → /motos
-Clientes → /clientes
-Contratos → /contratos
-Cobranças → /cobrancas
-Entradas → /entradas
-Despesas → /despesas
-Multas → /multas
-Manutenção → /manutencao
-Fila → /fila
-Relatórios → /relatorios
-Processos → /processos
-Configurações → /configuracoes
+
+| Estado | grid-template-columns | opacity | transform |
+|--------|-----------------------|---------|-----------|
+| Colapsado | `0fr` (largura = 0) | `0` | `translateX(-8px)` |
+| Expandido (hover) | `1fr` (largura natural) | `1` | `translateX(0)` |
+
+**Por que funciona:** `grid-template-columns: 0fr` força o conteúdo a 0px de largura sem `display:none`, permitindo a animação CSS. O span interno com `whitespace-nowrap` garante que o texto não quebre linha durante a transição.
+
+**Variável reutilizável recomendada:**
+```tsx
+const labelClassName =
+  'inline-grid [grid-template-columns:0fr] group-hover:[grid-template-columns:1fr] ' +
+  'transition-[grid-template-columns,opacity,transform] duration-300 ease-in-out ' +
+  'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 overflow-hidden'
 ```
+
+---
+
+### 12.3 Header (área do logo)
+
+```tsx
+<div className="pt-6 px-5 pb-2 flex items-center w-[85px] group-hover:w-full
+                overflow-hidden transition-all duration-300 ease-in-out">
+  <Link href="/dashboard" className="flex items-center gap-3 outline-none rounded-lg">
+    <div className="w-10 h-10 flex-shrink-0 bg-[#BAFF1A] rounded-lg flex items-center justify-center">
+      <Bike className="w-6 h-6 text-[#121212]" />
+    </div>
+    <span className={labelClassName}>
+      <span className="whitespace-nowrap overflow-hidden text-[#f5f5f5] text-[16px] font-bold">
+        GoMoto
+      </span>
+    </span>
+  </Link>
+</div>
+```
+
+---
+
+### 12.4 Área de navegação (nav scroll)
+
+```tsx
+<nav className="flex flex-1 flex-col min-h-0 overflow-hidden group-hover:overflow-y-auto pb-4">
+  {/* Nav items aqui */}
+</nav>
+```
+
+---
+
+### 12.5 Wrapper de cada item de nav
+
+```tsx
+<div className="px-4 mb-1">
+  {/* Link aqui — SEM overflow-x-clip, SEM w-[85px] no wrapper */}
+</div>
+```
+
+---
+
+### 12.6 Nav link — ATIVO
+
+```tsx
+<Link
+  href="/dashboard"
+  className="flex items-center gap-2 px-4 h-10 w-full
+             bg-[#BAFF1A] text-[#000000]
+             rounded-lg text-[14px] font-medium
+             transition-all duration-300"
+>
+  <Icon className="w-5 h-5 flex-shrink-0" />
+  <span className={labelClassName}>
+    <span className="whitespace-nowrap overflow-hidden">Dashboard</span>
+  </span>
+</Link>
+```
+
+| Propriedade | Valor |
+|-------------|-------|
+| Background | `#BAFF1A` |
+| Cor do texto | `#000000` (preto) |
+| Altura | `40px` (h-10) |
+| Border radius | `8px` (rounded-lg) |
+| Font size | `14px` |
+| Font weight | `500` (medium) |
+| Gap ícone→texto | `8px` (gap-2) |
+| Ícone | `w-5 h-5 flex-shrink-0` |
+
+---
+
+### 12.7 Nav link — INATIVO
+
+```tsx
+<Link
+  href="/motos"
+  className="flex items-center gap-2 px-4 h-10 w-full
+             text-[#c7c7c7]
+             rounded-lg text-[14px] font-normal
+             hover:bg-[#323232] hover:text-[#f5f5f5]
+             transition-all duration-300"
+>
+  <Icon className="w-5 h-5 flex-shrink-0" />
+  <span className={labelClassName}>
+    <span className="whitespace-nowrap overflow-hidden">Motos</span>
+  </span>
+</Link>
+```
+
+| Propriedade | Valor |
+|-------------|-------|
+| Background | `transparent` |
+| Cor do texto | `#c7c7c7` |
+| Hover bg | `#323232` |
+| Hover text | `#f5f5f5` |
+
+---
+
+### 12.8 Footer — usuário + logout
+
+```tsx
+<div className="border-t border-[#323232] p-3 space-y-1">
+  {/* User button */}
+  <button className="flex items-center w-full h-10 px-4 gap-2 rounded-lg hover:bg-[#323232] transition-all duration-300">
+    <div className="w-6 h-6 rounded-full bg-[#323232] border border-[#474747] flex-shrink-0 flex items-center justify-center">
+      <span className="text-[#f5f5f5] text-[11px] font-bold">G</span>
+    </div>
+    <span className={`${labelClassName} flex-1`}>
+      <span className="whitespace-nowrap overflow-hidden flex flex-col text-left">
+        <span className="text-[13px] font-medium text-[#f5f5f5] leading-none">GoMoto</span>
+        <span className="text-[11px] text-[#9e9e9e] mt-0.5">Admin</span>
+      </span>
+    </span>
+    <MoreVertical className="w-4 h-4 text-[#9e9e9e] flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+  </button>
+
+  {/* Logout */}
+  <form action="/auth/logout" method="post">
+    <button type="submit" className="flex items-center gap-2 px-4 h-10 w-full
+             text-[#c7c7c7] rounded-lg text-[14px] font-normal
+             hover:bg-[#7c1c1c] hover:text-[#ff9c9a] transition-all duration-300">
+      <LogOut className="w-5 h-5 flex-shrink-0" />
+      <span className={labelClassName}>
+        <span className="whitespace-nowrap overflow-hidden">Sair</span>
+      </span>
+    </button>
+  </form>
+</div>
+```
+
+---
+
+### 12.9 Itens de nav do GoMoto
+
+```
+Dashboard       → /dashboard    → LayoutDashboard
+Fila de Locadores → /fila       → Clock
+Manutenção      → /manutencao   → Wrench
+Multas          → /multas       → AlertTriangle
+Despesas        → /despesas     → TrendingDown
+Entradas        → /entradas     → TrendingUp
+Cobranças       → /cobrancas    → DollarSign
+Motos           → /motos        → Bike
+Clientes        → /clientes     → Users
+Contratos       → /contratos    → FileText
+Relatórios      → /relatorios   → BarChart2
+Processos       → /processos    → HelpCircle
+Configurações   → /configuracoes → Settings
+```
+
+---
+
+### 12.10 Regras obrigatórias
+
+- SEMPRE usar o **CSS Grid Trick** (double-span) para animar o label — NUNCA `overflow-x-clip` no wrapper.
+- SEMPRE `flex-shrink-0` nos ícones.
+- SEMPRE `whitespace-nowrap overflow-hidden` no span interno do label.
+- NUNCA toggle manual — expansão é ONLY hover-based.
+- NUNCA `bg-[#202020]` na sidebar — o bg correto é `#121212`.
+- NUNCA `w-[80px]` ou `w-[260px]` — os valores corretos são `85px` / `280px`.
+- NUNCA `pl-[78px]` no layout — o offset correto é `pl-[85px]`.
+- Ícones Lucide: sempre `w-5 h-5` nos nav links.
 
 ---
 
@@ -1945,58 +2147,118 @@ O texto dentro dessas linhas usa `text-[#c7c7c7]` em vez de `text-[#f5f5f5]` par
 
 ## 29. SIDEBAR DROPDOWN — SUBMENU COLAPSÁVEL
 
-> Padrão observado em: "Seu banco" no InfinitePay sidebar.
-> Item de nav com sub-items que expande/recolhe ao clicar.
+> Confirmado via CSS real extraído do app.infinitepay.io/home em 2026-04-14.
+> Padrão observado em: "Seu banco" (Extrato, Cartões, Empréstimo).
+
+### Estrutura real do InfinitePay
+
+O grupo dropdown é um `<div data-state="open|closed">` com:
+1. `<button>` pai com ícone + label + chevron
+2. `<ul>` com `max-h-0 opacity-0 → max-h-[...] opacity-100` (animação CSS, não JS condicional)
+3. O grupo inteiro tem `border-b border-[#323232] mb-2 pb-2` separando do próximo item
+
+### Wrapper do grupo
 
 ```tsx
-{/* ─── SIDEBAR DROPDOWN ITEM ───────────────────────────────────────────────
-    Botão pai com chevron indicador de expansão
-    Sub-itens aparecem abaixo com indentação                               */}
-<div>
-  {/* Botão pai */}
-  <button
-    onClick={() => setExpanded(!expanded)}
-    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
-      expanded ? 'text-[#f5f5f5]' : 'text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]'
-    }`}
-  >
-    <BankIcon className="w-5 h-5 flex-shrink-0" />
-    <span className="text-sm font-medium">Seu banco</span>
-    <ChevronDown
-      className={`w-4 h-4 ml-auto transition-transform ${expanded ? 'rotate-180' : ''}`}
-    />
-  </button>
-
-  {/* Sub-items — animados com max-height ou animate-in */}
-  {expanded && (
-    <div className="ml-8 mt-1 flex flex-col gap-0.5">
-      {[
-        { label: 'Seu extrato',          href: '/statements' },
-        { label: 'Cartões e mais',        href: '/cards'      },
-        { label: 'Empréstimo Inteligente', href: '/lending'   },
-      ].map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-            pathname === item.href
-              ? 'bg-[#243300] text-[#BAFF1A]'
-              : 'text-[#9e9e9e] hover:bg-[#323232] hover:text-[#f5f5f5]'
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </div>
-  )}
+{/* O data-state controla a animação via CSS — abrir/fechar ao clicar no botão */}
+<div
+  data-state={expanded ? 'open' : 'closed'}
+  className="px-4 mb-2 pb-2 w-[85px] group-hover:w-full
+             overflow-x-clip transition-all duration-300 ease-in-out
+             border-b border-[#323232]"
+>
+  {/* ... */}
 </div>
 ```
 
+### Botão pai (trigger)
+
+```tsx
+<button
+  onClick={() => setExpanded(!expanded)}
+  className="flex w-full items-center justify-between gap-2 px-4 py-2
+             rounded-lg text-[#c7c7c7] text-[14px] font-normal
+             hover:bg-[#323232] hover:text-[#f5f5f5]
+             transition-all duration-300"
+>
+  {/* Ícone + label */}
+  <div className="flex items-center gap-2">
+    <BankIcon className="w-5 h-5 flex-shrink-0" />
+    <span className="whitespace-nowrap">Seu banco</span>
+  </div>
+  {/* Chevron — rotaciona 180° quando aberto */}
+  <ChevronDown
+    className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 ${
+      expanded ? 'rotate-180' : ''
+    }`}
+  />
+</button>
+```
+
+| Propriedade | Valor |
+|-------------|-------|
+| Altura | `~36px` (py-2 + font = ~36px) |
+| Padding | `py-2 px-4` |
+| Border radius | `8px` (rounded-lg) |
+| Font size | `14px` |
+| Font weight | `400` (normal) |
+| Cor default | `#c7c7c7` |
+| Hover bg | `#323232` |
+| Ícone | `w-5 h-5` |
+| Chevron | `w-4 h-4`, rota 180° quando expandido |
+
+### Lista de sub-itens (animada via CSS)
+
+```tsx
+<ul
+  className={`flex flex-col gap-1 overflow-hidden transition-all duration-300 ease-in-out ${
+    expanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
+  }`}
+>
+  {[
+    { label: 'Seu extrato',           href: '/statements' },
+    { label: 'Cartões e mais',        href: '/cards'      },
+    { label: 'Empréstimo Inteligente', href: '/lending'  },
+  ].map((item, i) => (
+    <li key={item.href}>
+      <Link
+        href={item.href}
+        className={`flex items-center h-10 pr-4 pl-11 rounded-lg
+                    text-[14px] font-normal transition-all
+                    ${i === 0 ? 'mt-2' : ''}
+                    ${pathname === item.href
+                      ? 'bg-[#BAFF1A] text-[#000000] font-medium'
+                      : 'text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]'
+                    }`}
+      >
+        {item.label}
+      </Link>
+    </li>
+  ))}
+</ul>
+```
+
+| Propriedade sub-item | Valor |
+|----------------------|-------|
+| Altura | `40px` (h-10) |
+| Padding direita | `16px` (pr-4) |
+| Indentação (padding esq.) | `44px` (pl-11) — alinha com texto do botão pai |
+| Primeiro item | `mt-2` (8px de espaço acima) |
+| Border radius | `8px` (rounded-lg) |
+| Font size | `14px` |
+| Cor default | `#c7c7c7` |
+| Hover bg | `#323232` |
+| Hover text | `#f5f5f5` |
+| **Ativo** bg | `#BAFF1A` |
+| **Ativo** text | `#000000` |
+| **Ativo** weight | `500` (medium) |
+| Animação lista | `max-h-0 opacity-0 → max-h-[200px] opacity-100` via CSS |
+
 **Regras:**
-- Sub-item ativo: `bg-[#243300] text-[#BAFF1A]`
-- Sub-item hover: `hover:bg-[#323232] hover:text-[#f5f5f5]`
-- Chevron rotaciona 180° quando expandido
-- Indentação dos sub-itens: `ml-8`
+- NUNCA usar `ml-8` para indentar — usar `pl-11` (44px) diretamente no link.
+- NUNCA renderizar condicionalmente (`{expanded && <ul>}`) — usar animação CSS com `max-h + opacity`.
+- SEMPRE separar o grupo do restante da nav com `border-b border-[#323232] mb-2 pb-2` no wrapper.
+- Primeiro sub-item sempre tem `mt-2` para espaçamento visual.
 
 ---
 

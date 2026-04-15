@@ -1,144 +1,108 @@
-/**
- * @file Sidebar.tsx
- * @description Componente de barra lateral (Sidebar) para navegação principal do sistema.
- * Este componente gerencia o menu lateral, exibindo links para todas as seções do dashboard.
- * 
- * Funcionalidades:
- * - Renderização dinâmica de itens de navegação baseada em uma configuração centralizada.
- * - Identificação visual da rota ativa através de estados de destaque.
- * - Logotipo da aplicação com branding personalizado.
- * - Funcionalidade de logout integrada com formulário nativo.
- * - Barra de rolagem independente para menus extensos.
- */
-
 'use client'
 
-// Importação de utilitário para manipulação condicional de classes CSS.
-import { cn } from '@/lib/utils'
-// Componente de link do Next.js para navegação otimizada no lado do cliente.
 import Link from 'next/link'
-// Hook para obter o caminho da URL atual e gerenciar estados ativos no menu.
 import { usePathname } from 'next/navigation'
-// Importação de diversos ícones da biblioteca Lucide para representação visual dos módulos.
 import {
-  LayoutDashboard,
-  Bike,
-  Users,
-  FileText,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  Wrench,
-  BarChart2,
-  HelpCircle,
-  Settings,
-  Clock,
-  LogOut,
+  LayoutDashboard, Bike, Users, FileText, DollarSign,
+  TrendingUp, TrendingDown, AlertTriangle, Wrench,
+  Clock, BarChart2, HelpCircle, Settings, LogOut, MoreVertical,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-/**
- * @constant navItems
- * @description Lista de configuração dos itens de navegação.
- * Centraliza os dados das rotas para facilitar a manutenção e adição de novos módulos.
- * Cada item contém o link (href), o texto de exibição (label) e o componente de ícone (icon).
- */
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/fila', label: 'Fila de Locadores', icon: Clock },
-  { href: '/manutencao', label: 'Manutenção', icon: Wrench },
-  { href: '/multas', label: 'Multas', icon: AlertTriangle },
-  { href: '/despesas', label: 'Despesas', icon: TrendingDown },
-  { href: '/entradas', label: 'Entradas', icon: TrendingUp },
-  { href: '/cobrancas', label: 'Cobranças', icon: DollarSign },
-  { href: '/motos', label: 'Motos', icon: Bike },
-  { href: '/clientes', label: 'Clientes', icon: Users },
-  { href: '/contratos', label: 'Contratos', icon: FileText },
-  { href: '/relatorios', label: 'Relatórios', icon: BarChart2 },
-  { href: '/processos', label: 'Processos', icon: HelpCircle },
-  { href: '/configuracoes', label: 'Configurações', icon: Settings },
+const NAV_ITEMS = [
+  { href: '/dashboard',     label: 'Dashboard',         icon: LayoutDashboard },
+  { href: '/fila',          label: 'Fila de Locadores', icon: Clock },
+  { href: '/manutencao',    label: 'Manutenção',        icon: Wrench },
+  { href: '/multas',        label: 'Multas',            icon: AlertTriangle },
+  { href: '/despesas',      label: 'Despesas',          icon: TrendingDown },
+  { href: '/entradas',      label: 'Entradas',          icon: TrendingUp },
+  { href: '/cobrancas',     label: 'Cobranças',         icon: DollarSign },
+  { href: '/motos',         label: 'Motos',             icon: Bike },
+  { href: '/clientes',      label: 'Clientes',          icon: Users },
+  { href: '/contratos',     label: 'Contratos',         icon: FileText },
+  { href: '/relatorios',    label: 'Relatórios',        icon: BarChart2 },
+  { href: '/processos',     label: 'Processos',         icon: HelpCircle },
+  { href: '/configuracoes', label: 'Configurações',     icon: Settings },
 ]
 
 /**
- * @function Sidebar
- * @description Componente principal da barra lateral.
- * Renderiza a logo, a lista de navegação e a área de rodapé com o botão de logout.
- * 
- * @returns {JSX.Element} Estrutura completa da barra lateral fixa.
+ * CSS Grid trick para animar o label de largura 0 → auto no hover da sidebar.
+ * O span externo usa grid-template-columns: 0fr (colapsado) → 1fr (expandido).
+ * O opacity + translate-x adicionam o efeito de slide suave.
+ * O span interno com whitespace-nowrap impede quebra de linha durante a transição.
  */
+const LABEL_CX =
+  'inline-grid [grid-template-columns:0fr] group-hover:[grid-template-columns:1fr] ' +
+  'transition-[grid-template-columns,opacity,transform] duration-300 ease-in-out ' +
+  'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 overflow-hidden'
+
 export function Sidebar() {
-  // Obtém o caminho atual para determinar qual item do menu deve estar destacado.
   const pathname = usePathname()
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
   return (
-    // <aside> define a barra lateral com largura fixa de 240px e altura total da tela (h-screen).
-    // Posicionamento 'fixed' garante que ela não role junto com o conteúdo principal.
-    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-[#121212] border-r border-[#474747] flex flex-col z-30">
-      
-      {/* 
-          Seção do Logo:
-          Exibe o ícone de moto em um fundo verde-limão (cor de destaque do sistema) 
-          junto com o nome da aplicação e o nicho de mercado.
-      */}
-      <div className="h-20 px-5 flex items-center border-b border-[#474747]">
-        <div className="flex items-center gap-2.5">
-          {/* Container do ícone com bordas arredondadas e cor vibrante. */}
-          <div className="w-8 h-8 bg-[#BAFF1A] rounded-lg flex items-center justify-center flex-shrink-0">
-            <Bike className="w-4 h-4 text-[#121212]" />
+    // Sidebar fixa com expansão hover-only via classe `group`.
+    // Colapsada: 85px (apenas ícones). Expandida: 280px (ícones + labels).
+    <aside className="group fixed inset-y-0 left-0 z-50 flex flex-col h-screen w-[85px] hover:w-[280px] bg-[#121212] border-r border-[#323232] overflow-hidden transition-all duration-300 ease-in-out">
+
+      {/* Logo */}
+      <div className="pt-6 px-5 pb-2 flex items-center w-[85px] group-hover:w-full overflow-hidden transition-all duration-300 ease-in-out">
+        <Link href="/dashboard" className="flex items-center gap-3 outline-none rounded-lg">
+          <div className="w-10 h-10 flex-shrink-0 bg-[#BAFF1A] rounded-lg flex items-center justify-center">
+            <Bike className="w-6 h-6 text-[#121212]" />
           </div>
-          {/* Textos de identificação da marca. */}
-          <div>
-            <p className="text-sm font-bold text-[#f5f5f5] leading-none">GoMoto</p>
-            <p className="text-xs text-[#c7c7c7] mt-0.5">Gestão de Locadora</p>
-          </div>
-        </div>
+          <span className={LABEL_CX}>
+            <span className="whitespace-nowrap overflow-hidden text-[#f5f5f5] text-[16px] font-bold">GoMoto</span>
+          </span>
+        </Link>
       </div>
 
-      {/* 
-          Seção de Navegação:
-          Contém a lista de links gerada dinamicamente a partir da constante 'navItems'.
-          Possui 'overflow-y-auto' para permitir rolagem caso o menu exceda a altura da tela.
-      */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          // Lógica para verificar se a rota atual corresponde ao item do menu.
-          // Considera caminhos exatos ou sub-rotas (ex: /motos/novo destaca o item /motos).
-          const isActive = pathname === href || pathname.startsWith(href + '/')
-          
-          return (
+      {/* Navegação */}
+      <nav className="flex flex-1 flex-col min-h-0 overflow-hidden group-hover:overflow-y-auto pb-4">
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+          <div key={href} className="px-4 mb-1">
             <Link
-              key={href}
               href={href}
-              // A classe condicional aplica estilos de destaque (background verde suave) para o item ativo.
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                isActive
-                  ? 'bg-[#243300] text-[#BAFF1A]'
-                  : 'text-[#c7c7c7] hover:bg-[#323232] hover:text-[#f5f5f5]'
+                'flex items-center gap-2 px-4 h-10 w-full rounded-lg text-[14px] transition-all duration-300',
+                isActive(href)
+                  ? 'bg-[#BAFF1A] text-[#000000] font-medium'
+                  : 'text-[#c7c7c7] font-normal hover:bg-[#323232] hover:text-[#f5f5f5]'
               )}
             >
-              {/* Renderização do ícone dinâmico com cor baseada no estado ativo. */}
-              <Icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-[#BAFF1A]' : '')} />
-              {label}
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className={LABEL_CX}>
+                <span className="whitespace-nowrap overflow-hidden">{label}</span>
+              </span>
             </Link>
-          )
-        })}
+          </div>
+        ))}
       </nav>
 
-      {/* 
-          Área de Rodapé (Logout):
-          Contém o botão de saída da aplicação.
-          Utiliza um formulário para realizar o POST para a rota de logout do servidor.
-      */}
-      <div className="p-3 border-t border-[#474747]">
+      {/* Footer: usuário + logout */}
+      <div className="border-t border-[#323232] p-3 space-y-1">
+        <button className="flex items-center w-full h-10 px-4 gap-2 rounded-lg hover:bg-[#323232] transition-all duration-300">
+          <div className="w-6 h-6 rounded-full bg-[#323232] border border-[#474747] flex-shrink-0 flex items-center justify-center">
+            <span className="text-[#f5f5f5] text-[11px] font-bold">G</span>
+          </div>
+          <span className={cn(LABEL_CX, 'flex-1')}>
+            <span className="whitespace-nowrap overflow-hidden flex flex-col text-left">
+              <span className="text-[13px] font-medium text-[#f5f5f5] leading-none">GoMoto</span>
+              <span className="text-[11px] text-[#9e9e9e] mt-0.5">Admin</span>
+            </span>
+          </span>
+          <MoreVertical className="w-4 h-4 text-[#9e9e9e] flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </button>
+
         <form action="/auth/logout" method="post">
           <button
             type="submit"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-medium text-[#c7c7c7] hover:text-[#ff9c9a] hover:bg-[#7c1c1c] transition-all duration-150 w-full"
+            className="flex items-center gap-2 px-4 h-10 w-full text-[#c7c7c7] rounded-lg text-[14px] font-normal hover:bg-[#7c1c1c] hover:text-[#ff9c9a] transition-all duration-300"
           >
-            {/* Ícone de LogOut com transição visual para vermelho no hover. */}
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            Sair
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <span className={LABEL_CX}>
+              <span className="whitespace-nowrap overflow-hidden">Sair</span>
+            </span>
           </button>
         </form>
       </div>
