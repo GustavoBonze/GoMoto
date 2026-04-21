@@ -476,8 +476,8 @@ export default function CobrancasPage() {
           {/* Card 1: Total Recebido e Ticket Médio */}
           <Card padding="none">
             <div className="p-4 border-b border-[#323232]">
-              <p className="text-[13px] text-[#9e9e9e]">Total Recebido</p>
-              <p className="text-2xl font-bold text-[#f5f5f5] mt-1">{formatCurrency(metrics.totalPaid)}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Total Recebido</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5] mt-1">{formatCurrency(metrics.totalPaid)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{metrics.paidCharges.length} cobranças pagas</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
@@ -489,8 +489,8 @@ export default function CobrancasPage() {
           {/* Card 2: A Receber e Projeção 30 Dias */}
           <Card padding="none">
             <div className="p-4 border-b border-[#323232]">
-              <p className="text-[13px] text-[#9e9e9e]">A Receber</p>
-              <p className="text-2xl font-bold text-[#e65e24] mt-1">{formatCurrency(metrics.totalPending)}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">A Receber</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5] mt-1">{formatCurrency(metrics.totalPending)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'pending').length} em aberto</p>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
@@ -502,8 +502,8 @@ export default function CobrancasPage() {
           {/* Card 3: Vencidas e Cobrança Mais Atrasada */}
           <Card padding="none">
             <div className="p-4 border-b border-[#323232]">
-              <p className="text-[13px] text-[#9e9e9e]">Vencidas</p>
-              <p className="text-2xl font-bold text-[#ff9c9a] mt-1">{formatCurrency(metrics.totalOverdue)}</p>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Vencidas</p>
+              <p className="text-[28px] font-bold text-[#f5f5f5] mt-1">{formatCurrency(metrics.totalOverdue)}</p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">{charges.filter((c) => c.status === 'overdue').length} cobranças</p>
             </div>
             <div className="px-4 py-3">
@@ -523,8 +523,8 @@ export default function CobrancasPage() {
           {/* Card 4: Taxa de Inadimplência e Pontualidade */}
           <Card padding="none">
             <div className="p-4 border-b border-[#323232]">
-              <p className="text-[13px] text-[#9e9e9e]">Inadimplência</p>
-              <p className={`text-2xl font-bold mt-1 ${metrics.defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Inadimplência</p>
+              <p className={`text-[28px] font-bold mt-1 ${metrics.defaultRate > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
                 {metrics.defaultRate.toFixed(1)}%
               </p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">
@@ -545,8 +545,8 @@ export default function CobrancasPage() {
           {/* Card 5: Valores Não Pagos e Tempo Médio de Recebimento */}
           <Card padding="none">
             <div className="p-4 border-b border-[#323232]">
-              <p className="text-[13px] text-[#9e9e9e]">Valores Não Pagos</p>
-              <p className={`text-2xl font-bold mt-1 ${metrics.totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#229731]'}`}>
+              <p className="text-[14px] font-normal text-[#9e9e9e]">Valores Não Pagos</p>
+              <p className={`text-[28px] font-bold mt-1 ${metrics.totalUnpaid > 0 ? 'text-[#e65e24]' : 'text-[#229731]'}`}>
                 {formatCurrency(metrics.totalUnpaid)}
               </p>
               <p className="text-[12px] text-[#9e9e9e] mt-0.5">Pendentes + vencidas</p>
@@ -563,7 +563,7 @@ export default function CobrancasPage() {
           <Card padding="none" className={metrics.totalLoss > 0 ? 'border-[#ff9c9a] bg-[#7c1c1c]' : ''}>
             <div className={`p-4 border-b ${metrics.totalLoss > 0 ? 'border-[#ff9c9a]' : 'border-[#323232]'}`}>
               <div className="flex items-center gap-2">
-                <p className="text-[13px] text-[#9e9e9e]">
+                <p className="text-[14px] font-normal text-[#9e9e9e]">
                   Prejuízos Contabilizados
                 </p>
                 {metrics.totalLoss > 0 && (
@@ -572,7 +572,7 @@ export default function CobrancasPage() {
                   </span>
                 )}
               </div>
-              <p className={`text-2xl font-bold mt-1 ${metrics.totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
+              <p className={`text-[28px] font-bold mt-1 ${metrics.totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#229731]'}`}>
                 {formatCurrency(metrics.totalLoss)}
               </p>
               <p className={`text-[12px] mt-0.5 ${metrics.totalLoss > 0 ? 'text-[#ff9c9a]' : 'text-[#9e9e9e]'}`}>
@@ -607,7 +607,7 @@ export default function CobrancasPage() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   activeTab === tab.value
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -629,7 +629,7 @@ export default function CobrancasPage() {
               placeholder="Buscar por cliente ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 pl-9 pr-4 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A] w-72"
+              className="h-10 pl-9 pr-4 rounded-full bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A] w-72"
             />
           </div>
         </div>
@@ -655,13 +655,13 @@ export default function CobrancasPage() {
               <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                 <thead className="text-[#9e9e9e]">
                   <tr className="border-b border-[#323232]">
-                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Cliente</th>
-                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Descrição</th>
-                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Valor</th>
-                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Vencimento</th>
-                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Status</th>
-                    <th className="h-9 px-4 text-[13px] font-medium uppercase">Dt. Pagamento</th>
-                    <th className="h-9 px-4 text-right text-[13px] font-medium uppercase">Ações</th>
+                    <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Cliente</th>
+                    <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Descrição</th>
+                    <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Valor</th>
+                    <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Vencimento</th>
+                    <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Status</th>
+                    <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Dt. Pagamento</th>
+                    <th className="h-9 px-4 text-right text-[13px] font-medium text-[#9e9e9e]">Ações</th>
                   </tr>
                 </thead>
                 <tbody>

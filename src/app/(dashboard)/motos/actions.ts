@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { MotorcycleSchema } from '@/lib/schemas'
+import { MotorcycleSchema, MaintenanceBootstrapSchema } from '@/lib/schemas'
 import { logAction } from '@/lib/audit'
 
 async function getAuthenticatedUser() {
@@ -30,11 +30,14 @@ export async function createMotorcycle(rawData: unknown, initialMaintenances?: u
 
   // Bootstrap initial maintenance records if provided
   if (initialMaintenances && initialMaintenances.length > 0) {
-    const records = initialMaintenances.map((m: unknown) => ({
-      ...(m as object),
-      motorcycle_id: data.id,
-    }))
-    await supabase.from('maintenances').insert(records)
+    const parsed2 = MaintenanceBootstrapSchema.safeParse(initialMaintenances)
+    if (parsed2.success) {
+      const records = parsed2.data.map((m) => ({
+        ...m,
+        motorcycle_id: data.id,
+      }))
+      await supabase.from('maintenances').insert(records)
+    }
   }
 
   revalidatePath('/motos')

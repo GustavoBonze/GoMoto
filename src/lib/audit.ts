@@ -22,7 +22,7 @@ export async function logAction(params: AuditParams): Promise<void> {
       old_data: params.oldData ?? null,
       new_data: params.newData ?? null,
     })
-  } catch {
-    // Audit failures must never break the main operation
+  } catch (err) {
+    console.error('[AUDIT ERROR]', err)
   }
 }

@@ -116,8 +116,7 @@ export default function ModelosContratoPage() {
         }))
         setError(null)
       }
-    } catch (e) {
-      console.error(e)
+    } catch {
     }
   }, [supabase])
 

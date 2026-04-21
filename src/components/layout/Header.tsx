@@ -59,7 +59,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
       <div>
         <h1 className="text-[28px] font-bold text-[#f5f5f5]">{title}</h1>
         {/* Renderização condicional do subtítulo: só aparece se a prop 'subtitle' for enviada. */}
-        {subtitle && <p className="text-sm text-[#c7c7c7] mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-[14px] text-[#c7c7c7] mt-0.5">{subtitle}</p>}
       </div>
 
       {/* 

@@ -1247,37 +1247,37 @@ export default function QueuePage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
 
         {/* Card: total de candidatos aguardando */}
-        <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
+        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
           <div>
-            <p className="text-[13px] text-[#9e9e9e]">Total na Fila</p>
-            <p className="text-xl font-bold text-[#f5f5f5]">{queueEntries.length}</p>
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Total na Fila</p>
+            <p className="text-[28px] font-bold text-[#f5f5f5]">{queueEntries.length}</p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-            <Users className="h-5 w-5" />
+            <Users className="h-6 w-6" />
           </div>
         </div>
 
         {/* Card: motos disponíveis para alocação imediata */}
-        <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
+        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
           <div>
-            <p className="text-[13px] text-[#9e9e9e]">Motos Disponíveis</p>
-            <p className="text-xl font-bold text-[#f5f5f5]">{availableMotosCount}</p>
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Motos Disponíveis</p>
+            <p className="text-[28px] font-bold text-[#f5f5f5]">{availableMotosCount}</p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-            <Bike className="h-5 w-5" />
+            <Bike className="h-6 w-6" />
           </div>
         </div>
 
         {/* Card: nome do próximo candidato — facilita identificação rápida de quem atender */}
-        <div className="flex items-center justify-between rounded-xl bg-[#202020] p-4">
+        <div className="flex items-center justify-between rounded-2xl border border-[#474747] bg-[#202020] px-6 py-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-[#9e9e9e]">Próximo da Fila</p>
-            <p className="truncate text-xl font-bold text-[#f5f5f5]" title={nextInLine ?? ''}>
+            <p className="text-[14px] font-normal text-[#9e9e9e]">Próximo da Fila</p>
+            <p className="truncate text-[28px] font-bold text-[#f5f5f5]" title={nextInLine ?? ''}>
               {nextInLine}
             </p>
           </div>
           <div className="ml-3 flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#323232] text-[#BAFF1A]">
-            <UserPlus className="h-5 w-5" />
+            <UserPlus className="h-6 w-6" />
           </div>
         </div>
       </div>
@@ -1298,13 +1298,13 @@ export default function QueuePage() {
             <table className="w-full text-left text-[13px] text-[#f5f5f5]">
               <thead>
                 <tr className="border-b border-[#323232]">
-                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">#</th>
-                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Cliente</th>
-                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Telefone</th>
-                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">CNH</th>
-                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Desde</th>
-                  <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Observações</th>
-                  <th className="h-9 px-4 text-right text-[13px] font-medium uppercase text-[#9e9e9e]">Ações</th>
+                  <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">#</th>
+                  <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Cliente</th>
+                  <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Telefone</th>
+                  <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">CNH</th>
+                  <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Desde</th>
+                  <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Observações</th>
+                  <th className="h-9 px-4 text-right text-[13px] font-medium text-[#9e9e9e]">Ações</th>
                 </tr>
               </thead>
               <tbody>

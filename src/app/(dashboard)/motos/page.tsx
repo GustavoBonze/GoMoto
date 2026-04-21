@@ -558,7 +558,7 @@ export default function MotorcyclesPage() {
                 <button
                   key={opt.value}
                   onClick={() => setFilter(opt.value)}
-                  className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${isActive ? 'border-[#BAFF1A] text-[#f5f5f5]' : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'}`}
+                  className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${isActive ? 'border-[#BAFF1A] text-[#f5f5f5]' : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'}`}
                 >
                   {opt.label}
                   {opt.value !== 'all' && (
@@ -575,7 +575,7 @@ export default function MotorcyclesPage() {
               placeholder="Buscar placa, modelo, marca ou cor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className='w-full h-10 pl-10 pr-4 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus:border-[#BAFF1A] transition-all'
+              className='w-full h-10 pl-10 pr-4 rounded-full bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder:text-[#616161] outline-none focus:border-[#BAFF1A] transition-all'
             />
           </div>
         </div>
@@ -586,13 +586,13 @@ export default function MotorcyclesPage() {
           <table className="w-full text-left text-[13px] text-[#f5f5f5]">
             <thead className="text-[#9e9e9e] border-b border-[#323232]">
               <tr>
-                <th className="h-9 px-3 text-[13px] font-medium uppercase">Placa</th>
-                <th className="h-9 px-3 text-[13px] font-medium uppercase">Motocicleta</th>
-                <th className="h-9 px-3 text-[13px] font-medium uppercase">Cliente</th>
-                <th className="h-9 px-3 text-[13px] font-medium uppercase">Valor/Semana</th>
-                <th className="h-9 px-3 text-[13px] font-medium uppercase">Endereço</th>
-                <th className="h-9 px-3 text-[13px] font-medium uppercase">Status</th>
-                <th className="h-9 px-3 text-right text-[13px] font-medium uppercase">Ações</th>
+                <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Placa</th>
+                <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Motocicleta</th>
+                <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Cliente</th>
+                <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Valor/Semana</th>
+                <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Endereço</th>
+                <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Status</th>
+                <th className="h-9 px-4 text-right text-[13px] font-medium text-[#9e9e9e]">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -824,7 +824,7 @@ export default function MotorcyclesPage() {
                           placeholder="KM da Última Troca"
                           value={bootstrapItems[item.id] ?? ''}
                           onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          className="w-36 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A] text-right font-mono"
+                          className="w-36 h-10 px-4 py-2 rounded-full bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] placeholder-[#616161] focus:outline-none focus:border-[#BAFF1A] text-right font-mono"
                         />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-[#616161] font-bold">KM</span>
                       </div>
@@ -833,7 +833,7 @@ export default function MotorcyclesPage() {
                         type="date"
                         value={bootstrapItems[item.id] ?? ''}
                         onChange={(e) => setBootstrapItems((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                        className="w-44 h-10 px-4 py-2 rounded-lg bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] focus:outline-none focus:border-[#BAFF1A]"
+                        className="w-44 h-10 px-4 py-2 rounded-full bg-[#323232] border border-[#474747] text-[13px] text-[#f5f5f5] focus:outline-none focus:border-[#BAFF1A]"
                       />
                     )}
                   </div>

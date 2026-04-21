@@ -324,9 +324,7 @@ export default function ExpensesPage() {
       .select('*')
       .order('date', { ascending: false }) // mais recentes primeiro
 
-    if (error) {
-      console.error('Erro ao carregar despesas:', error.message)
-    } else {
+    if (!error) {
       setExpenses((data as Expense[]) ?? [])
     }
 
@@ -734,7 +732,7 @@ export default function ExpensesPage() {
               <button
                 key={tab.id}
                 onClick={() => setCategoryFilter(tab.id)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   categoryFilter === tab.id
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -844,10 +842,10 @@ export default function ExpensesPage() {
                           {/* Cabeçalho da tabela — padrão do design system: sem bg, uppercase, cor secundária */}
                           <thead>
                             <tr className="border-b border-[#323232]">
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Data</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Descrição</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Valor</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e] text-right">Ações</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Data</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Descrição</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Valor</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e] text-right">Ações</th>
                             </tr>
                           </thead>
 

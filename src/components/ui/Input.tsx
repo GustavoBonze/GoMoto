@@ -48,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="flex flex-col gap-1.5">
         {/* Renderiza o rótulo (label) se a prop for fornecida. */}
         {label && (
-          <label htmlFor={inputId} className="text-[13px] text-[#9e9e9e]">
+          <label htmlFor={inputId} className="text-[14px] text-[#c7c7c7]">
             {label}
           </label>
         )}
@@ -108,7 +108,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={selectId} className="text-[13px] text-[#9e9e9e]">
+          <label htmlFor={selectId} className="text-[14px] text-[#c7c7c7]">
             {label}
           </label>
         )}
@@ -162,7 +162,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={textareaId} className="text-[13px] text-[#9e9e9e]">
+          <label htmlFor={textareaId} className="text-[14px] text-[#c7c7c7]">
             {label}
           </label>
         )}

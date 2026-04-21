@@ -348,7 +348,7 @@ export default async function DashboardPage() {
           <div className="bg-[#202020] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Contratos Ativos</h3>
-              <a href="/contratos" className="text-[11px] text-[#BAFF1A] font-bold">
+              <a href="/contratos" className="text-[12px] text-[#BAFF1A] font-bold">
                 Ver todos
               </a>
             </div>
@@ -381,7 +381,7 @@ export default async function DashboardPage() {
           <div className="bg-[#202020] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Cobranças Vencidas</h3>
-              <a href="/cobrancas" className="text-[11px] text-[#BAFF1A] font-bold">
+              <a href="/cobrancas" className="text-[12px] text-[#BAFF1A] font-bold">
                 Ver todas
               </a>
             </div>
@@ -421,7 +421,7 @@ export default async function DashboardPage() {
           <div className="bg-[#202020] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Fila de Espera</h3>
-              <a href="/fila" className="text-[11px] text-[#BAFF1A] font-bold">
+              <a href="/fila" className="text-[12px] text-[#BAFF1A] font-bold">
                 Ver fila
               </a>
             </div>
@@ -440,7 +440,7 @@ export default async function DashboardPage() {
                     className={`px-4 py-2.5 hover:bg-[#323232] transition-colors${index < items.length - 1 ? ' border-b border-[#323232]' : ''}`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="bg-[#BAFF1A] text-[#121212] rounded-full w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold">
+                      <span className="bg-[#BAFF1A] text-[#121212] rounded-full w-5 h-5 inline-flex items-center justify-center text-[12px] font-bold">
                         {entry.position}
                       </span>
                       <p className="text-[12px] font-medium text-[#f5f5f5] truncate">
@@ -457,7 +457,7 @@ export default async function DashboardPage() {
           <div className="bg-[#202020] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Manutenções</h3>
-              <a href="/manutencao" className="text-[11px] text-[#BAFF1A] font-bold">
+              <a href="/manutencao" className="text-[12px] text-[#BAFF1A] font-bold">
                 Ver todas
               </a>
             </div>
@@ -495,7 +495,7 @@ export default async function DashboardPage() {
           <div className="bg-[#202020] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#323232] flex items-center justify-between">
               <h3 className="text-[14px] font-semibold text-[#f5f5f5]">Top Clientes</h3>
-              <a href="/clientes" className="text-[11px] text-[#BAFF1A] font-bold hover:underline">Ver todos</a>
+              <a href="/clientes" className="text-[12px] text-[#BAFF1A] font-bold hover:underline">Ver todos</a>
             </div>
             {data.topCustomers.length === 0 ? (
               <div className="px-4 py-6 text-center text-[12px] text-[#9e9e9e]">Sem dados ainda</div>

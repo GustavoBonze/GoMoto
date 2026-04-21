@@ -849,7 +849,7 @@ export default function MultasPage() {
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.id
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -988,12 +988,12 @@ export default function MultasPage() {
                             {/* Cabeçalho — sem fundo, apenas tipografia secundária */}
                             <thead>
                               <tr className="border-b border-[#323232]">
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Infração</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Data / Vencimento</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Valor</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Responsável</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Status</th>
-                                <th className="h-9 px-4 text-right text-[#9e9e9e] text-[13px] font-medium uppercase">Ações</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Infração</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Data / Vencimento</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Valor</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Responsável</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Status</th>
+                                <th className="h-9 px-4 text-right text-[#9e9e9e] text-[13px] font-medium">Ações</th>
                               </tr>
                             </thead>
                             <tbody>

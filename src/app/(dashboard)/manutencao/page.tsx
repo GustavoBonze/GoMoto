@@ -538,7 +538,7 @@ export default function MaintenancePage() {
       .from('maintenances')
       .select('*, motorcycles(license_plate, model, make, km_current)')
       .order('created_at', { ascending: false })
-    if (error) { return }
+    if (error) { console.error('[MANUTENCAO] fetch error:', error); return }
     setMaintenances((data as MaintenanceWithMoto[]) || [])
   }, [])
 
@@ -738,13 +738,16 @@ export default function MaintenancePage() {
     }
     try {
       if (editingMaintenance) {
-        await supabase.from('maintenances').update(payload).eq('id', editingMaintenance.id)
+        const { error } = await supabase.from('maintenances').update(payload).eq('id', editingMaintenance.id)
+        if (error) { alert(`Erro ao atualizar: ${error.message}`); return }
       } else {
-        await supabase.from('maintenances').insert([payload])
+        const { error } = await supabase.from('maintenances').insert([payload])
+        if (error) { alert(`Erro ao salvar: ${error.message}`); return }
       }
       closeFormModal()
-      fetchMaintenances()
-    } catch {
+      await fetchMaintenances()
+    } catch (err) {
+      console.error('[MANUTENCAO] handleSave error:', err)
     } finally {
       setSaving(false)
     }
@@ -1033,7 +1036,7 @@ export default function MaintenancePage() {
               <button
                 key={tab.value}
                 onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   statusFilter === tab.value
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -1052,7 +1055,7 @@ export default function MaintenancePage() {
             <select
               value={motorcycleFilter}
               onChange={(e) => setMotorcycleFilter(e.target.value)}
-              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="">Todas as motos</option>
               {motorcycles.map((m) => (
@@ -1065,7 +1068,7 @@ export default function MaintenancePage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-10 rounded-lg border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
+              className="h-10 rounded-full border border-[#474747] bg-[#323232] px-3 text-[13px] text-[#f5f5f5] focus:border-[#BAFF1A] focus:outline-none"
             >
               <option value="all">Todos os tipos</option>
               <option value="preventive">Preventiva</option>
@@ -1080,7 +1083,7 @@ export default function MaintenancePage() {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-lg border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
+                className="h-10 rounded-full border border-[#474747] bg-[#323232] pl-9 pr-4 text-[13px] text-[#f5f5f5] placeholder:text-[#616161] focus:border-[#BAFF1A] focus:outline-none w-44"
               />
             </div>
           </div>
@@ -1161,11 +1164,11 @@ export default function MaintenancePage() {
                           <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                             <thead className="bg-[#323232]">
                               <tr>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Item</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Previsão</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Situação</th>
-                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium uppercase">Status</th>
-                                <th className="h-9 px-4 text-right text-[#9e9e9e] text-[13px] font-medium uppercase">Ações</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Item</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Previsão</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Situação</th>
+                                <th className="h-9 px-4 text-[#9e9e9e] text-[13px] font-medium">Status</th>
+                                <th className="h-9 px-4 text-right text-[#9e9e9e] text-[13px] font-medium">Ações</th>
                               </tr>
                             </thead>
                             <tbody>

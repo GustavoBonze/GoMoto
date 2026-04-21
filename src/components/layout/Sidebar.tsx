@@ -47,8 +47,8 @@ export function Sidebar() {
 
       {/* Logo */}
       <div className="pt-6 px-5 pb-2 flex items-center w-[85px] group-hover:w-full overflow-hidden transition-all duration-300 ease-in-out">
-        <Link href="/dashboard" className="flex items-center gap-3 outline-none rounded-lg">
-          <div className="w-10 h-10 flex-shrink-0 bg-[#BAFF1A] rounded-lg flex items-center justify-center">
+        <Link href="/dashboard" className="flex items-center gap-3 outline-none rounded-full">
+          <div className="w-10 h-10 flex-shrink-0 bg-[#BAFF1A] rounded-full flex items-center justify-center">
             <Bike className="w-6 h-6 text-[#121212]" />
           </div>
           <span className={LABEL_CX}>
@@ -64,7 +64,7 @@ export function Sidebar() {
             <Link
               href={href}
               className={cn(
-                'flex items-center gap-2 px-4 h-10 w-full rounded-lg text-[14px] transition-all duration-300',
+                'flex items-center gap-2 px-4 h-10 w-full rounded-full text-[14px] transition-all duration-300',
                 isActive(href)
                   ? 'bg-[#BAFF1A] text-[#000000] font-medium'
                   : 'text-[#c7c7c7] font-normal hover:bg-[#323232] hover:text-[#f5f5f5]'
@@ -81,7 +81,7 @@ export function Sidebar() {
 
       {/* Footer: usuário + logout */}
       <div className="border-t border-[#323232] p-3 space-y-1">
-        <button className="flex items-center w-full h-10 px-4 gap-2 rounded-lg hover:bg-[#323232] transition-all duration-300">
+        <button className="flex items-center w-full h-10 px-4 gap-2 rounded-full hover:bg-[#323232] transition-all duration-300">
           <div className="w-6 h-6 rounded-full bg-[#323232] border border-[#474747] flex-shrink-0 flex items-center justify-center">
             <span className="text-[#f5f5f5] text-[11px] font-bold">G</span>
           </div>
@@ -97,7 +97,7 @@ export function Sidebar() {
         <form action="/auth/logout" method="post">
           <button
             type="submit"
-            className="flex items-center gap-2 px-4 h-10 w-full text-[#c7c7c7] rounded-lg text-[14px] font-normal hover:bg-[#7c1c1c] hover:text-[#ff9c9a] transition-all duration-300"
+            className="flex items-center gap-2 px-4 h-10 w-full text-[#c7c7c7] rounded-full text-[14px] font-normal hover:bg-[#7c1c1c] hover:text-[#ff9c9a] transition-all duration-300"
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
             <span className={LABEL_CX}>

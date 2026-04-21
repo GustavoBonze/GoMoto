@@ -231,8 +231,7 @@ export default function EntradasPage() {
 
       setIncomes((incomesResult.data as Income[]) || []);
       setMotorcycles((motorcyclesResult.data as Motorcycle[]) || []);
-    } catch (error) {
-      console.error('Erro ao buscar dados:', error);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -293,9 +292,7 @@ export default function EntradasPage() {
           setFormData(prev => ({ ...prev, lessee: lesseeName }));
         }
       }
-    } catch (error) {
-      console.error('Erro ao buscar locatário:', error);
-      // Erro silencioso — lessee permanece com valor anterior
+    } catch {
     }
   }, [motorcycles, supabase]);
 
@@ -505,8 +502,7 @@ export default function EntradasPage() {
 
       handleCloseModal();
       fetchData();
-    } catch (error) {
-      console.error('Erro ao salvar entrada:', error);
+    } catch {
       alert('Erro ao salvar os dados. Verifique e tente novamente.');
     } finally {
       setSaving(false);
@@ -525,8 +521,7 @@ export default function EntradasPage() {
       if (error) throw error;
       handleCloseDeleteModal();
       fetchData();
-    } catch (error) {
-      console.error('Erro ao excluir entrada:', error);
+    } catch {
       alert('Erro ao excluir a entrada.');
     } finally {
       setDeleting(false);
@@ -594,7 +589,7 @@ export default function EntradasPage() {
               <button
                 key={tab.id}
                 onClick={() => setReferenceFilter(tab.id)}
-                className={`px-3 py-2 text-[13px] font-medium transition-all border-b-2 ${
+                className={`px-3 py-2 text-[16px] font-medium transition-all border-b-2 ${
                   referenceFilter === tab.id
                     ? 'border-[#BAFF1A] text-[#f5f5f5]'
                     : 'border-transparent text-[#9e9e9e] hover:text-[#f5f5f5]'
@@ -685,13 +680,13 @@ export default function EntradasPage() {
                         <table className="w-full text-left text-[13px] text-[#f5f5f5]">
                           <thead>
                             <tr className="border-b border-[#323232]">
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Data</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Placa</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Locatário</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Período</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Método</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e]">Valor</th>
-                              <th className="h-9 px-4 text-[13px] font-medium uppercase text-[#9e9e9e] text-right">Ações</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Data</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Placa</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Locatário</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Período</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Método</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e]">Valor</th>
+                              <th className="h-9 px-4 text-[13px] font-medium text-[#9e9e9e] text-right">Ações</th>
                             </tr>
                           </thead>
                           <tbody>

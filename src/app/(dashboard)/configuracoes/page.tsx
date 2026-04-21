@@ -302,11 +302,11 @@ export default function SettingsPage() {
         {/* SEÇÃO 1: Dados da Empresa */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-full bg-[#243300] border border-[#6b9900]">
+            <div className="p-2.5 rounded-full bg-[#323232]">
               <Building2 className="w-5 h-5 text-[#BAFF1A]" />
             </div>
             <div>
-              <h2 className="text-[18px] font-semibold text-[#f5f5f5]">Dados da Empresa</h2>
+              <h2 className="text-[28px] font-semibold text-[#f5f5f5]">Dados da Empresa</h2>
               <p className="text-[13px] text-[#9e9e9e]">
                 Informações que aparecerão em contratos e relatórios.
               </p>
@@ -389,7 +389,7 @@ export default function SettingsPage() {
               <Lock className="w-5 h-5 text-[#a880ff]" />
             </div>
             <div>
-              <h2 className="text-[18px] font-semibold text-[#f5f5f5]">Segurança</h2>
+              <h2 className="text-[28px] font-semibold text-[#f5f5f5]">Segurança</h2>
               <p className="text-[13px] text-[#9e9e9e]">Altere sua senha de acesso ao painel.</p>
             </div>
           </div>
@@ -450,7 +450,7 @@ export default function SettingsPage() {
               <User className="w-5 h-5 text-[#e65e24]" />
             </div>
             <div>
-              <h2 className="text-[18px] font-semibold text-[#f5f5f5]">Informações da Conta</h2>
+              <h2 className="text-[28px] font-semibold text-[#f5f5f5]">Informações da Conta</h2>
               <p className="text-[13px] text-[#9e9e9e]">Detalhes do usuário autenticado no sistema.</p>
             </div>
           </div>

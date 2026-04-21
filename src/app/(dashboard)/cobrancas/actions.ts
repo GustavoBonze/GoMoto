@@ -54,9 +54,15 @@ export async function updateBilling(id: string, rawData: unknown) {
   return { data }
 }
 
+const VALID_PAYMENT_METHODS = ['PIX', 'Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência']
+
 export async function markBillingAsPaid(id: string, paymentMethod: string) {
   const { supabase, user } = await getAuthenticatedUser()
   if (!user) return { error: 'Não autorizado' }
+
+  if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+    return { error: 'Método de pagamento inválido' }
+  }
 
   const { data: before } = await supabase.from('billings').select().eq('id', id).single()
 

@@ -173,8 +173,7 @@ export default function ProcessesPage() {
       if (error) throw error
 
       setProcesses((data as Process[]) ?? [])
-    } catch (err) {
-      console.error('Erro ao buscar processos:', err)
+    } catch {
       alert('Erro ao carregar os processos.')
     } finally {
       setLoadingProcesses(false)
@@ -221,8 +220,7 @@ export default function ProcessesPage() {
       setEditingProcess(null)
       setIsModalOpen(false)
       await fetchProcesses()
-    } catch (err) {
-      console.error('Erro ao salvar processo:', err)
+    } catch {
       alert('Erro ao salvar o processo.')
     }
   }
@@ -254,8 +252,7 @@ export default function ProcessesPage() {
       if (error) throw error
 
       await fetchProcesses()
-    } catch (err) {
-      console.error('Erro ao deletar processo:', err)
+    } catch {
       alert('Erro ao excluir o processo.')
     }
   }
