@@ -1,12 +1,33 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { logAction } from '@/lib/audit'
 import { z } from 'zod'
 
+export async function uploadMaintenancePhoto(formData: FormData, prefix: string): Promise<string | null> {
+  const file = formData.get('file') as File | null
+  if (!file) return null
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+
+  const ext = file.name.split('.').pop()
+  const path = `maintenance/${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { error } = await supabaseAdmin.storage.from('maintenance-files').upload(path, file)
+  if (error) return null
+
+  const { data } = supabaseAdmin.storage.from('maintenance-files').getPublicUrl(path)
+  return data.publicUrl
+}
+
 async function getAuthenticatedUser() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   return { supabase, user }
 }

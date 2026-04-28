@@ -323,6 +323,8 @@ export interface Maintenance {
   completed_date: string | null;
   /** @property cost - Valor total pago pelo serviço e peças. */
   cost: number | null;
+  /** @property responsibility - Quem arca com o custo: empresa, cliente ou split 50/50. */
+  responsibility: 'company' | 'customer' | 'split' | null;
   /** @property completed - Indicador booleano de finalização. */
   completed: boolean;
   /** @property workshop - Nome da oficina ou mecânico responsável. */

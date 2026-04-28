@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Plus, Wrench, CheckCircle2, AlertTriangle, Clock, Trash2, Edit2,
+  Plus, Wrench, CheckCircle2, AlertTriangle, Clock, Trash2, Edit2, Eye,
   Search, Camera, FileText, ChevronDown, Gauge, Info, DollarSign,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { uploadMaintenancePhoto } from './actions'
 import type { Maintenance } from '@/types'
 
 import { Button } from '@/components/ui/Button'
@@ -46,6 +47,8 @@ type ItemFinancial = {
   responsibility: Responsibility
   has_odometer_photo: boolean
   has_invoice_photo: boolean
+  odometer_photo_file: File | null
+  invoice_photo_file: File | null
 }
 
 /**
@@ -117,6 +120,12 @@ type MaintenanceFormData = {
  * Impacto se alterado: Quebra toda a comunicação com a base de dados (leitura, escrita, deleção).
  */
 const supabase = createClient()
+
+async function uploadMaintenanceFile(file: File, prefix: string): Promise<string | null> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return uploadMaintenancePhoto(formData, prefix)
+}
 
 /**
  * @constant INITIAL_FORM
@@ -406,6 +415,7 @@ export default function MaintenancePage() {
   
   // [completing, setCompleting]: Bloqueia cliques excessivos no botão de confirmar conclusão enquanto a etapa 2 roda.
   const [completing, setCompleting] = useState(false)
+  const [showPhotoWarning, setShowPhotoWarning] = useState(false)
 
   // ── ESTADOS: Filtros de Visualização ──────────────────────────────────────
   
@@ -475,6 +485,7 @@ export default function MaintenancePage() {
   
   // [editingMaintenance, setEditingMaintenance]: Objeto contendo os dados da manutenção caso o modo edição seja invocado (ao invés de inserção).
   const [editingMaintenance, setEditingMaintenance] = useState<MaintenanceWithMoto | null>(null)
+  const [viewingMaintenance, setViewingMaintenance] = useState<MaintenanceWithMoto | null>(null)
   
   // [completingMaintenance, setCompletingMaintenance]: Armazena a linha raiz/principal que acionou o processo multi-passo de conclusão da manutenção.
   const [completingMaintenance, setCompletingMaintenance] = useState<MaintenanceWithMoto | null>(null)
@@ -708,6 +719,7 @@ export default function MaintenancePage() {
     setCompletionFinancials([])
     setActiveContract(null)
     setDiscountConfirmed(false)
+    setShowPhotoWarning(false)
   }, [])
 
   /**
@@ -829,6 +841,13 @@ export default function MaintenancePage() {
    */
   const handleConfirmComplete = useCallback(async () => {
     if (!completingMaintenance || !completionKm) return
+
+    const missingPhotos = completionFinancials.some((f) => !f.odometer_photo_file && !f.invoice_photo_file)
+    if (missingPhotos && completionObservations.trim().length < 30) {
+      setShowPhotoWarning(true)
+      return
+    }
+
     setCompleting(true)
     try {
       const actualKm = parseInt(completionKm, 10)
@@ -837,6 +856,12 @@ export default function MaintenancePage() {
       for (let i = 0; i < completionFinancials.length; i++) {
         const fin = completionFinancials[i]
         const itemId = i === 0 ? completingMaintenance.id : completionExtraIds[i - 1]
+        const odometerUrl = fin.odometer_photo_file
+          ? await uploadMaintenanceFile(fin.odometer_photo_file, 'km')
+          : null
+        const invoiceUrl = fin.invoice_photo_file
+          ? await uploadMaintenanceFile(fin.invoice_photo_file, 'nf')
+          : null
         await supabase.from('maintenances').update({
           completed: true,
           completed_date: completionDate,
@@ -845,8 +870,8 @@ export default function MaintenancePage() {
           workshop: completionWorkshop || null,
           observations: completionObservations || null,
           responsibility: fin.responsibility,
-          odometer_photo_url: fin.has_odometer_photo ? 'pendente' : null,
-          invoice_photo_url: fin.has_invoice_photo ? 'pendente' : null,
+          odometer_photo_url: odometerUrl,
+          invoice_photo_url: invoiceUrl,
         }).eq('id', itemId)
       }
 
@@ -1231,13 +1256,17 @@ export default function MaintenancePage() {
                                   <td className="px-4 text-[13px] text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                   <td className="px-4">
                                     <div className="flex gap-1">
-                                      <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
-                                      <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
+                                      {item.odometer_photo_url
+                                        ? <a href={item.odometer_photo_url} target="_blank" rel="noreferrer" title="Ver foto do KM"><Camera className="w-4 h-4 text-[#229731] hover:text-[#BAFF1A] transition-colors cursor-pointer" /></a>
+                                        : <Camera className="w-4 h-4 text-[#616161]" />}
+                                      {item.invoice_photo_url
+                                        ? <a href={item.invoice_photo_url} target="_blank" rel="noreferrer" title="Ver nota fiscal"><FileText className="w-4 h-4 text-[#229731] hover:text-[#BAFF1A] transition-colors cursor-pointer" /></a>
+                                        : <FileText className="w-4 h-4 text-[#616161]" />}
                                     </div>
                                   </td>
                                   <td className="px-4 text-right">
                                     <div className="flex items-center justify-end gap-1">
-                                      <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)}><Edit2 className="h-4 w-4" /></Button>
+                                      <Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Visualizar" onClick={() => setViewingMaintenance(item)}><Eye className="h-4 w-4" /></Button>
                                       <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                   </td>
@@ -1279,13 +1308,17 @@ export default function MaintenancePage() {
                                       <td className="px-4 text-[13px] text-[#9e9e9e]">{item.workshop ?? '—'}</td>
                                       <td className="px-4">
                                         <div className="flex gap-1">
-                                          <Camera className={`w-4 h-4 ${item.odometer_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
-                                          <FileText className={`w-4 h-4 ${item.invoice_photo_url ? 'text-[#229731]' : 'text-[#616161]'}`} />
+                                          {item.odometer_photo_url
+                                            ? <a href={item.odometer_photo_url} target="_blank" rel="noreferrer" title="Ver foto do KM"><Camera className="w-4 h-4 text-[#229731] hover:text-[#BAFF1A] transition-colors cursor-pointer" /></a>
+                                            : <Camera className="w-4 h-4 text-[#616161]" />}
+                                          {item.invoice_photo_url
+                                            ? <a href={item.invoice_photo_url} target="_blank" rel="noreferrer" title="Ver nota fiscal"><FileText className="w-4 h-4 text-[#229731] hover:text-[#BAFF1A] transition-colors cursor-pointer" /></a>
+                                            : <FileText className="w-4 h-4 text-[#616161]" />}
                                         </div>
                                       </td>
                                       <td className="px-4 text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                          <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEdit(item)}><Edit2 className="h-4 w-4" /></Button>
+                                          <Button variant="secondary" size="sm" className="h-8 w-8 p-0" title="Visualizar" onClick={() => setViewingMaintenance(item)}><Eye className="h-4 w-4" /></Button>
                                           <Button variant="danger" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                         </div>
                                       </td>
@@ -1357,6 +1390,144 @@ export default function MaintenancePage() {
             <Button variant="primary" onClick={handleSave} loading={saving}>Salvar</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* MODAL DE VISUALIZAÇÃO — Leitura somente de manutenções realizadas */}
+      <Modal open={!!viewingMaintenance} onClose={() => setViewingMaintenance(null)} title="Detalhes da Manutenção" size="lg">
+        {viewingMaintenance && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-[12px] text-[#9e9e9e]">Motocicleta</p>
+                <p className="text-[13px] text-[#f5f5f5]">
+                  {viewingMaintenance.motorcycles
+                    ? `${viewingMaintenance.motorcycles.license_plate} — ${viewingMaintenance.motorcycles.make} ${viewingMaintenance.motorcycles.model}`
+                    : '—'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[12px] text-[#9e9e9e]">Tipo</p>
+                <p className="text-[13px] text-[#f5f5f5]">{TYPE_LABEL_MAP[viewingMaintenance.type] ?? viewingMaintenance.type}</p>
+              </div>
+              <div className="col-span-2 space-y-1">
+                <p className="text-[12px] text-[#9e9e9e]">Descrição</p>
+                <p className="text-[13px] text-[#f5f5f5]">{viewingMaintenance.description ?? '—'}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[12px] text-[#9e9e9e]">Data de Conclusão</p>
+                <p className="text-[13px] text-[#f5f5f5]">
+                  {viewingMaintenance.completed_date ? formatDate(viewingMaintenance.completed_date + 'T12:00:00') : '—'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[12px] text-[#9e9e9e]">KM no Serviço</p>
+                <p className="text-[13px] text-[#f5f5f5]">{viewingMaintenance.actual_km ? fmtKm(viewingMaintenance.actual_km) : '—'}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[12px] text-[#9e9e9e]">Oficina / Mecânico</p>
+                <p className="text-[13px] text-[#f5f5f5]">{viewingMaintenance.workshop ?? '—'}</p>
+              </div>
+              {viewingMaintenance.cost != null && (
+                <div className="col-span-2 rounded-xl bg-[#121212] p-4 space-y-2">
+                  <p className="text-[12px] text-[#9e9e9e]">Custo</p>
+                  {(() => {
+                    const c = viewingMaintenance.cost!
+                    const resp = viewingMaintenance.responsibility
+                    const empresa = resp === 'company' ? c : resp === 'split' ? c / 2 : 0
+                    const cliente = resp === 'customer' ? c : resp === 'split' ? c / 2 : 0
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[13px]">
+                          <span className="text-[#9e9e9e]">Total</span>
+                          <span className="font-medium text-[#f5f5f5]">{formatCurrency(c)}</span>
+                        </div>
+                        {empresa > 0 && (
+                          <div className="flex justify-between text-[13px]">
+                            <span className="text-[#9e9e9e]">Empresa</span>
+                            <span className="text-[#229731]">{formatCurrency(empresa)}</span>
+                          </div>
+                        )}
+                        {cliente > 0 && (
+                          <div className="flex justify-between text-[13px]">
+                            <span className="text-[#9e9e9e]">Cliente</span>
+                            <span className="text-[#ff9c9a]">{formatCurrency(cliente)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+              {viewingMaintenance.observations && (
+                <div className="col-span-2 space-y-1">
+                  <p className="text-[12px] text-[#9e9e9e]">Observações</p>
+                  <p className="text-[13px] text-[#f5f5f5]">{viewingMaintenance.observations}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Miniaturas das fotos */}
+            <div className="border-t border-[#323232] pt-4 space-y-3">
+              <p className="text-[12px] text-[#9e9e9e]">Fotos anexadas</p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* KM */}
+                {viewingMaintenance.odometer_photo_url ? (
+                  <a href={viewingMaintenance.odometer_photo_url} target="_blank" rel="noreferrer" className="group space-y-1.5">
+                    <div className="relative overflow-hidden rounded-lg border border-[#323232] bg-[#121212] h-40">
+                      <img
+                        src={viewingMaintenance.odometer_photo_url}
+                        alt="Foto do KM"
+                        className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                        <Eye className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+                    <p className="text-[12px] text-[#9e9e9e] flex items-center gap-1"><Camera className="w-3 h-3" /> Foto do KM</p>
+                  </a>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-center rounded-lg border border-dashed border-[#323232] bg-[#121212] h-40">
+                      <div className="text-center space-y-1">
+                        <Camera className="w-6 h-6 text-[#474747] mx-auto" />
+                        <p className="text-[12px] text-[#474747]">Sem foto do KM</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* NF */}
+                {viewingMaintenance.invoice_photo_url ? (
+                  <a href={viewingMaintenance.invoice_photo_url} target="_blank" rel="noreferrer" className="group space-y-1.5">
+                    <div className="relative overflow-hidden rounded-lg border border-[#323232] bg-[#121212] h-40">
+                      <img
+                        src={viewingMaintenance.invoice_photo_url}
+                        alt="Nota Fiscal"
+                        className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                        <Eye className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+                    <p className="text-[12px] text-[#9e9e9e] flex items-center gap-1"><FileText className="w-3 h-3" /> Nota Fiscal</p>
+                  </a>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-center rounded-lg border border-dashed border-[#323232] bg-[#121212] h-40">
+                      <div className="text-center space-y-1">
+                        <FileText className="w-6 h-6 text-[#474747] mx-auto" />
+                        <p className="text-[12px] text-[#474747]">Sem nota fiscal</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t border-[#323232] pt-4">
+              <Button variant="secondary" onClick={() => setViewingMaintenance(null)}>Fechar</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* MODAL 2: FLUXO INTELIGENTE — REGISTRO ASSISTIDO DE CONCLUSÃO */}
@@ -1548,14 +1719,15 @@ export default function MaintenancePage() {
                         completingMaintenance,
                         ...completionExtras.filter((e) => completionExtraIds.includes(e.id)),
                       ]
-                      const defaultResp: Responsibility = activeContract?.type === 'promise' ? 'customer' : 'split'
                       setCompletionFinancials(allItems.map((item) => ({
                         id: item.id,
                         description: item.description,
                         cost: '',
-                        responsibility: item.type === 'corrective' ? defaultResp : 'company',
+                        responsibility: 'split' as Responsibility,
                         has_odometer_photo: false,
                         has_invoice_photo: false,
+                        odometer_photo_file: null,
+                        invoice_photo_file: null,
                       })))
                       setCompletionStep(2)
                     }}
@@ -1601,35 +1773,55 @@ export default function MaintenancePage() {
                         </span>
                       </div>
 
-                      <div className="flex gap-3 items-end">
-                        <div className="flex-1">
-                          <Input
-                            label="Custo (R$)"
-                            type="number"
-                            step="0.01"
-                            value={fin.cost}
-                            onChange={(e) => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, cost: e.target.value } : f))}
-                            placeholder="0.00"
-                          />
+                      <Input
+                        label="Custo (R$)"
+                        type="number"
+                        step="0.01"
+                        value={fin.cost}
+                        onChange={(e) => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, cost: e.target.value } : f))}
+                        placeholder="0.00"
+                      />
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[13px] text-[#f5f5f5]">
+                            Foto do KM <span className="text-[#9e9e9e] text-[12px]">(imagem)</span>
+                          </label>
+                          <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${fin.odometer_photo_file ? 'border-[#6b9900]' : 'border-[#323232] hover:border-[#474747]'}`}>
+                            <Camera className="w-4 h-4 text-[#9e9e9e] shrink-0" />
+                            <span className="flex-1 text-[13px] truncate text-[#9e9e9e]">
+                              {fin.odometer_photo_file ? fin.odometer_photo_file.name : 'Nenhum arquivo selecionado'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null
+                                setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, odometer_photo_file: file, has_odometer_photo: !!file } : f))
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="flex gap-2 pb-0.5">
-                          {/* Marcações manuais servindo de lembrete/checklist se as fotos fiscais e operacionais foram tiradas. */}
-                          <button
-                            type="button"
-                            onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_odometer_photo: !f.has_odometer_photo } : f))}
-                            title="Marcar foto do odômetro"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${fin.has_odometer_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
-                          >
-                            <Camera className="h-3.5 w-3.5" /> KM
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, has_invoice_photo: !f.has_invoice_photo } : f))}
-                            title="Marcar foto da nota fiscal"
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${fin.has_invoice_photo ? 'border-[#6b9900] bg-[#243300] text-[#BAFF1A]' : 'border-[#474747] text-[#9e9e9e] hover:border-[#616161]'}`}
-                          >
-                            <FileText className="h-3.5 w-3.5" /> NF
-                          </button>
+                        <div className="space-y-1">
+                          <label className="text-[13px] text-[#f5f5f5]">
+                            Nota Fiscal <span className="text-[#9e9e9e] text-[12px]">(imagem)</span>
+                          </label>
+                          <div className={`relative flex items-center gap-3 px-4 bg-[#323232] border-2 rounded-lg h-12 transition-colors ${fin.invoice_photo_file ? 'border-[#6b9900]' : 'border-[#323232] hover:border-[#474747]'}`}>
+                            <FileText className="w-4 h-4 text-[#9e9e9e] shrink-0" />
+                            <span className="flex-1 text-[13px] truncate text-[#9e9e9e]">
+                              {fin.invoice_photo_file ? fin.invoice_photo_file.name : 'Nenhum arquivo selecionado'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null
+                                setCompletionFinancials((prev) => prev.map((f, i) => i === idx ? { ...f, invoice_photo_file: file, has_invoice_photo: !!file } : f))
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -1688,11 +1880,40 @@ export default function MaintenancePage() {
                   )
                 })()}
 
+                {showPhotoWarning && (
+                  <div className="rounded-xl border border-[#e65e24]/40 bg-[#e65e24]/10 p-4 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-[#e65e24] shrink-0 mt-0.5" />
+                      <p className="text-[13px] text-[#e65e24]">
+                        Existem itens sem fotos anexadas. A manutenção ficará com pendências de comprovação.
+                        Preencha as observações para continuar mesmo assim.
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Textarea
+                        label="Observações (obrigatório)"
+                        value={completionObservations}
+                        onChange={(e) => { setCompletionObservations(e.target.value) }}
+                        rows={2}
+                        placeholder="Descreva o motivo da ausência das fotos..."
+                      />
+                      <p className={`text-[12px] text-right ${completionObservations.trim().length >= 30 ? 'text-[#229731]' : 'text-[#9e9e9e]'}`}>
+                        {completionObservations.trim().length}/30 caracteres mínimos
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between gap-3 border-t border-[#323232] pt-4">
                   <Button variant="secondary" onClick={() => setCompletionStep(1)}>← Voltar</Button>
                   <div className="flex gap-3">
                     <Button variant="secondary" onClick={closeCompleteModal}>Cancelar</Button>
-                    <Button variant="primary" onClick={handleConfirmComplete} loading={completing}>
+                    <Button
+                      variant="primary"
+                      onClick={handleConfirmComplete}
+                      loading={completing}
+                      disabled={showPhotoWarning && completionObservations.trim().length < 30}
+                    >
                       <CheckCircle2 className="h-4 w-4" />
                       Confirmar Conclusão
                     </Button>
