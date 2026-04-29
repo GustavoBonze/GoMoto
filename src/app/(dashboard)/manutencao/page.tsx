@@ -1200,7 +1200,17 @@ export default function MaintenancePage() {
                               {pending.map((item) => (
                                 <tr key={item.id} className="h-9 border-b border-[#323232] transition-colors hover:bg-[#323232]">
                                   <td className="px-4">
-                                    <p className="font-medium text-[#f5f5f5] text-[13px]">{item.description}</p>
+                                    <p className="font-medium text-[#f5f5f5] text-[13px]">
+                                      {item.description}
+                                      {(() => {
+                                        const iv = getInterval(item.description)
+                                        if (!iv) return null
+                                        const hint = iv.interval_km
+                                          ? `a cada ${iv.interval_km.toLocaleString('pt-BR')} km`
+                                          : `a cada ${iv.interval_days} dias`
+                                        return <span className="ml-1.5 text-[12px] font-light text-[#474747]">{hint}</span>
+                                      })()}
+                                    </p>
                                     <StatusBadge status={item.type} />
                                   </td>
                                   <td className="px-4">

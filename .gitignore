@@ -43,6 +43,7 @@ next-env.d.ts
 # AI tools (contêm tokens e configurações locais)
 .claude/
 .gemini/
+.mcp.json
 
 # logs
 *.log
