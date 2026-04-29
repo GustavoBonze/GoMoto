@@ -439,6 +439,7 @@ export async function closeQueueContract(entryId: string, rawData: unknown) {
     const { data: createdIncome, error: incomeError } = await supabase
       .from('incomes')
       .insert({
+        description: `Caução - ${customer.name}`,
         vehicle: motorcycle.license_plate ?? '',
         date: new Date().toISOString().split('T')[0],
         lessee: customer.name ?? '',

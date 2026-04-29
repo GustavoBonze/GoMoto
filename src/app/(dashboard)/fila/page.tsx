@@ -1156,6 +1156,7 @@ export default function QueuePage() {
         // Busca os dados da moto selecionada para usar a placa no lançamento
         const moto = availableMotorcycles.find(m => m.id === motorcycle_id)
         const { error: incomeError } = await supabase.from('incomes').insert({
+          description: `Caução - ${contractEntry.customers?.name || ''}`,
           vehicle: moto?.license_plate || '',
           date: new Date().toISOString().split('T')[0],
           lessee: contractEntry.customers?.name || '',
