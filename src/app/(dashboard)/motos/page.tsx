@@ -140,7 +140,8 @@ const defaultFormState = {
   licensePlate: '',         // Placa do veículo
   model: '',                // Modelo (Ex: Titan 160)
   make: '',                 // Marca (Ex: Honda)
-  year: '',                 // Ano (Ex: 2024)
+  yearManufacture: '',      // Ano de fabricação (Ex: 2024)
+  yearModel: '',            // Ano do modelo (Ex: 2025)
   color: '',                // Cor (Ex: Azul)
   renavam: '',              // Código RENAVAM
   chassis: '',              // Número do Chassi
@@ -178,7 +179,8 @@ function motorcycleToForm(motorcycle: Motorcycle) {
     licensePlate: motorcycle.license_plate,
     model: motorcycle.model,
     make: motorcycle.make,
-    year: motorcycle.year,
+    yearManufacture: motorcycle.year_manufacture,
+    yearModel: motorcycle.year_model ?? '',
     color: motorcycle.color,
     renavam: motorcycle.renavam,
     chassis: motorcycle.chassis,
@@ -381,7 +383,8 @@ export default function MotorcyclesPage() {
       license_plate: form.licensePlate.toUpperCase(),   // Padrão Mercosul exige maiúsculas
       model:         form.model,
       make:          form.make.toUpperCase(),
-      year:          form.year,
+      year_manufacture: form.yearManufacture,
+      year_model:    form.yearModel || null,
       color:         form.color.toUpperCase(),
       renavam:       form.renavam,
       chassis:       form.chassis.toUpperCase(),
@@ -675,13 +678,19 @@ export default function MotorcyclesPage() {
           </div>
 
           {/* Características Físicas e Motorização */}
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-4 gap-5">
             <Input
-              label="Ano (Fab/Mod)"
-              placeholder="Ex: 2024/2024"
-              value={form.year}
-              onChange={(e) => setForm({ ...form, year: e.target.value })}
+              label="Ano de Fabricação"
+              placeholder="Ex: 2024"
+              value={form.yearManufacture}
+              onChange={(e) => setForm({ ...form, yearManufacture: e.target.value })}
               required
+            />
+            <Input
+              label="Ano do Modelo"
+              placeholder="Ex: 2025"
+              value={form.yearModel}
+              onChange={(e) => setForm({ ...form, yearModel: e.target.value })}
             />
             <Input
               label="Cor Predominante"
@@ -911,7 +920,9 @@ export default function MotorcyclesPage() {
                   {motorcycleDetails.make} {motorcycleDetails.model}
                 </h3>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-[13px] font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">ANO {motorcycleDetails.year}</span>
+                  <span className="text-[13px] font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">
+                    {motorcycleDetails.year_manufacture}{motorcycleDetails.year_model ? `/${motorcycleDetails.year_model}` : ''}
+                  </span>
                   <span className="text-[13px] font-bold text-[#616161] bg-[#323232] px-2 py-0.5 rounded">{motorcycleDetails.color}</span>
                 </div>
               </div>

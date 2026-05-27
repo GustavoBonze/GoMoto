@@ -20,7 +20,7 @@ import type { Contract, Customer, Motorcycle } from '@/types'
 
 interface ContractRow extends Omit<Contract, 'customer' | 'motorcycle'> {
   customer: Pick<Customer, 'id' | 'name' | 'phone' | 'cpf' | 'rg' | 'state' | 'drivers_license' | 'drivers_license_category' | 'address' | 'zip_code'> | null
-  motorcycle: Pick<Motorcycle, 'id' | 'model' | 'make' | 'license_plate' | 'km_current' | 'year' | 'renavam' | 'chassis' | 'color' | 'fuel'> | null
+  motorcycle: Pick<Motorcycle, 'id' | 'model' | 'make' | 'license_plate' | 'km_current' | 'year_manufacture' | 'year_model' | 'renavam' | 'chassis' | 'color' | 'fuel'> | null
 }
 
 interface ContractTemplate {
@@ -55,8 +55,9 @@ const SUPPORTED_VARIABLES = [
   // — Dados da motocicleta —
   { tag: '{{marca_moto}}',          desc: 'Marca (ex: HONDA)' },
   { tag: '{{modelo_moto}}',         desc: 'Marca + Modelo (ex: HONDA CG 160 START)' },
-  { tag: '{{ano_fabricacao_moto}}', desc: 'Ano de fabricação' },
-  { tag: '{{ano_modelo_moto}}',     desc: 'Ano do modelo' },
+  { tag: '{{ano_fabricacao_moto}}', desc: 'Ano de fabricação (ex: 2024)' },
+  { tag: '{{ano_modelo_moto}}',     desc: 'Ano do modelo (ex: 2025)' },
+  { tag: '{{ano_fab_mod_moto}}',    desc: 'Fabricação/Modelo combinado (ex: 2024/2025)' },
   { tag: '{{renavam_moto}}',        desc: 'RENAVAM' },
   { tag: '{{placa_moto}}',          desc: 'Placa' },
   { tag: '{{chassi_moto}}',         desc: 'Chassi' },
@@ -237,7 +238,7 @@ export default function ContratosPage() {
   const fetchContracts = useCallback(async () => {
     const { data } = await supabase
       .from('contracts')
-      .select('*, customer:customers(id, name, phone, cpf, rg, state, drivers_license, drivers_license_category, address, zip_code), motorcycle:motorcycles(id, model, make, license_plate, km_current, year, renavam, chassis, color, fuel)')
+      .select('*, customer:customers(id, name, phone, cpf, rg, state, drivers_license, drivers_license_category, address, zip_code), motorcycle:motorcycles(id, model, make, license_plate, km_current, year_manufacture, year_model, renavam, chassis, color, fuel)')
       .order('created_at', { ascending: false })
     if (data) setContracts(data as ContractRow[])
     setLoading(false)
@@ -374,9 +375,8 @@ export default function ContratosPage() {
       })
       const c = contract.customer
       const m = contract.motorcycle
-      const yearParts = (m?.year ?? '').split('/')
-      const ano_fabricacao = yearParts[0]?.trim() ?? ''
-      const ano_modelo = yearParts[1]?.trim() ?? ano_fabricacao
+      const ano_fabricacao = m?.year_manufacture?.trim() ?? ''
+      const ano_modelo = m?.year_model?.trim() ?? ano_fabricacao
       const rg_cliente = [c?.rg, c?.state ? `DETRAN ${c.state}` : ''].filter(Boolean).join(' ')
       doc.render({
         data_hoje: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -393,6 +393,7 @@ export default function ContratosPage() {
         modelo_moto: m ? `${m.make} ${m.model}` : '',
         ano_fabricacao_moto: ano_fabricacao,
         ano_modelo_moto: ano_modelo,
+        ano_fab_mod_moto: ano_modelo ? `${ano_fabricacao}/${ano_modelo}` : ano_fabricacao,
         renavam_moto: m?.renavam ?? '',
         chassi_moto: m?.chassis ?? '',
         cor_moto: m?.color ?? '',

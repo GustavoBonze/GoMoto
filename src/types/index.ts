@@ -87,8 +87,10 @@ export interface Motorcycle {
   model: string;
   /** @property make - Fabricante ou marca do veículo (ex: Honda, Yamaha). */
   make: string;
-  /** @property year - Ano de fabricação e modelo (ex: 2023/2024). */
-  year: string;
+  /** @property year_manufacture - Ano de fabricação do veículo. */
+  year_manufacture: string;
+  /** @property year_model - Ano do modelo do veículo. */
+  year_model?: string;
   /** @property color - Cor predominante conforme o documento do veículo. */
   color: string;
   /** @property renavam - Registro Nacional de Veículos Automotores. */
