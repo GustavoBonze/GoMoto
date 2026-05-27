@@ -113,6 +113,8 @@ export interface Motorcycle {
   status: MotorcycleStatus;
   /** @property photo_url - Link para a imagem principal da motocicleta. */
   photo_url?: string;
+  /** @property km_current - Quilometragem atual registrada do veículo. */
+  km_current?: number;
   /** @property observations - Notas adicionais sobre o estado ou histórico do veículo. */
   observations?: string;
   /** @property created_at - Data de inserção do registro no banco de dados. */
@@ -223,6 +225,8 @@ export interface Contract {
   status: ContractStatus;
   /** @property pdf_url - Link para o arquivo PDF do contrato assinado. */
   pdf_url?: string;
+  /** @property contract_type - Tipo do contrato: rental (mínimo 3 meses) ou loyalty (promessa de compra, 2 anos). */
+  contract_type?: 'rental' | 'loyalty';
   /** @property observations - Notas específicas sobre este contrato. */
   observations?: string;
   /** @property created_at - Data de geração do contrato no sistema. */
