@@ -85,6 +85,8 @@ const statusLabels: Record<string, { label: string; variant: BadgeVariant }> = {
   /** Status de Clientes ou Registros Gerais */
   active: { label: 'Ativo', variant: 'success' },
   closed: { label: 'Encerrado', variant: 'muted' },
+  cancelled: { label: 'Cancelado', variant: 'danger' },
+  broken: { label: 'Rescindido', variant: 'warning' },
   
   /** Tipos de Manutenção */
   preventive: { label: 'Preventiva', variant: 'info' },

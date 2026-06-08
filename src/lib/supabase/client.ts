@@ -31,7 +31,7 @@ export function createClient() {
 
   const isValidUrl = rawUrl.startsWith('https://') || rawUrl.startsWith('http://');
   const supabaseUrl = isValidUrl ? rawUrl : 'https://placeholder.supabase.co';
-  const supabaseKey = rawKey.startsWith('ey') ? rawKey : 'placeholder-anon-key';
+  const supabaseKey = (rawKey.startsWith('ey') || rawKey.startsWith('sb_')) ? rawKey : 'placeholder-anon-key';
 
   return createBrowserClient(supabaseUrl, supabaseKey);
 }

@@ -269,7 +269,7 @@ export default function MotorcycleMap({
             </div>
             <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
               <tr><td style="color:#6b7280; padding:3px 0; font-weight:600;">Placa</td><td style="font-weight:700; font-family:monospace; text-align:right;">${motorcycle.license_plate}</td></tr>
-              <tr><td style="color:#6b7280; padding:3px 0; font-weight:600;">Ano</td><td style="text-align:right;">${motorcycle.year}</td></tr>
+              <tr><td style="color:#6b7280; padding:3px 0; font-weight:600;">Ano</td><td style="text-align:right;">${motorcycle.year_manufacture}${motorcycle.year_model ? `/${motorcycle.year_model}` : ''}</td></tr>
               <tr><td style="color:#6b7280; padding:3px 0; font-weight:600;">Cliente</td><td style="text-align:right;">${contract?.customer?.name ?? '—'}</td></tr>
               <tr><td style="color:#6b7280; padding:3px 0; font-weight:600;">Valor/Semana</td><td style="color:#16a34a; font-weight:700; text-align:right;">${weeklyValue}</td></tr>
               <tr><td style="color:#6b7280; padding:3px 0; font-weight:600; vertical-align:top;">Endereço</td><td style="text-align:right; max-width:130px;">${contract?.customer?.address ?? '—'}</td></tr>

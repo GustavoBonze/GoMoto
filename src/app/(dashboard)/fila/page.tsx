@@ -230,6 +230,14 @@ const MOVE_DOWN_REASONS = [
  * @param upReason - O motivo pelo qual o candidato subiu na fila
  * @returns A nota a ser registrada no candidato que desceu
  */
+function calcEndDate(startDate: string, type: 'rental' | 'loyalty'): string {
+  if (!startDate) return ''
+  const d = new Date(startDate + 'T00:00:00')
+  if (type === 'loyalty') d.setFullYear(d.getFullYear() + 2)
+  else d.setMonth(d.getMonth() + 3)
+  return d.toISOString().split('T')[0]
+}
+
 function getDownNote(upReason: string): string {
   // Mapeamento dos motivos de subida para as notas correspondentes do candidato que desceu
   const map: Record<string, string> = {
@@ -440,8 +448,9 @@ export default function QueuePage() {
    */
   const [contractForm, setContractForm] = useState({
     motorcycle_id: '',
+    contract_type: 'rental' as 'rental' | 'loyalty',
     start_date: new Date().toISOString().split('T')[0],
-    end_date: '',
+    end_date: calcEndDate(new Date().toISOString().split('T')[0], 'rental'),
     weekly_amount: '',
     deposit_paid: false,
     deposit_amount: '',
@@ -1080,11 +1089,13 @@ export default function QueuePage() {
     setContractEntry(entry)
     // Carrega motos disponíveis em tempo real para garantir dados atualizados
     await fetchAvailableMotorcycles()
-    // Reseta o formulário com a data de início como hoje (padrão mais comum)
+    // Reseta o formulário com a data de início como hoje e end_date auto-calculado
+    const today = new Date().toISOString().split('T')[0]
     setContractForm({
       motorcycle_id: '',
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: '',
+      contract_type: 'rental',
+      start_date: today,
+      end_date: calcEndDate(today, 'rental'),
       weekly_amount: '',
       deposit_paid: false,
       deposit_amount: '',
@@ -1136,6 +1147,7 @@ export default function QueuePage() {
         start_date,
         end_date: end_date || null,
         monthly_amount: parseFloat(weekly_amount), // Valor semanal — NÃO dividir por 4
+        contract_type: contractForm.contract_type,
         status: 'active',
         observations: 'KM inicial: ' + initial_km,
       })
@@ -1437,6 +1449,26 @@ export default function QueuePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+              {/* Tipo de contrato — define vigência mínima e cálculo automático do término */}
+              <div className="md:col-span-2">
+                <Select
+                  label="Tipo de Contrato *"
+                  value={contractForm.contract_type}
+                  onChange={(e) => {
+                    const type = e.target.value as 'rental' | 'loyalty'
+                    setContractForm(prev => ({
+                      ...prev,
+                      contract_type: type,
+                      end_date: calcEndDate(prev.start_date, type),
+                    }))
+                  }}
+                  options={[
+                    { value: 'rental', label: 'Locação (vigência mínima de 3 meses)' },
+                    { value: 'loyalty', label: 'Com Fidelidade — Promessa de Compra (2 anos)' },
+                  ]}
+                />
+              </div>
+
               {/* Seleção da moto — ao selecionar, pré-preenche o KM inicial automaticamente */}
               <div className="md:col-span-2">
                 <Select
@@ -1444,7 +1476,6 @@ export default function QueuePage() {
                   value={contractForm.motorcycle_id}
                   onChange={(e) => {
                     const motoId = e.target.value;
-                    // Pré-preenche o KM inicial com o km_current da moto selecionada
                     const selectedMoto = availableMotorcycles.find(m => m.id === motoId);
                     setContractForm(prev => ({
                       ...prev,
@@ -1462,17 +1493,24 @@ export default function QueuePage() {
                 />
               </div>
 
-              {/* Data de início: padrão hoje — a maioria dos contratos começa no mesmo dia */}
+              {/* Data de início: padrão hoje — ao alterar, recalcula o término */}
               <Input
                 label="Data de Início *"
                 type="date"
                 value={contractForm.start_date}
-                onChange={e => setContractForm(prev => ({ ...prev, start_date: e.target.value }))}
+                onChange={e => {
+                  const startDate = e.target.value
+                  setContractForm(prev => ({
+                    ...prev,
+                    start_date: startDate,
+                    end_date: calcEndDate(startDate, prev.contract_type),
+                  }))
+                }}
               />
 
-              {/* Data de término: opcional — contratos podem ser por tempo indeterminado */}
+              {/* Data de término: auto-calculada pelo tipo, editável para ajustes */}
               <Input
-                label="Data de Término (Opcional)"
+                label="Data de Término *"
                 type="date"
                 value={contractForm.end_date}
                 onChange={e => setContractForm(prev => ({ ...prev, end_date: e.target.value }))}
