@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/auth]
+---
+
 # 🔐 Tela: Login — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/login` | Tipo: Client Component | Grupo: `(auth)` (sem Sidebar/Header)
 
@@ -52,6 +58,3 @@ async function handleLogin(event) {
 - Usuário não autenticado → qualquer rota privada → `/login`
 - Usuário autenticado → `/login` → `/dashboard`
 - Rotas `/auth/*` → sempre públicas
-
-## Tags
-`#projeto/tela` `#gomoto/auth`

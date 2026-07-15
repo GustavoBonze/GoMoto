@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/multas]
+---
+
 # 🚨 Tela: Multas — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/multas` | Tipo: Client Component
 
@@ -97,6 +103,3 @@ UPDATE fines SET status='paid', payment_date=? WHERE id=?
 -- Deletar
 DELETE FROM fines WHERE id=?
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/financeiro`

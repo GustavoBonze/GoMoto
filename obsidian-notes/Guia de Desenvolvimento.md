@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/guia, projeto/desenvolvimento]
+---
+
 # 🛠️ Guia de Desenvolvimento — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Referência para adicionar qualquer coisa nova ao sistema sem quebrar o que existe.
 
@@ -152,6 +158,3 @@ Seguir o padrão dos componentes existentes:
 4. **Nunca usar `actions.ts`** — usar Supabase client-side direto
 5. **Toda nova tabela precisa de RLS + trigger `update_updated_at`**
 6. **`npm run build` deve passar sem erros** antes de qualquer commit
-
-## Tags
-`#projeto/guia` `#projeto/desenvolvimento`

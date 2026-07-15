@@ -1,4 +1,11 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/motos]
+updated: 2026-07-15
+---
+
 # 🏍️ Tela: Motos — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/motos` | Tipo: Client Component (`'use client'`)
 
@@ -41,7 +48,8 @@ Clicar na linha → seleciona/centraliza moto no mapa.
 | RENAVAM | text | ✓ | — |
 | Marca | text | ✓ | `.toUpperCase()` |
 | Modelo | text | ✓ | — |
-| Ano (Fab/Mod) | text | ✓ | String simples |
+| Ano de Fabricação | text | ✓ | `year_manufacture` |
+| Ano do Modelo | text | — | `year_model` (opcional) — detalhes exibem `fab/modelo` |
 | Cor | text | ✓ | `.toUpperCase()` |
 | Combustível | select | — | GASOLINA / ÁLCOOL+GASOLINA / ELÉTRICO (default: GASOLINA) |
 | Chassi | text | ✓ | `.toUpperCase()` |
@@ -110,5 +118,3 @@ DELETE FROM motorcycles WHERE id = ?
 - **`visibleMotoIds`**: apenas motos da lista filtrada aparecem no mapa
 - **Cores do ponto de status:** available `#28b438` · rented `#a880ff` · maintenance `#e65e24` · inactive `#474747`
 
-## Tags
-`#projeto/tela` `#gomoto/motos`

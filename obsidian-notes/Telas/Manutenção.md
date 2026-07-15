@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/manutencao]
+---
+
 # 🔧 Tela: Manutenção — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/manutencao` | Tipo: Client Component
 
@@ -52,7 +58,9 @@ Dentro: tabela de pendentes + toggle de histórico (slice 5 quando colapsado, op
 | Previsão | KM previsto ou data agendada |
 | Situação | Texto computado: "Vencida há X km" / "Faltam X km" / "Vence em X dias" |
 | Status | Badge: Vencida / Próxima / Agendada / Concluída |
-| Ações | Edit2, CheckCircle2 (conclusão), Trash2 |
+| Ações | CheckCircle2 (conclusão), Trash2 — **itens concluídos só têm Eye (visualização)** |
+
+> ⚠️ O botão de editar foi removido dos itens concluídos. Apenas visualização (somente leitura).
 
 ## Formulário de Criação/Edição
 
@@ -78,12 +86,32 @@ Dentro: tabela de pendentes + toggle de histórico (slice 5 quando colapsado, op
 
 ### Etapa 2: Detalhamento Financeiro
 Por item sendo concluído:
-- Toggle de responsabilidade: `split` (50/50) / `company` / `customer`
+- Toggle de responsabilidade: `split` (50/50 — padrão) / `company` / `customer`
 - Custo em R$
-- Fotos: botões "KM" (câmera) e "NF" (arquivo) — apenas marcam status
+- **Upload real de fotos** via caixas de upload (ícone + nome do arquivo após seleção):
+  - **KM** (câmera) → `odometer_photo_url` — foto do painel/odômetro
+  - **NF** (arquivo) → `invoice_photo_url` — nota fiscal ou recibo
 - Preview: "Empresa: R$X / Cliente: R$X"
+- ⚠️ **Alerta laranja** ao confirmar sem fotos: exige campo Observações com mínimo de 30 caracteres
 
 Resumo consolidado + checkbox de confirmação (se há split).
+
+### Upload de Fotos (Server Action)
+- Função: `uploadMaintenancePhoto(formData, prefix)` em `actions.ts`
+- Bucket: `maintenance-files` (público, `service_role` — sem policies RLS)
+- Path: `maintenance/{prefix}_{timestamp}_{random}.{ext}`
+  - `prefix = 'km'` para odômetro, `prefix = 'nf'` para nota fiscal
+- Salvo em `maintenances.odometer_photo_url` e `maintenances.invoice_photo_url`
+
+### Ícones Clicáveis na Grid
+Após conclusão, os ícones de câmera/NF na listagem tornam-se links (`target="_blank"`) que abrem a foto em nova aba.
+
+## Modal de Visualização (Somente Leitura)
+
+Aberto pelo botão Eye nos itens concluídos. Exibe:
+- Todos os dados do registro
+- Breakdown de custo: Empresa / Cliente / Total (baseado em `responsibility`)
+- Miniaturas das fotos com **hover overlay** para ampliar
 
 ## Auto-agendamento Após Conclusão
 
@@ -121,10 +149,8 @@ SELECT *, motorcycles(...)
 FROM maintenances WHERE motorcycle_id = ? AND completed = false AND id != ?
 
 -- Conclusão
-UPDATE maintenances SET completed=true, completed_date=?, actual_km=?, cost=?, workshop=? WHERE id=?
+UPDATE maintenances SET completed=true, completed_date=?, actual_km=?, cost=?, workshop=?,
+  responsibility=?, odometer_photo_url=?, invoice_photo_url=? WHERE id=?
 INSERT INTO maintenances (...) -- novo agendamento
 UPDATE motorcycles SET km_current = ? WHERE id = ?
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/manutencao`

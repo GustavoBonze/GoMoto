@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/segurança, stack/supabase]
+---
+
 # 🔒 Segurança — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 ## Headers (next.config.mjs)
 
@@ -48,6 +54,3 @@ Ver [[Banco de Dados]] pra detalhes.
 Commits relevantes:
 - `a91adaf` — auditoria completa + correção de FKs duplicadas
 - `2f4165d` — hardening completo pré-produção
-
-## Tags
-`#projeto/segurança` `#stack/supabase`

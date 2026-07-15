@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, gomoto/tipos]
+---
+
 # 🏷️ Tipos TypeScript — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Arquivo: `src/types/index.ts`. Todos os tipos globais do sistema.
 
@@ -12,6 +18,21 @@ type ContractStatus  = 'active' | 'closed' | 'cancelled' | 'broken'
 ```
 
 ## Interfaces
+
+### CustomerRentalHistory
+```typescript
+interface CustomerRentalHistory {
+  start_date: string
+  end_date?: string
+  motorcycle_license_plate?: string
+  motorcycle_model?: string
+  departure_reason: string
+  amount_due?: number
+}
+```
+Usado em `Customer.rental_history[]` para compor histórico de locações anteriores.
+
+---
 
 ### Document
 ```typescript
@@ -151,6 +172,7 @@ interface Maintenance {
   completed_date?: string
   cost?: number
   completed: boolean
+  responsibility: 'company' | 'customer' | 'split' | null  // quem arca com o custo
   workshop: string          // default: 'Oficina do Careca'
   odometer_photo_url?: string
   invoice_photo_url?: string
@@ -187,6 +209,3 @@ Espelham as interfaces com validações:
 | `ExpenseSchema` | Despesas |
 | `FineSchema` | Multas |
 | `MaintenanceBootstrapSchema` | Bootstrap inicial de manutenção |
-
-## Tags
-`#projeto/tipos` `#stack/typescript`

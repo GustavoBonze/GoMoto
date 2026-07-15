@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/cobrancas]
+---
+
 # 💳 Tela: Cobranças — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/cobrancas` | Tipo: Client Component
 
@@ -95,6 +101,3 @@ DELETE FROM billings WHERE id = ?
 - Cálculo de atraso: `Math.floor((today - new Date(due_date)) / 86400000)` dias
 - Observações de método são **cumulativas** (concatena com `\n` ao marcar pago)
 - `filtered` e `metrics` em useMemo para performance
-
-## Tags
-`#projeto/tela` `#gomoto/cobrancas`

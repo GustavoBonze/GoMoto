@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/clientes]
+---
+
 # 👥 Tela: Clientes — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/clientes` | Tipo: Client Component
 
@@ -87,6 +93,3 @@ DELETE FROM customers WHERE id = ?
 - **`activeContractsMap`** (Map): `customer_id → { license_plate, model }` — O(1) lookup por cliente
 - **WhatsApp:** extrai só dígitos do telefone, monta `wa.me/55{digits}`, abre em nova aba
 - Tratamento de `motorcycles` que pode vir como array ou objeto — normaliza para primeiro item
-
-## Tags
-`#projeto/tela` `#gomoto/clientes`

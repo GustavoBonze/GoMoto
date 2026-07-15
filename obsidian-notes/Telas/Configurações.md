@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/configuracoes]
+---
+
 # ⚙️ Tela: Configurações — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/configuracoes` | Tipo: Client Component
 
@@ -62,6 +68,3 @@ supabase.auth.updateUser({ password: '...' })
 -- Buscar usuário logado
 supabase.auth.getUser()
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/configuracoes`

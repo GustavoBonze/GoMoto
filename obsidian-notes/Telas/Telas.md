@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/telas]
+---
+
 # 🗺️ Índice de Telas — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Documentação detalhada de cada tela: campos, filtros, colunas, ações, queries e lógica de negócio.
 
@@ -29,6 +35,3 @@ Documentação detalhada de cada tela: campos, filtros, colunas, ações, querie
 ## Internos
 - [[Processos]] — FAQ interno por categoria com accordion, order personalizado
 - [[Configurações]] — Dados da empresa (settings key/value), troca de senha, info da conta
-
-## Tags
-`#projeto/telas` `#gomoto`

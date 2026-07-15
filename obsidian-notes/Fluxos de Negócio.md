@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, gomoto/fluxos]
+---
+
 # ⚙️ Fluxos de Negócio — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Principais processos operacionais da locadora mapeados no sistema.
 
@@ -144,6 +150,3 @@ Tabela `checklists` com campo `items` (JSONB):
 | Taxa de inadimplência | `overdue / (pending + overdue + paid) × 100` |
 | Total a receber | `SUM(billings.amount) WHERE status IN ('pending', 'overdue')` |
 | Contratos vencendo em 15 dias | `contracts WHERE end_date BETWEEN hoje e hoje+15` |
-
-## Tags
-`#projeto/negócio` `#projeto/processos`

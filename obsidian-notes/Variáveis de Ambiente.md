@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/config, projeto/segurança]
+---
+
 # 🔐 Variáveis de Ambiente — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 ## Produção / Desenvolvimento
 
@@ -7,7 +13,12 @@ Arquivo: `.env.local` (nunca commitado)
 | Variável | Exemplo | Uso |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://hcnxbqunescfanqzmsha.supabase.co` | URL do projeto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGc...` | Chave pública (anon) do Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_...` | Chave pública (anon) do Supabase — novo formato a partir de abr/2026 |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGc...` | Chave secreta (service_role) — apenas server-side |
+
+> ⚠️ O Supabase migrou o formato da anon key de `eyJ...` (JWT) para `sb_publishable_...`. Os clientes em `src/lib/supabase/client.ts` e `server.ts` validam o prefixo — aceitam ambos os formatos (`ey` e `sb_`).
+
+> ⚠️ `SUPABASE_SERVICE_ROLE_KEY` **nunca** deve ter o prefixo `NEXT_PUBLIC_` — exporia acesso total ao banco no navegador.
 
 > ⚠️ `NEXT_PUBLIC_` expõe a variável no navegador. Seguro apenas para a `anon key` — nunca usar a `service_role key` com esse prefixo.
 
@@ -44,6 +55,3 @@ Arquivo: `.env.test`
 | `SENTRY_DSN` | Sentry | Monitoramento de erros |
 | `UPSTASH_REDIS_URL` | Upstash | Rate-limit persistente |
 | `UPSTASH_REDIS_TOKEN` | Upstash | Auth do Redis |
-
-## Tags
-`#projeto/config` `#projeto/segurança`

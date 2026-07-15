@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/dashboard]
+---
+
 # 📊 Tela: Dashboard — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/dashboard` | Tipo: **Server Component** (assíncrono, sem `'use client'`)
 
@@ -101,6 +107,3 @@ Exibe: posição em badge + nome + total. Link → `/clientes`
 | incomes | date>=6meses | Gráfico receita |
 | expenses | date>=6meses | Gráfico despesas |
 | billings | due_date=mês atual | Gráfico status |
-
-## Tags
-`#projeto/tela` `#gomoto/dashboard`

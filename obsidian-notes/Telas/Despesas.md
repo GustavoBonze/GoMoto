@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/financeiro]
+---
+
 # 📉 Tela: Despesas — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/despesas` | Tipo: Client Component
 
@@ -83,6 +89,3 @@ UPDATE expenses SET (...) WHERE id = ?
 -- Deletar
 DELETE FROM expenses WHERE id = ?
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/financeiro`

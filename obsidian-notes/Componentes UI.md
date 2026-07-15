@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, gomoto/ui]
+---
+
 # 🧩 Componentes UI — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Todos em `src/components/`. Ver [[Design System]] para tokens visuais.
 
@@ -182,6 +188,3 @@ Mapa Leaflet interativo da frota.
 - Marcador por moto com dados do cliente atual
 - Clique em marcador → seleciona moto na tabela
 - Container usa `isolation: isolate` para conter z-indexes do Leaflet
-
-## Tags
-`#projeto/componentes` `#design/ui`

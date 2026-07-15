@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/design, design/tokens]
+---
+
 # 🎨 Design System — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Inspirado no InfinitePay dark theme. Tokens extraídos do código real.
 
@@ -34,6 +40,30 @@ Inspirado no InfinitePay dark theme. Tokens extraídos do código real.
 | `text-[28px]` | 28 | Headings de página |
 
 > ⚠️ Tabelas usam `h-9 text-[13px]` — menor que o padrão InfinitePay (`h-16 / text-[16px]`). É preferência explícita do usuário.
+
+
+## Pesos de Fonte
+
+| Elemento | Classe | Peso |
+|---|---|---|
+| Valores monetários (R$) e numéricos de destaque | `font-bold` | 700 |
+| Textos de apoio, labels, nomes | `font-medium` | 500 |
+| Nunca usar | `font-semibold` | 600 |
+
+> Validado via Playwright (abr/2026). Nunca `font-semibold`.
+
+## Filter Chips
+
+Estilo sublinhado — sem pílula com background:
+
+```tsx
+<button className="border-b-2 border-[#BAFF1A] text-[13px] text-[#BAFF1A]">
+  Filtro Ativo
+</button>
+```
+
+- Tamanho: `text-[13px]` (mesmo do body de tabelas)
+- Sem `rounded-*`, sem `bg-*`
 
 ## Espaçamento e Layout
 
@@ -77,6 +107,3 @@ fade-in zoom-in-95 slide-in-from-top-4
 - **Hover estado:** fundo sobe de `#202020` → `#323232`
 - **Botão hover:** `hover:bg-[#a8e617]` (brand escurece)
 - **Disabled:** opacidade reduzida + `cursor-not-allowed`
-
-## Tags
-`#projeto/design` `#design/tokens`

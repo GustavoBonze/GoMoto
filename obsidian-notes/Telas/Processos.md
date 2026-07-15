@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/processos]
+---
+
 # 📚 Tela: Processos — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/processos` | Tipo: Client Component
 
@@ -83,6 +89,3 @@ groupedProcesses = categories.reduce((acc, cat) => {
   return acc
 }, {})
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/processos`

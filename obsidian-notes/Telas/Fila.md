@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/fila]
+---
+
 # 🕐 Tela: Fila de Espera — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/fila` | Tipo: Client Component
 
@@ -138,6 +144,3 @@ MOVE_DOWN_REASONS = ['Documentação incompleta', 'Caução não disponível', .
 UFS = ['AC', 'AL', ..., 'TO']  // 27 estados
 CNH_CATEGORIES = ['A', 'B', 'AB', 'C', 'D', 'E']
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/fila`

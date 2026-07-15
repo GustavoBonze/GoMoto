@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/testes, ferramenta/playwright]
+---
+
 # 🧪 Testes — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Framework: **Playwright 1.59.1** (E2E apenas — sem testes unitários).
 
@@ -51,6 +57,3 @@ npm run test:report   # abre HTML report
 - ❌ Sem testes unitários (componentes, utils)
 - ❌ Sem testes de integração isolados (só E2E)
 - ❌ Sem cobertura de dashboard/relatórios
-
-## Tags
-`#projeto/testes` `#ferramenta/playwright`

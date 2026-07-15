@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/financeiro]
+---
+
 # 💰 Tela: Entradas — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/entradas` | Tipo: Client Component
 
@@ -89,6 +95,3 @@ UPDATE incomes SET (...) WHERE id = ?
 -- Deletar
 DELETE FROM incomes WHERE id = ?
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/financeiro`

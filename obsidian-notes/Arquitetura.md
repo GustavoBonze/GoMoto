@@ -1,7 +1,13 @@
+---
+tags: [projeto/gomoto, projeto/arquitetura, stack/nextjs]
+---
+
 # 🏗️ Arquitetura — [[GoMoto]]
 
+> Projeto: [[GoMoto]]
+
 ## Tipo
-Monolito full-stack em [[Next.js]] 14 com App Router.
+Monolito full-stack em Next.js (`02-Conhecimento/Next.js.md`) 14 com App Router.
 
 ## Estrutura de pastas
 ```
@@ -34,7 +40,8 @@ src/
 │   │   └── server.ts              ← createServerClient (cookies)
 │   ├── schemas.ts                 ← Validações Zod
 │   ├── utils.ts                   ← formatCurrency, formatDate, cn
-│   └── audit.ts                   ← Log de ações
+│   ├── file-validation.ts         ← Validação de uploads (magic bytes, tipo, tamanho)
+│   └── audit.ts                   ← Log de ações (logAction)
 ├── types/
 │   └── index.ts                   ← Types globais
 └── middleware.ts                  ← Auth + rate-limiting
@@ -48,11 +55,14 @@ src/
 - **Middleware** — intercepta requests para autenticação e rate-limiting
 
 ## Fluxo de autenticação
+
 1. Usuário tenta acessar `/dashboard/*`
 2. `middleware.ts` verifica cookie de sessão Supabase
 3. Sem token → redireciona `/login`
 4. Com token em `/login` → redireciona `/dashboard`
 5. Token renovado a cada request (middleware)
+
+**Formato da anon key:** O Supabase migrou de `eyJ...` (JWT) para `sb_publishable_...` (abr/2026). Os clientes `client.ts` e `server.ts` aceitam ambos os prefixos (`ey` e `sb_`). O middleware usa a key diretamente via env, sem filtragem.
 
 ## Stack completo
 - **Frontend:** Next.js 14.2.35, React 18, TypeScript 5, Tailwind 3.4.1
@@ -62,6 +72,3 @@ src/
 - **Backend:** Supabase (PostgreSQL + Auth + Storage)
 - **Testes:** Playwright 1.59.1 (E2E)
 - **Lint:** ESLint 8
-
-## Tags
-`#projeto/arquitetura` `#stack/nextjs`

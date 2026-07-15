@@ -1,6 +1,12 @@
+---
+tags: [projeto/gomoto, gomoto/banco-de-dados, stack/supabase]
+---
+
 # 🗄️ Banco de Dados — [[GoMoto]]
 
-Backend [[Supabase]] (PostgreSQL). Projeto: `hcnxbqunescfanqzmsha`.
+> Projeto: [[GoMoto]]
+
+Backend Supabase (`02-Conhecimento/Supabase.md`) (PostgreSQL). Projeto: `hcnxbqunescfanqzmsha`.
 
 ## Tabelas (15 no total)
 
@@ -73,6 +79,3 @@ maintenance_items ──< maintenances
 - `src/lib/supabase/server.ts` — server client (cookies)
 - `src/lib/schemas.ts` — validações Zod espelhando tabelas
 - `src/types/index.ts` — types TypeScript dos registros
-
-## Tags
-`#projeto/banco` `#stack/supabase`

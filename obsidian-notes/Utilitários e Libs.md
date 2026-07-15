@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, gomoto/utils]
+---
+
 # 🔧 Utilitários e Libs — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 ## src/lib/utils.ts
 
@@ -85,11 +91,11 @@ Usado em **Server Components**, Route Handlers e Middleware.
 Funções para registrar ações na tabela `audit_logs`:
 
 ```typescript
-logAudit({
-  action: 'create',
-  table_name: 'motorcycles',
-  record_id: moto.id,
-  new_data: moto,
+logAction({
+  action: 'create',   // 'create' | 'update' | 'delete'
+  table: 'motorcycles',
+  recordId: moto.id,
+  newData: moto,
 })
 ```
 
@@ -99,9 +105,14 @@ logAudit({
 
 ## src/lib/file-validation.ts
 
-Validação de uploads de arquivo (fotos, notas fiscais):
-- Tipos permitidos: `image/jpeg`, `image/png`, `image/webp`, `application/pdf`
-- Tamanho máximo: configurável (tipicamente 5MB)
+Validação de uploads com verificação de magic bytes (impede spoofing de MIME type).
+
+| Função | Aceita | Limite |
+|---|---|---|
+| `validateDocxFile(file)` | `.docx` (magic bytes `PK`) | 10 MB |
+| `validateImageFile(file)` | `jpg`, `png`, `webp` | 5 MB |
+| `validatePdfFile(file)` | `.pdf` (magic bytes `%PDF`) | 20 MB |
+| `safeFileName(name)` | — | gera `{uuid}.{ext}` |
 
 ---
 
@@ -117,6 +128,3 @@ Validação de uploads de arquivo (fotos, notas fiscais):
 | `zod` | ^4.3.6 | Validação de schemas/formulários |
 | `clsx` | ^2.1.1 | Classes condicionais |
 | `tailwind-merge` | ^3.5.0 | Resolve conflitos de classes Tailwind |
-
-## Tags
-`#projeto/libs` `#stack/typescript`

@@ -1,4 +1,10 @@
+---
+tags: [projeto/gomoto, projeto/tela, gomoto/relatorios, ideia/futuro]
+---
+
 # 📈 Tela: Relatórios — [[GoMoto]]
+
+> Projeto: [[GoMoto]]
 
 Rota: `/relatorios` | Tipo: Client Component
 
@@ -41,6 +47,3 @@ warning: { bg: '#3a180f', text: '#e65e24', border: '#e65e24' }
 danger:  { bg: '#7c1c1c', text: '#ff9c9a', border: '#ff9c9a' }
 info:    { bg: '#2d0363', text: '#a880ff', border: '#a880ff' }
 ```
-
-## Tags
-`#projeto/tela` `#gomoto/relatorios` `#ideia/futuro`
